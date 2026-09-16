@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/industry-145e668b-f4dd-47e5-a768-a8bab1639e0b/styles.css">
+<script src="_ds/industry-145e668b-f4dd-47e5-a768-a8bab1639e0b/_ds_bundle.js"></script>
+<style>
+html,body{margin:0;background:#e4e4e6;font-family:var(--font-body)}
+a{color:var(--color-accent);text-decoration:none}
+a:hover{color:var(--color-accent-700)}
+button{font-family:var(--font-body)}
+.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08)}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1d1f20;color:#f2f2f3;border-radius:4px;text-decoration:none}
+.dv-tname{font-family:var(--font-heading);font-weight:600;font-size:15px;letter-spacing:.02em}
+.dv-opts{display:flex;flex-wrap:wrap;gap:36px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:10px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1d1f20;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:9px;font-size:12px;color:rgba(0,0,0,.55)}
+.dv-opt:target .dv-oid{background:#5980a6;color:#f2f2f3}
+.dv-next{margin:24px 0 0;font-size:12px;line-height:1.6;color:rgba(0,0,0,.5)}
+.gg-seg{display:flex;width:100%;border:1px solid var(--color-divider)}
+.gg-seg > button{flex:1;padding:9px 0;cursor:pointer;background:transparent;border:0;font-family:var(--font-heading);font-weight:600;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-text)}
+.gg-kick{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 52%, transparent)}
+.gg-hd{display:flex;align-items:center;justify-content:space-between}
+.gg-brand{font-family:var(--font-heading);font-weight:600;font-size:13px;letter-spacing:.26em;text-transform:uppercase;color:var(--color-accent-700)}
+.gg-tbtn{display:flex;align-items:center;gap:7px;background:transparent;border:1px solid var(--color-divider);padding:5px 9px;cursor:pointer;color:var(--color-text);font-family:var(--font-heading);font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.gg-tbtn:hover{background:color-mix(in srgb, var(--color-text) 7%, transparent)}
+.gg-row{width:100%;text-align:left;display:flex;align-items:center;gap:12px;padding:9px 11px;background:transparent;border:1px solid var(--color-divider);cursor:pointer;color:inherit}
+.gg-row:hover{background:color-mix(in srgb, var(--color-accent) 8%, transparent)}
+.gg-num{font-family:var(--font-heading);font-weight:600;letter-spacing:-.02em;line-height:.92}
+.gg-back{display:flex;align-items:center;gap:7px;background:transparent;border:0;padding:0;cursor:pointer;color:var(--color-accent-700);font-family:var(--font-heading);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t3">
+<div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">Modern pass — soft surfaces, one fixed color per category</span></div>
+<div class="dv-opts">
+<div class="dv-opt" id="3a">
+<div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a>Each category keeps its color across chart, breakdown and settings</div>
+<div>
+<x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+<div style="min-height:100%;display:flex;flex-direction:column;gap:14px;background:#f3f4f6;padding:16px 14px 44px;color:var(--color-text)">
+
+<sc-if value="{{ m_isOv }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:14px">
+
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+<div style="display:flex;flex-direction:column;gap:1px">
+<span style="font-family:var(--font-heading);font-weight:700;font-size:27px;letter-spacing:-.01em;line-height:1.05">Wasted Time....</span>
+
+</div>
+<div style="display:flex;align-items:center;gap:7px">
+<button onClick="{{ m_openLimits }}" style="display:flex;align-items:center;gap:6px;background:#ffffff;border:0;border-radius:999px;padding:9px 13px;cursor:pointer;color:var(--color-text);font-size:12.5px;font-weight:600;box-shadow:0 1px 3px rgba(29,31,32,.12)" style-hover="background:#fbfbfc">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2.5 1.5M9 2h6"></path></svg>{{ m_limCount }}</button>
+<button onClick="{{ m_openPick }}" style="display:flex;align-items:center;gap:6px;background:#ffffff;border:0;border-radius:999px;padding:9px 13px;cursor:pointer;color:var(--color-text);font-size:12.5px;font-weight:600;box-shadow:0 1px 3px rgba(29,31,32,.12)" style-hover="background:#fbfbfc">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-2.87 1.2V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 3 15a1.7 1.7 0 0 0-1.51-1H1a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 3 8.6a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 3V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 2.87 1.2l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 21 10h.09"></path></svg>{{ trackedLabel }}</button>
+</div>
+</div>
+
+<sc-for list="{{ m_ov }}" as="c" hint-placeholder-count="4">
+<button onClick="{{ c.onClick }}" style="width:100%;text-align:left;background:#ffffff;border:0;border-radius:20px;padding:16px 16px 14px;cursor:pointer;color:inherit;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(29,31,32,.06),0 10px 26px -16px rgba(29,31,32,.4)" style-hover="background:#fbfbfc">
+<div style="width:100%;display:flex;align-items:flex-start;gap:9px;background:color-mix(in srgb, var(--color-accent) 11%, transparent);border-radius:14px;padding:11px 12px">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" stroke-width="1.5" stroke-linecap="round" style="flex:none;margin-top:1px"><path d="M12 3l1.6 4.6L18 9.2l-4.4 1.6L12 15.4l-1.6-4.6L6 9.2l4.4-1.6z"></path><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"></path></svg>
+<span style="flex:1;font-size:12.5px;line-height:1.45;color:var(--color-accent-900);text-wrap:pretty">{{ c.fact }}</span>
+</div>
+<div style="width:100%;display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+<div style="display:flex;flex-direction:column;gap:4px">
+<span style="font-family:var(--font-heading);font-weight:700;font-size:19px;letter-spacing:-.01em">{{ c.label }}</span>
+<span style="font-family:var(--font-heading);font-weight:700;font-size:29px;line-height:.95;letter-spacing:-.02em">{{ c.total }}</span>
+</div>
+<div style="text-align:right;display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:color-mix(in srgb, var(--color-text) 48%, transparent)"><span>{{ c.dates }}</span><span>{{ c.avg }}</span></div>
+</div>
+<div style="width:100%;display:flex;gap:2px;height:8px;border-radius:999px;overflow:hidden">
+<sc-for list="{{ c.comp }}" as="g" hint-placeholder-count="5">
+<div style="width:{{ g.w }}%;background:{{ g.color }}"></div>
+</sc-for>
+</div>
+<div style="width:100%;display:flex;flex-direction:column;gap:7px">
+<sc-for list="{{ c.top }}" as="t" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:9px">
+<div style="width:9px;height:9px;flex:none;border-radius:999px;background:{{ t.tone }}"></div>
+<span style="flex:1;font-size:13.5px;font-weight:600">{{ t.name }}</span>
+<span style="font-size:11.5px;color:color-mix(in srgb, var(--color-text) 46%, transparent)">{{ t.share }}</span>
+<span style="width:74px;text-align:right;font-family:var(--font-heading);font-weight:700;font-size:14px;font-variant-numeric:tabular-nums">{{ t.time }}</span>
+</div>
+</sc-for>
+</div>
+<div style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;border-top:1px solid color-mix(in srgb, var(--color-text) 8%, transparent);padding-top:10px;font-size:12px;font-weight:600;color:var(--color-accent-700)">
+<span>{{ c.more }}</span>
+<span style="display:flex;align-items:center;gap:4px">Full breakdown
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M9 6l6 6-6 6"></path></svg>
+</span>
+</div>
+</button>
+</sc-for>
+
+</div>
+</sc-if>
+
+<sc-if value="{{ m_isDetail }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:14px">
+
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+<button onClick="{{ m_back }}" style="display:flex;align-items:center;gap:5px;background:#ffffff;border:0;border-radius:999px;padding:9px 14px 9px 10px;cursor:pointer;color:var(--color-text);font-size:13px;font-weight:600;box-shadow:0 1px 3px rgba(29,31,32,.12)">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>Overview</button>
+<span style="font-size:12.5px;color:color-mix(in srgb, var(--color-text) 52%, transparent)">{{ m_scope }}</span>
+</div>
+
+<div style="display:flex;gap:4px;background:color-mix(in srgb, var(--color-text) 7%, transparent);border-radius:999px;padding:4px">
+<sc-for list="{{ m_ranges }}" as="r" hint-placeholder-count="4">
+<button onClick="{{ r.onClick }}" style="flex:1;padding:9px 0;border:0;border-radius:999px;cursor:pointer;font-family:var(--font-body);font-weight:600;font-size:13px;background:{{ r.bg }};color:{{ r.fg }};box-shadow:{{ r.sh }}">{{ r.label }}</button>
+</sc-for>
+</div>
+
+<div style="background:#ffffff;border-radius:20px;padding:18px 18px 16px;box-shadow:0 1px 2px rgba(29,31,32,.06),0 10px 26px -16px rgba(29,31,32,.4);display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:flex-start;gap:9px;background:color-mix(in srgb, var(--color-accent) 11%, transparent);border-radius:14px;padding:11px 12px">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" stroke-width="1.5" stroke-linecap="round" style="flex:none;margin-top:1px"><path d="M12 3l1.6 4.6L18 9.2l-4.4 1.6L12 15.4l-1.6-4.6L6 9.2l4.4-1.6z"></path><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"></path></svg>
+<span style="flex:1;font-size:12.5px;line-height:1.45;color:var(--color-accent-900);text-wrap:pretty">{{ m_fact }}</span>
+</div>
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+<div style="display:flex;flex-direction:column;gap:7px">
+<span style="font-family:var(--font-heading);font-weight:700;font-size:42px;line-height:.95;letter-spacing:-.02em">{{ m_total }}</span>
+<span style="align-self:flex-start;font-size:12px;font-weight:600;padding:4px 9px;border-radius:999px;background:{{ m_deltaBg }};color:{{ m_deltaFg }}">{{ m_delta }}</span>
+</div>
+<div style="text-align:right;display:flex;flex-direction:column;gap:2px">
+<span style="font-family:var(--font-heading);font-weight:700;font-size:19px">{{ m_avg }}</span>
+<span style="font-size:11px;color:color-mix(in srgb, var(--color-text) 48%, transparent)">{{ m_avgLabel }}</span>
+</div>
+</div>
+<div style="display:flex;gap:2px;height:10px;border-radius:999px;overflow:hidden">
+<sc-for list="{{ m_comp }}" as="c" hint-placeholder-count="5">
+<div style="width:{{ c.w }}%;background:{{ c.color }}"></div>
+</sc-for>
+</div>
+</div>
+
+<div style="background:#ffffff;border-radius:20px;padding:16px 14px 12px;box-shadow:0 1px 2px rgba(29,31,32,.06),0 10px 26px -16px rgba(29,31,32,.4);display:flex;flex-direction:column;gap:12px">
+<div style="height:180px;display:flex;align-items:flex-end;gap:{{ m_gap }}px">
+<sc-for list="{{ m_stacks }}" as="s" hint-placeholder-count="7">
+<div onClick="{{ s.onClick }}" style="flex:1;min-width:0;display:flex;flex-direction:column;cursor:pointer;opacity:{{ s.op }}">
+<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:1px">
+<sc-for list="{{ s.segs }}" as="g" hint-placeholder-count="4">
+<div style="height:{{ g.h }}px;background:{{ g.color }};border-radius:{{ g.r }}"></div>
+</sc-for>
+</div>
+<div style="height:16px;padding-top:5px;text-align:center;font-size:9.5px;font-weight:600;color:{{ s.tickColor }};white-space:nowrap">{{ s.tick }}</div>
+</div>
+</sc-for>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid color-mix(in srgb, var(--color-text) 8%, transparent);padding-top:10px;font-size:11.5px;color:color-mix(in srgb, var(--color-text) 48%, transparent)"><span>{{ m_axisNote }}</span><span>Tap a bar to zoom in</span></div>
+</div>
+
+<div style="display:flex;align-items:baseline;justify-content:space-between;padding:2px 4px 0">
+<span style="font-family:var(--font-heading);font-weight:700;font-size:17px">Breakdown</span>
+<span style="font-size:12px;color:color-mix(in srgb, var(--color-text) 48%, transparent)">{{ m_count }}</span>
+</div>
+<div style="background:#ffffff;border-radius:20px;padding:6px 16px;box-shadow:0 1px 2px rgba(29,31,32,.06),0 10px 26px -16px rgba(29,31,32,.4);display:flex;flex-direction:column">
+<sc-for list="{{ m_rows }}" as="row" hint-placeholder-count="6">
+<button onClick="{{ row.onClick }}" style="width:100%;text-align:left;background:transparent;border:0;display:flex;flex-direction:column;gap:8px;padding:13px 0;border-bottom:1px solid color-mix(in srgb, var(--color-text) 7%, transparent);cursor:pointer;color:inherit">
+<div style="width:100%;display:flex;align-items:center;gap:9px">
+<div style="width:10px;height:10px;flex:none;border-radius:999px;background:{{ row.tone }}"></div>
+<span style="flex:1;font-size:14.5px;font-weight:600">{{ row.name }}</span>
+<span style="font-size:12px;color:color-mix(in srgb, var(--color-text) 46%, transparent)">{{ row.share }}</span>
+<span style="width:82px;text-align:right;font-family:var(--font-heading);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums">{{ row.time }}</span>
+</div>
+<div style="width:100%;height:6px;border-radius:999px;background:color-mix(in srgb, var(--color-text) 7%, transparent)"><div style="height:100%;border-radius:999px;width:{{ row.pct }}%;background:{{ row.tone }}"></div></div>
+<div style="align-self:flex-start;display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 8px;border-radius:999px;background:{{ row.limBg }};color:{{ row.limFg }}">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2.5 1.5M9 2h6"></path></svg>{{ row.limChip }}</div>
+</button>
+</sc-for>
+</div>
+
+</div>
+</sc-if>
+
+<sc-if value="{{ m_isLimits }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:16px">
+<button onClick="{{ m_back }}" style="align-self:flex-start;display:flex;align-items:center;gap:5px;background:#ffffff;border:0;border-radius:999px;padding:9px 14px 9px 10px;cursor:pointer;color:var(--color-text);font-size:13px;font-weight:600;box-shadow:0 1px 3px rgba(29,31,32,.12)">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>Overview</button>
+<div style="display:flex;flex-direction:column;gap:4px">
+<span style="font-family:var(--font-heading);font-weight:700;font-size:24px;letter-spacing:-.01em">App timers</span>
+<p style="margin:0;font-size:13px;line-height:1.45;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Give a category a daily budget. Apps pause when it runs out and start fresh at midnight.</p>
+</div>
+<div style="background:#ffffff;border-radius:20px;padding:4px 16px;box-shadow:0 1px 2px rgba(29,31,32,.06),0 10px 26px -16px rgba(29,31,32,.4);display:flex;flex-direction:column">
+<sc-for list="{{ m_limits }}" as="l" hint-placeholder-count="7">
+<button onClick="{{ l.onClick }}" style="width:100%;text-align:left;display:flex;flex-direction:column;gap:8px;padding:14px 0;background:transparent;border:0;border-bottom:1px solid color-mix(in srgb, var(--color-text) 7%, transparent);cursor:pointer;color:inherit">
+<div style="width:100%;display:flex;align-items:center;gap:10px">
+<div style="width:11px;height:11px;flex:none;border-radius:999px;background:{{ l.color }}"></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:1px">
+<span style="font-size:15px;font-weight:600">{{ l.name }}</span>
+<span style="font-size:11.5px;color:color-mix(in srgb, var(--color-text) 45%, transparent)">{{ l.used }}</span>
+</div>
+<span style="font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:999px;background:{{ l.bg }};color:{{ l.fg }}">{{ l.text }}</span>
+<span style="font-family:var(--font-heading);font-weight:700;font-size:15px;min-width:44px;text-align:right">{{ l.limStr }}</span>
+</div>
+<div style="width:100%;height:5px;border-radius:999px;background:color-mix(in srgb, var(--color-text) 7%, transparent)"><div style="height:100%;border-radius:999px;width:{{ l.pct }}%;background:{{ l.barColor }}"></div></div>
+</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ m_isLimit }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:16px">
+<button onClick="{{ m_backLimits }}" style="align-self:flex-start;display:flex;align-items:center;gap:5px;background:#ffffff;border:0;border-radius:999px;padding:9px 14px 9px 10px;cursor:pointer;color:var(--color-text);font-size:13px;font-weight:600;box-shadow:0 1px 3px rgba(29,31,32,.12)">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>App timers</button>
+
+<div style="background:#ffffff;border-radius:20px;padding:18px;box-shadow:0 1px 2px rgba(29,31,32,.06),0 10px 26px -16px rgba(29,31,32,.4);display:flex;flex-direction:column;gap:13px">
+<div style="display:flex;align-items:center;gap:9px">
+<div style="width:12px;height:12px;flex:none;border-radius:999px;background:{{ m_lcColor }}"></div>
+<span style="flex:1;font-family:var(--font-heading);font-weight:700;font-size:22px;letter-spacing:-.01em">{{ m_lcName }}</span>
+<span style="font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:999px;background:{{ m_lcStateBg }};color:{{ m_lcStateFg }}">{{ m_lcState }}</span>
+</div>
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px">
+<div style="display:flex;flex-direction:column;gap:2px">
+<span style="font-family:var(--font-heading);font-weight:700;font-size:34px;line-height:.95;letter-spacing:-.02em">{{ m_lcUsed }}</span>
+<span style="font-size:11.5px;color:color-mix(in srgb, var(--color-text) 48%, transparent)">used today</span>
+</div>
+<span style="font-size:12.5px;font-weight:600;color:color-mix(in srgb, var(--color-text) 60%, transparent)">{{ m_lcLimit }}</span>
+</div>
+<div style="height:8px;border-radius:999px;background:color-mix(in srgb, var(--color-text) 7%, transparent)"><div style="height:100%;border-radius:999px;width:{{ m_lcPct }}%;background:{{ m_lcBar }}"></div></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-family:var(--font-heading);font-weight:700;font-size:16px;padding-left:4px">Daily limit</span>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+<sc-for list="{{ m_presets }}" as="p" hint-placeholder-count="8">
+<button onClick="{{ p.onClick }}" style="padding:13px 0;border:0;border-radius:14px;cursor:pointer;font-family:var(--font-body);font-weight:600;font-size:13.5px;background:{{ p.bg }};color:{{ p.fg }};box-shadow:0 1px 3px rgba(29,31,32,.12)">{{ p.label }}</button>
+</sc-for>
+</div>
+<p style="margin:0;padding:0 4px;font-size:12.5px;line-height:1.45;color:color-mix(in srgb, var(--color-text) 52%, transparent);text-wrap:pretty">{{ m_lcHint }}</p>
+<sc-if value="{{ m_hasLimit }}" hint-placeholder-val="{{ true }}">
+<button onClick="{{ m_clearLimit }}" style="margin-top:2px;padding:13px 0;width:100%;border:1px solid color-mix(in srgb, var(--color-text) 14%, transparent);border-radius:14px;background:transparent;cursor:pointer;font-family:var(--font-body);font-weight:600;font-size:13.5px;color:#8e3f52">Remove timer</button>
+</sc-if>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ m_isPick }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:16px">
+<button onClick="{{ m_back }}" style="align-self:flex-start;display:flex;align-items:center;gap:6px;background:#ffffff;border:0;border-radius:999px;padding:9px 14px 9px 10px;cursor:pointer;color:var(--color-text);font-size:13px;font-weight:600;box-shadow:0 1px 3px rgba(29,31,32,.12)">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>Back</button>
+<div style="display:flex;flex-direction:column;gap:4px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+<span style="font-family:var(--font-heading);font-weight:700;font-size:24px;letter-spacing:-.01em">Categories</span>
+<button onClick="{{ toggleAll }}" style="background:transparent;border:0;padding:6px 2px;cursor:pointer;font-size:13px;font-weight:600;color:var(--color-accent-700)">{{ allLabel }}</button>
+</div>
+<p style="margin:0;font-size:13px;line-height:1.45;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Anything you switch off is left out of your totals and charts.</p>
+</div>
+<div style="background:#ffffff;border-radius:20px;padding:4px 16px;box-shadow:0 1px 2px rgba(29,31,32,.06),0 10px 26px -16px rgba(29,31,32,.4);display:flex;flex-direction:column">
+<sc-for list="{{ pickRows }}" as="p" hint-placeholder-count="7">
+<button onClick="{{ p.onClick }}" style="width:100%;display:flex;align-items:center;gap:11px;padding:15px 0;background:transparent;border:0;border-bottom:1px solid color-mix(in srgb, var(--color-text) 7%, transparent);cursor:pointer;color:inherit;text-align:left">
+<div style="width:11px;height:11px;flex:none;border-radius:999px;background:{{ p.dot }}"></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:1px">
+<span style="font-size:15px;font-weight:600;color:{{ p.nameColor }}">{{ p.name }}</span>
+<span style="font-size:11.5px;color:color-mix(in srgb, var(--color-text) 45%, transparent)">{{ p.avg }}</span>
+</div>
+<div style="position:relative;width:34px;height:20px;flex:none;border-radius:999px;background:{{ p.swBg }}">
+<div style="position:absolute;top:2px;left:{{ p.swX }};width:16px;height:16px;border-radius:999px;background:#ffffff;box-shadow:0 1px 2px rgba(29,31,32,.3)"></div>
+</div>
+</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-import>
+</div>
+</div>
+</div>
+<p class="dv-next">Try next: "carry this style back into <a class="dv-oid" href="#2a">2a</a>'s overview cards" · "let me tap a category for its own detail screen" · "add a daily limit per category".</p>
+</section>
+
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Overview → drill-in, built on <a class="dv-oid" href="#1c">1c</a></span></div>
+<div class="dv-opts">
+<div class="dv-opt" id="2a">
+<div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Four timeframes, time + top 3 each — tap any card for the full breakdown</div>
+<div class="dv-card" style="background:transparent;border:0">
+<x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+
+<div style="min-height: 100%; display: flex; flex-direction: column; background: var(--color-bg); padding: 16px 16px 40px; color: var(--color-text); position: relative">
+
+<sc-if value="{{ d_isOv }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:14px">
+<div class="gg-hd">
+<span class="gg-brand" style="font-weight: 700; color: #000000; font-size: 25px; text-align: center; text-transform: uppercase; line-height: 0">SCREEN TIME</span><button onClick="{{ d_openPick }}" class="gg-tbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>{{ trackedLabel }}</button></div>
+<sc-for list="{{ d_ov }}" as="c" hint-placeholder-count="4">
+<button onClick="{{ c.onClick }}" class="blueprint" style="width:100%;text-align:left;background:transparent;padding:0;cursor:pointer;color:inherit;display:flex;flex-direction:column">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i>
+<div style="padding:11px 13px 9px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;border-bottom:1px solid var(--color-divider)">
+<div><div class="gg-kick" style="font-size: 20px; text-align: left; letter-spacing: 0.16em; font-family: Open Sans; display: block; justify-content: flex-start; align-items: stretch; color: #000000; line-height: 1.2; text-decoration-line: none">{{ c.label }}</div><div class="gg-num" style="font-size: 15px; color: #000000; font-weight: 700">{{ c.total }}</div></div>
+<div style="text-align:right;display:flex;flex-direction:column;gap:2px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 45%, transparent)"><span>{{ c.dates }}</span><span>{{ c.avg }}</span></div>
+</div>
+<div style="padding:9px 13px 10px;display:flex;flex-direction:column;gap:6px">
+<sc-for list="{{ c.top }}" as="t" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:9px">
+<div style="width:9px;height:9px;flex:none;background:{{ t.tone }}"></div>
+<span style="flex: 1; font-family: var(--font-heading); font-weight: 600; font-size: 15px">{{ t.name }}</span>
+<span style="width: 34px; text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; color: color-mix(in srgb, var(--color-text) 45%, transparent)">{{ t.share }}</span>
+<span style="width: 78px; text-align: right; font-family: var(--font-heading); font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums">{{ t.time }}</span>
+</div>
+</sc-for>
+<div style="display:flex;align-items:center;gap:5px;padding-top:3px;font-family:var(--font-heading);font-weight:600;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">All {{ c.count }} categories
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 6l6 6-6 6"></path></svg>
+</div>
+</div>
+</button>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ d_isDetail }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:15px">
+<button onClick="{{ d_back }}" class="gg-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>Overview</button>
+<div class="gg-seg">
+<sc-for list="{{ d_ranges }}" as="r" hint-placeholder-count="4">
+<button onClick="{{ r.onClick }}" style="border-left:{{ r.bl }};background:{{ r.bg }};color:{{ r.fg }}">{{ r.label }}</button>
+</sc-for>
+</div>
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px">
+<div style="display:flex;flex-direction:column;gap:3px">
+<div class="gg-kick">{{ d_scope }}</div>
+<div class="gg-num" style="font-size:50px">{{ d_total }}</div>
+<div style="font-size:12px;color:{{ d_deltaColor }}">{{ d_delta }}</div>
+</div>
+<div style="text-align:right"><div class="gg-kick" style="font-size:9px">Per day</div><div class="gg-num" style="font-size:19px;padding-top:2px">{{ d_avg }}</div></div>
+</div>
+<div class="blueprint" style="padding:14px 12px 10px;display:flex;flex-direction:column;gap:11px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div style="height:196px;display:flex;align-items:flex-end;gap:{{ d_gap }}px">
+<sc-for list="{{ d_stacks }}" as="s" hint-placeholder-count="7">
+<div onClick="{{ s.onClick }}" style="flex:1;min-width:0;display:flex;flex-direction:column;cursor:pointer;opacity:{{ s.op }}">
+<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end">
+<sc-for list="{{ s.segs }}" as="g" hint-placeholder-count="4">
+<div style="height:{{ g.h }}px;background:{{ g.color }}"></div>
+</sc-for>
+</div>
+<div style="height:15px;padding-top:4px;text-align:center;font-family:var(--font-heading);font-weight:600;font-size:9px;color:{{ s.tickColor }};overflow:visible;white-space:nowrap">{{ s.tick }}</div>
+</div>
+</sc-for>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--color-divider);padding-top:9px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 45%, transparent)"><span>{{ d_axisNote }}</span><span>{{ d_dates }}</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<h6 style="margin:0">All categories</h6>
+<sc-for list="{{ d_rows }}" as="row" hint-placeholder-count="7">
+<div style="display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid color-mix(in srgb, var(--color-text) 10%, transparent)">
+<div style="width:11px;height:11px;flex:none;background:{{ row.tone }}"></div>
+<span style="flex:1;font-family:var(--font-heading);font-weight:600;font-size:16px">{{ row.name }}</span>
+<span style="width:34px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums;color:color-mix(in srgb, var(--color-text) 45%, transparent)">{{ row.share }}</span>
+<span style="width:86px;text-align:right;font-family:var(--font-heading);font-weight:600;font-size:14px;font-variant-numeric:tabular-nums">{{ row.time }}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ d_isPick }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:16px">
+<button onClick="{{ d_back }}" class="gg-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>Overview</button>
+<div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+<h3 style="margin:0">Tracked categories</h3>
+<button onClick="{{ toggleAll }}" class="gg-tbtn">{{ allLabel }}</button>
+</div>
+<p style="margin:4px 0 0;font-size:13px;color:color-mix(in srgb, var(--color-text) 58%, transparent)">Untracked categories are excluded from every total.</p>
+</div>
+<div style="display:flex;flex-direction:column">
+<sc-for list="{{ pickRows }}" as="p" hint-placeholder-count="7">
+<button onClick="{{ p.onClick }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:13px 2px;background:transparent;border:0;border-bottom:1px solid var(--color-divider);cursor:pointer;color:inherit;text-align:left">
+<div style="width:18px;height:18px;flex:none;border:1px solid {{ p.boxBorder }};background:{{ p.boxBg }};display:flex;align-items:center;justify-content:center">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f2f2f3" stroke-width="2.2" stroke-linecap="round" style="display:{{ p.check }}"><path d="M20 6L9 17l-5-5"></path></svg>
+</div>
+<span style="flex:1;font-family:var(--font-heading);font-weight:600;font-size:17px;color:{{ p.nameColor }}">{{ p.name }}</span>
+<span style="font-size:11px;font-variant-numeric:tabular-nums;color:color-mix(in srgb, var(--color-text) 45%, transparent)">{{ p.avg }}</span>
+</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<i class="corner br" style="position: absolute; left: 374px; top: 780px"></i></div></x-import>
+</div>
+</div>
+</div>
+<p class="dv-next">Try next: "put the stacked band on the overview cards too" · "make Day the default drill-in" · "add a per-category screen from the ranked list".</p>
+</section>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Screen time — three home directions (Day / Week / Month / Year, live)</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a">
+<div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Trend line — 7-day path, today marked</div>
+<div class="dv-card" style="background:transparent;border:0">
+<x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+<div style="min-height:100%;display:flex;flex-direction:column;background:var(--color-bg);padding:16px 16px 40px;color:var(--color-text)">
+<sc-if value="{{ pickA }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:16px">
+<button onClick="{{ goBack }}" class="gg-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>Back</button>
+<div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+<h3 style="margin:0">Tracked categories</h3>
+<button onClick="{{ toggleAll }}" class="gg-tbtn">{{ allLabel }}</button>
+</div>
+<p style="margin:4px 0 0;font-size:13px;color:color-mix(in srgb, var(--color-text) 58%, transparent)">Untracked categories are excluded from every total.</p>
+</div>
+<div style="display:flex;flex-direction:column">
+<sc-for list="{{ pickRows }}" as="p" hint-placeholder-count="7">
+<button onClick="{{ p.onClick }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:13px 2px;background:transparent;border:0;border-bottom:1px solid var(--color-divider);cursor:pointer;color:inherit;text-align:left">
+<div style="width:18px;height:18px;flex:none;border:1px solid {{ p.boxBorder }};background:{{ p.boxBg }};display:flex;align-items:center;justify-content:center">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f2f2f3" stroke-width="2.2" stroke-linecap="round" style="display:{{ p.check }}"><path d="M20 6L9 17l-5-5"></path></svg>
+</div>
+<span style="flex:1;font-family:var(--font-heading);font-weight:600;font-size:17px;color:{{ p.nameColor }}">{{ p.name }}</span>
+<span style="font-size:11px;font-variant-numeric:tabular-nums;color:color-mix(in srgb, var(--color-text) 45%, transparent)">{{ p.avg }}</span>
+</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ homeA }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:16px">
+<div class="gg-hd"><span class="gg-brand">Gauge</span>
+<button onClick="{{ openA }}" class="gg-tbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>{{ trackedLabel }}</button></div>
+<div class="gg-seg">
+<sc-for list="{{ ranges }}" as="r" hint-placeholder-count="4">
+<button onClick="{{ r.onClick }}" style="border-left:{{ r.bl }};background:{{ r.bg }};color:{{ r.fg }}">{{ r.label }}</button>
+</sc-for>
+</div>
+<div class="blueprint" style="padding:15px 13px 11px;display:flex;flex-direction:column;gap:13px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div style="display:flex;flex-direction:column;gap:4px">
+<div class="gg-kick">{{ scopeLabel }}</div>
+<div class="gg-num" style="font-size:50px">{{ totalStr }}</div>
+<div style="font-size:12px;color:{{ deltaColor }}">{{ deltaStr }}</div>
+</div>
+<svg width="100%" viewBox="0 0 330 136" style="display:block;overflow:visible">
+<line x1="0" y1="118" x2="330" y2="118" stroke="var(--color-divider)" stroke-width="1"></line>
+<polygon points="{{ line.area }}" fill="color-mix(in srgb, var(--color-accent) 12%, transparent)"></polygon>
+<polyline points="{{ line.poly }}" fill="none" stroke="var(--color-accent)" stroke-width="1.5"></polyline>
+<sc-for list="{{ line.pts }}" as="p" hint-placeholder-count="7">
+<g onClick="{{ p.onClick }}" style="cursor:pointer">
+<line x1="{{ p.cx }}" y1="{{ p.cy }}" x2="{{ p.cx }}" y2="118" stroke="{{ p.rule }}" stroke-width="1"></line>
+<circle cx="{{ p.cx }}" cy="{{ p.cy }}" r="{{ p.r }}" fill="{{ p.fill }}" stroke="var(--color-bg)" stroke-width="1.5"></circle>
+<circle cx="{{ p.cx }}" cy="{{ p.cy }}" r="12" fill="transparent"></circle>
+<text x="{{ p.cx }}" y="133" text-anchor="middle" font-family="var(--font-heading)" font-size="9.5" letter-spacing=".4" fill="{{ p.tickColor }}">{{ p.tick }}</text>
+</g>
+</sc-for>
+</svg>
+<div style="display:flex;justify-content:space-between;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 45%, transparent);border-top:1px solid var(--color-divider);padding-top:9px">
+<span>{{ axisNote }}</span><span>Peak {{ peakStr }}</span>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:baseline;justify-content:space-between"><h6 style="margin:0">Most used</h6><span style="font-size:11px;color:color-mix(in srgb, var(--color-text) 50%, transparent)">{{ listNote }}</span></div>
+<sc-for list="{{ rows }}" as="row" hint-placeholder-count="6">
+<div class="gg-row">
+<div style="font-family:var(--font-heading);font-weight:600;font-size:11px;width:14px;color:color-mix(in srgb, var(--color-text) 40%, transparent)">{{ row.rank }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+<span style="font-family:var(--font-heading);font-weight:600;font-size:16px">{{ row.name }}</span>
+<span style="font-family:var(--font-heading);font-weight:600;font-size:14px;font-variant-numeric:tabular-nums">{{ row.time }}</span>
+</div>
+<div style="height:4px;background:color-mix(in srgb, var(--color-text) 8%, transparent)"><div style="height:100%;width:{{ row.pct }}%;background:var(--color-accent)"></div></div>
+</div>
+<div style="width:34px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums;color:color-mix(in srgb, var(--color-text) 45%, transparent)">{{ row.share }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+</div>
+</x-import>
+</div>
+</div>
+
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Spec plate — the number as a drawn readout, days as a grid</div>
+<div class="dv-card" style="background:transparent;border:0">
+<x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+<div style="min-height:100%;display:flex;flex-direction:column;background:var(--color-bg);padding:16px 16px 40px;color:var(--color-text)">
+<sc-if value="{{ pickB }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:16px">
+<button onClick="{{ goBack }}" class="gg-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>Back</button>
+<div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+<h3 style="margin:0">Tracked categories</h3>
+<button onClick="{{ toggleAll }}" class="gg-tbtn">{{ allLabel }}</button>
+</div>
+<p style="margin:4px 0 0;font-size:13px;color:color-mix(in srgb, var(--color-text) 58%, transparent)">Untracked categories are excluded from every total.</p>
+</div>
+<div style="display:flex;flex-direction:column">
+<sc-for list="{{ pickRows }}" as="p" hint-placeholder-count="7">
+<button onClick="{{ p.onClick }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:13px 2px;background:transparent;border:0;border-bottom:1px solid var(--color-divider);cursor:pointer;color:inherit;text-align:left">
+<div style="width:18px;height:18px;flex:none;border:1px solid {{ p.boxBorder }};background:{{ p.boxBg }};display:flex;align-items:center;justify-content:center">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f2f2f3" stroke-width="2.2" stroke-linecap="round" style="display:{{ p.check }}"><path d="M20 6L9 17l-5-5"></path></svg>
+</div>
+<span style="flex:1;font-family:var(--font-heading);font-weight:600;font-size:17px;color:{{ p.nameColor }}">{{ p.name }}</span>
+<span style="font-size:11px;font-variant-numeric:tabular-nums;color:color-mix(in srgb, var(--color-text) 45%, transparent)">{{ p.avg }}</span>
+</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ homeB }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:16px">
+<div class="gg-hd"><span class="gg-brand">Gauge</span>
+<button onClick="{{ openB }}" class="gg-tbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>{{ trackedLabel }}</button></div>
+<div class="gg-seg">
+<sc-for list="{{ ranges }}" as="r" hint-placeholder-count="4">
+<button onClick="{{ r.onClick }}" style="border-left:{{ r.bl }};background:{{ r.bg }};color:{{ r.fg }}">{{ r.label }}</button>
+</sc-for>
+</div>
+<div class="blueprint" style="display:flex;flex-direction:column">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div style="display:flex;align-items:stretch;border-bottom:1px solid var(--color-divider)">
+<div style="flex:1;padding:13px;display:flex;flex-direction:column;gap:6px">
+<div class="gg-kick">{{ scopeLabel }}</div>
+<div class="gg-num" style="font-size:44px">{{ totalStr }}</div>
+</div>
+<div style="width:104px;border-left:1px solid var(--color-divider);display:flex;flex-direction:column">
+<div style="flex:1;padding:9px 11px;border-bottom:1px solid var(--color-divider)"><div class="gg-kick" style="font-size:9px">Per day</div><div class="gg-num" style="font-size:19px;padding-top:2px">{{ avgStr }}</div></div>
+<div style="flex:1;padding:9px 11px"><div class="gg-kick" style="font-size:9px">vs. prev</div><div class="gg-num" style="font-size:19px;padding-top:2px;color:{{ deltaColor }}">{{ deltaShort }}</div></div>
+</div>
+</div>
+<div style="padding:13px;display:flex;flex-direction:column;gap:9px">
+<div class="gg-kick" style="font-size:9px">{{ axisNote }}</div>
+<div style="display:flex;flex-wrap:wrap;gap:4px">
+<sc-for list="{{ cells }}" as="c" hint-placeholder-count="30">
+<div onClick="{{ c.onClick }}" style="width:{{ c.w }}px;height:34px;background:{{ c.bg }};border:1px solid {{ c.border }};cursor:pointer;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px">
+<span style="font-family:var(--font-heading);font-weight:600;font-size:9px;letter-spacing:.03em;color:{{ c.fg }}">{{ c.tick }}</span>
+</div>
+</sc-for>
+</div>
+<div style="display:flex;align-items:center;gap:7px;border-top:1px solid var(--color-divider);padding-top:9px">
+<span style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 45%, transparent)">Light</span>
+<div style="flex:1;height:8px;background:linear-gradient(90deg,var(--color-accent-100),var(--color-accent-900))"></div>
+<span style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 45%, transparent)">Heavy</span>
+</div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:0">
+<div style="display:flex;align-items:baseline;justify-content:space-between;padding-bottom:6px"><h6 style="margin:0">Most used</h6><span style="font-size:11px;color:color-mix(in srgb, var(--color-text) 50%, transparent)">{{ listNote }}</span></div>
+<sc-for list="{{ rows }}" as="row" hint-placeholder-count="6">
+<div style="display:flex;align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid color-mix(in srgb, var(--color-text) 10%, transparent)">
+<span style="font-family:var(--font-heading);font-weight:600;font-size:16px;width:96px;flex:none">{{ row.name }}</span>
+<div style="flex:1;height:9px;background:color-mix(in srgb, var(--color-text) 6%, transparent)"><div style="height:100%;width:{{ row.pct }}%;background:{{ row.tone }}"></div></div>
+<span style="width:78px;text-align:right;font-family:var(--font-heading);font-weight:600;font-size:14px;font-variant-numeric:tabular-nums">{{ row.time }}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+</div>
+</x-import>
+</div>
+</div>
+
+<div class="dv-opt" id="1c">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Stacked band — every bar split by category</div>
+<div class="dv-card" style="background:transparent;border:0">
+<x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" hint-size="412px,892px">
+<div style="min-height:100%;display:flex;flex-direction:column;background:var(--color-bg);padding:16px 16px 40px;color:var(--color-text)">
+<sc-if value="{{ pickC }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:16px">
+<button onClick="{{ goBack }}" class="gg-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>Back</button>
+<div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+<h3 style="margin:0">Tracked categories</h3>
+<button onClick="{{ toggleAll }}" class="gg-tbtn">{{ allLabel }}</button>
+</div>
+<p style="margin:4px 0 0;font-size:13px;color:color-mix(in srgb, var(--color-text) 58%, transparent)">Untracked categories are excluded from every total.</p>
+</div>
+<div style="display:flex;flex-direction:column">
+<sc-for list="{{ pickRows }}" as="p" hint-placeholder-count="7">
+<button onClick="{{ p.onClick }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:13px 2px;background:transparent;border:0;border-bottom:1px solid var(--color-divider);cursor:pointer;color:inherit;text-align:left">
+<div style="width:18px;height:18px;flex:none;border:1px solid {{ p.boxBorder }};background:{{ p.boxBg }};display:flex;align-items:center;justify-content:center">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f2f2f3" stroke-width="2.2" stroke-linecap="round" style="display:{{ p.check }}"><path d="M20 6L9 17l-5-5"></path></svg>
+</div>
+<span style="flex:1;font-family:var(--font-heading);font-weight:600;font-size:17px;color:{{ p.nameColor }}">{{ p.name }}</span>
+<span style="font-size:11px;font-variant-numeric:tabular-nums;color:color-mix(in srgb, var(--color-text) 45%, transparent)">{{ p.avg }}</span>
+</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ homeC }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:16px">
+<div class="gg-hd"><span class="gg-brand">Gauge</span>
+<button onClick="{{ openC }}" class="gg-tbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>{{ trackedLabel }}</button></div>
+<div class="gg-seg">
+<sc-for list="{{ ranges }}" as="r" hint-placeholder-count="4">
+<button onClick="{{ r.onClick }}" style="border-left:{{ r.bl }};background:{{ r.bg }};color:{{ r.fg }}">{{ r.label }}</button>
+</sc-for>
+</div>
+<div style="display:flex;flex-direction:column;gap:3px">
+<div class="gg-kick">{{ scopeLabel }}</div>
+<div class="gg-num" style="font-size:56px">{{ totalStr }}</div>
+<div style="font-size:12px;color:{{ deltaColor }}">{{ deltaStr }}</div>
+</div>
+<div class="blueprint" style="padding:14px 12px 10px;display:flex;flex-direction:column;gap:11px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div style="height:196px;display:flex;align-items:flex-end;gap:{{ gap }}px">
+<sc-for list="{{ stacks }}" as="s" hint-placeholder-count="7">
+<div onClick="{{ s.onClick }}" style="flex:1;min-width:0;display:flex;flex-direction:column;cursor:pointer;opacity:{{ s.op }}">
+<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end">
+<sc-for list="{{ s.segs }}" as="g" hint-placeholder-count="4">
+<div style="height:{{ g.h }}px;background:{{ g.color }}"></div>
+</sc-for>
+</div>
+<div style="height:15px;padding-top:4px;text-align:center;font-family:var(--font-heading);font-weight:600;font-size:9px;color:{{ s.tickColor }};overflow:visible;white-space:nowrap">{{ s.tick }}</div>
+</div>
+</sc-for>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:5px 12px;border-top:1px solid var(--color-divider);padding-top:10px">
+<sc-for list="{{ legend }}" as="l" hint-placeholder-count="6">
+<div style="display:flex;align-items:center;gap:6px"><div style="width:9px;height:9px;background:{{ l.color }}"></div><span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 60%, transparent)">{{ l.name }}</span></div>
+</sc-for>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:baseline;justify-content:space-between"><h6 style="margin:0">Most used</h6><span style="font-size:11px;color:color-mix(in srgb, var(--color-text) 50%, transparent)">{{ listNote }}</span></div>
+<sc-for list="{{ rows }}" as="row" hint-placeholder-count="6">
+<div style="display:flex;align-items:center;gap:11px;padding:8px 0">
+<div style="width:11px;height:11px;flex:none;background:{{ row.tone }}"></div>
+<span style="flex:1;font-family:var(--font-heading);font-weight:600;font-size:16px">{{ row.name }}</span>
+<span style="font-size:11px;font-variant-numeric:tabular-nums;color:color-mix(in srgb, var(--color-text) 45%, transparent)">{{ row.share }}</span>
+<span style="width:80px;text-align:right;font-family:var(--font-heading);font-weight:600;font-size:14px;font-variant-numeric:tabular-nums">{{ row.time }}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+</div>
+</x-import>
+</div>
+</div>
+
+</div>
+<p class="dv-next">All three share one live data set and one range state — tap Day/Week/Month/Year or any bar/point/cell in one and the others follow, so you can compare them on the same slice. Try next: "take <a class="dv-oid" href="#1a">1a</a> forward, but with the stacked bars from <a class="dv-oid" href="#1c">1c</a>" · "drop the per-day grid in <a class="dv-oid" href="#1b">1b</a>" · "add a per-category detail screen".</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showDelta&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
+const CATS = [
+  { id: 'social', name: 'Social', base: 96, peak: 21 },
+  { id: 'video', name: 'Video', base: 74, peak: 22 },
+  { id: 'work', name: 'Work', base: 118, peak: 11, work: true },
+  { id: 'messaging', name: 'Messaging', base: 52, peak: 13 },
+  { id: 'games', name: 'Games', base: 34, peak: 20 },
+  { id: 'music', name: 'Music', base: 38, peak: 9 },
+  { id: 'reading', name: 'Reading', base: 22, peak: 23 },
+];
+const TONES = ['var(--color-accent-900)','var(--color-accent-800)','var(--color-accent-700)','var(--color-accent-600)','var(--color-accent-500)','var(--color-accent-400)','var(--color-accent-300)'];
+// one fixed color per category, harmonised around the steel accent
+const CCOL = ['#5980a6','#b5576b','#4f8c7b','#6e71b8','#c98a3e','#8a6ca8','#6f8a45'];
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DOWI = ['S','M','T','W','T','F','S'];
+const TODAY = new Date(2026, 7, 25);
+const CUR_HOUR = 19;
+const DAY = 86400000;
+
+function rnd(a, b) { const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return x - Math.floor(x); }
+const _w = {};
+function weights(ai) {
+  if (_w[ai]) return _w[ai];
+  const p = CATS[ai].peak; const w = []; let s = 0;
+  for (let h = 0; h < 24; h++) {
+    let d = Math.abs(h - p); d = Math.min(d, 24 - d);
+    const v = Math.exp(-(d * d) / 7) * (h < 6 ? 0.12 : 1);
+    w.push(v); s += v;
+  }
+  _w[ai] = w.map(v => v / s); return _w[ai];
+}
+const _raw = {};
+function raw(idx) {
+  if (_raw[idx]) return _raw[idx];
+  const dow = new Date(TODAY.getTime() - idx * DAY).getDay();
+  const wk = dow === 0 || dow === 6;
+  _raw[idx] = CATS.map((a, ai) => {
+    const f = a.work ? (wk ? 0.12 : 1.12) : (wk ? 1.34 : 0.92);
+    return a.base * f * (1 + 0.14 * Math.sin(idx / 57)) * (0.55 + 0.95 * rnd(ai + 1, idx + 3));
+  });
+  return _raw[idx];
+}
+function hourByCat(idx, h) {
+  if (idx === 0 && h > CUR_HOUR) return CATS.map(() => 0);
+  return raw(idx).map((v, ai) => v * weights(ai)[h]);
+}
+function dayByCat(idx) {
+  if (idx !== 0) return raw(idx);
+  const out = CATS.map(() => 0);
+  for (let h = 0; h <= CUR_HOUR; h++) hourByCat(0, h).forEach((v, i) => out[i] += v);
+  return out;
+}
+function fmt(m) {
+  m = Math.round(m);
+  const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mm = m % 60;
+  const p = [];
+  if (d) p.push(d + 'd');
+  if (d || h) p.push(h + 'h');
+  p.push(mm + 'm');
+  return p.join(' ');
+}
+function fmtShort(m) {
+  m = Math.round(Math.abs(m));
+  const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mm = m % 60;
+  if (d) return d + 'd ' + h + 'h';
+  if (h) return h + 'h ' + mm + 'm';
+  return mm + 'm';
+}
+const PRESETS = [15, 30, 45, 60, 90, 120, 180, 240];
+function limLabel(v) { return v < 60 ? v + 'm' : (v % 60 ? Math.floor(v / 60) + 'h ' + (v % 60) + 'm' : v / 60 + 'h'); }
+function factFor(range, mins) {
+  const r = v => (v >= 10 ? String(Math.round(v)) : String(Math.round(v * 10) / 10));
+  const t = fmtShort(mins);
+  if (mins < 5) return 'Nothing to report yet — the phone stayed in your pocket.';
+  if (range === 'day') return 'Did you watch ' + r(mins / 112) + ' films back to back, or spend ' + t + ' on cats freaking out?';
+  if (range === 'week') return t + ' is ' + r(mins / 450) + ' flights to New York. You could have landed, had dinner and flown home.';
+  if (range === 'month') return 'The same ' + t + ' covers ' + r(mins / 480) + ' novels — or ' + r(mins / 24) + ' episodes you will not remember tomorrow.';
+  return t + ' of your year went thumb-first. Enough to learn the guitar. Badly. Twice.';
+}
+function dstr(idx) { const d = new Date(TODAY.getTime() - idx * DAY); return DOW[d.getDay()] + ' ' + d.getDate() + ' ' + MON[d.getMonth()]; }
+function hourLabel(h) {
+  const f = t => (t % 12 === 0 ? 12 : t % 12) + (t < 12 ? 'am' : 'pm');
+  return f(h) + '–' + f((h + 1) % 24);
+}
+
+class Component extends DCLogic {
+  state = { range: 'week', sel: null, pick: null, tracked: CATS.map(c => c.id) };
+
+  buckets(range) {
+    const out = [];
+    if (range === 'day') {
+      for (let h = 0; h < 24; h++) out.push({ per: hourByCat(0, h), tick: h % 6 === 0 ? (h === 0 ? '12a' : h === 12 ? '12p' : (h % 12) + (h < 12 ? 'a' : 'p')) : '', label: hourLabel(h) + ', today' });
+    } else if (range === 'week' || range === 'month') {
+      const n = range === 'week' ? 7 : 30;
+      for (let i = n - 1; i >= 0; i--) {
+        const d = new Date(TODAY.getTime() - i * DAY);
+        out.push({ per: dayByCat(i), tick: range === 'week' ? DOWI[d.getDay()] : String(d.getDate()), label: dstr(i) });
+      }
+    } else {
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(TODAY.getFullYear(), TODAY.getMonth() - i, 1);
+        const per = CATS.map(() => 0);
+        const n = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+        for (let k = 1; k <= n; k++) {
+          const idx = Math.round((TODAY - new Date(d.getFullYear(), d.getMonth(), k)) / DAY);
+          if (idx < 0) continue;
+          dayByCat(idx).forEach((v, a) => per[a] += v);
+        }
+        out.push({ per, tick: MON[d.getMonth()][0], label: MON[d.getMonth()] + ' ' + d.getFullYear() });
+      }
+    }
+    return out;
+  }
+
+  prevTotal(range, tr) {
+    const sum = per => per.reduce((s, v, i) => s + (tr[i] ? v : 0), 0);
+    let t = 0;
+    if (range === 'day') { for (let h = 0; h <= CUR_HOUR; h++) t += sum(hourByCat(1, h)); }
+    else if (range === 'week') { for (let i = 7; i < 14; i++) t += sum(dayByCat(i)); }
+    else if (range === 'month') { for (let i = 30; i < 60; i++) t += sum(dayByCat(i)); }
+    else { for (let i = 365; i < 730; i++) t += sum(dayByCat(i)); }
+    return t;
+  }
+
+  slice(range, sel, tr) {
+    const bk = this.buckets(range);
+    const tot = per => per.reduce((s, v, i) => s + (tr[i] ? v : 0), 0);
+    const totals = bk.map(b => tot(b.per));
+    const max = Math.max(1, ...totals);
+    const s = sel != null && sel < bk.length ? sel : null;
+    const scoped = s != null ? bk[s].per : bk.reduce((a, b) => (b.per.forEach((v, i) => a[i] += v), a), CATS.map(() => 0));
+    const total = tot(scoped);
+    const order = CATS.map((c, i) => i).filter(i => tr[i] && scoped[i] > 0.4).sort((x, y) => scoped[y] - scoped[x]);
+    const topV = order.length ? scoped[order[0]] : 1;
+    const rows = order.map((i, n) => ({
+      name: CATS[i].name, time: fmt(scoped[i]),
+      pct: Math.max(2, (scoped[i] / topV) * 100),
+      share: Math.round((scoped[i] / Math.max(1, total)) * 100) + '%',
+      ci: i, tone: CCOL[i],
+    }));
+    return { bk, totals, max, sel: s, scoped, total, order, rows, tot };
+  }
+
+  renderVals() {
+    const st = this.state;
+    const showDelta = this.props.showDelta ?? true;
+    const startRange = this.props.startRange;
+    const range = st.range;
+    const tr = CATS.map(c => st.tracked.indexOf(c.id) >= 0);
+    const bk = this.buckets(range);
+    const tot = per => per.reduce((s, v, i) => s + (tr[i] ? v : 0), 0);
+    const totals = bk.map(b => tot(b.per));
+    const max = Math.max(1, ...totals);
+    const sel = st.sel != null && st.sel < bk.length ? st.sel : null;
+    const scoped = sel != null ? bk[sel].per : bk.reduce((a, b) => (b.per.forEach((v, i) => a[i] += v), a), CATS.map(() => 0));
+    const rangeTotal = tot(scoped);
+
+    const rangeName = { day: 'Today, to 8pm', week: 'Last 7 days', month: 'Last 30 days', year: 'Last 12 months' }[range];
+    const scopeLabel = sel != null ? bk[sel].label : rangeName + ' · ' + dstr(0);
+    const nDays = { day: 1, week: 7, month: 30, year: 365 }[range];
+
+    const prev = this.prevTotal(range, tr);
+    const diff = rangeTotal - prev;
+    const prevName = { day: 'yesterday', week: 'prior 7 days', month: 'prior 30 days', year: 'prior 12 months' }[range];
+    const deltaStr = sel != null ? 'Tap again to clear the selection'
+      : !showDelta ? ''
+      : (Math.abs(diff) < 1 ? 'Level with ' + prevName : (diff > 0 ? '+' : '−') + fmt(Math.abs(diff)) + ' vs. ' + prevName);
+    const deltaColor = sel != null ? 'color-mix(in srgb, var(--color-text) 45%, transparent)'
+      : diff > 0 ? 'var(--color-accent-700)' : 'color-mix(in srgb, var(--color-text) 55%, transparent)';
+
+    const order = CATS.map((c, i) => i).filter(i => tr[i] && scoped[i] > 0.4).sort((x, y) => scoped[y] - scoped[x]);
+    const topV = order.length ? scoped[order[0]] : 1;
+    const rows = order.map((i, n) => ({
+      rank: String(n + 1).padStart(2, '0'),
+      name: CATS[i].name, time: fmt(scoped[i]),
+      pct: Math.max(2, (scoped[i] / topV) * 100),
+      share: Math.round((scoped[i] / Math.max(1, rangeTotal)) * 100) + '%',
+      tone: CCOL[i],
+    }));
+
+    const setSel = i => this.setState(s => ({ sel: s.sel === i ? null : i }));
+
+    // 1a — line
+    const W = 330, TOP = 12, BASE = 118;
+    const pts = totals.map((v, i) => ({
+      x: totals.length === 1 ? W / 2 : (i / (totals.length - 1)) * W,
+      y: BASE - (v / max) * (BASE - TOP),
+    }));
+    const line = {
+      poly: pts.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' '),
+      area: pts.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ') + ' ' + W + ',' + BASE + ' 0,' + BASE,
+      pts: pts.map((p, i) => ({
+        cx: p.x.toFixed(1), cy: p.y.toFixed(1),
+        r: sel === i ? 5 : (i === pts.length - 1 ? 4 : 2.4),
+        fill: sel === i ? 'var(--color-accent-900)' : (i === pts.length - 1 ? 'var(--color-accent)' : 'var(--color-accent-400)'),
+        rule: sel === i ? 'var(--color-accent-500)' : 'transparent',
+        tick: (totals.length > 12 && i % 5 !== 0 && i !== totals.length - 1) ? '' : bk[i].tick, tickColor: sel === i ? 'var(--color-text)' : 'color-mix(in srgb, var(--color-text) 42%, transparent)',
+        onClick: () => setSel(i),
+      })),
+    };
+    const peakI = totals.indexOf(Math.max(...totals));
+
+    // 1b — cells
+    const cw = range === 'day' ? 52 : range === 'week' ? 44 : range === 'month' ? 52 : 52;
+    const cells = bk.map((b, i) => {
+      const t = totals[i] / max;
+      const step = t > 0.85 ? 900 : t > 0.7 ? 800 : t > 0.55 ? 700 : t > 0.4 ? 600 : t > 0.28 ? 500 : t > 0.16 ? 400 : t > 0.06 ? 300 : 200;
+      return {
+        w: cw, tick: b.tick,
+        bg: 'var(--color-accent-' + step + ')',
+        border: sel === i ? 'var(--color-text)' : 'transparent',
+        fg: step >= 600 ? 'var(--color-bg)' : 'var(--color-accent-900)',
+        onClick: () => setSel(i),
+      };
+    });
+
+    // 1c — stacked
+    const CH = 181;
+    const stacks = bk.map((b, i) => {
+      const segs = order.map(ci => ({
+        h: Math.max(0, (b.per[ci] / max) * CH),
+        color: CCOL[ci],
+      })).filter(s => s.h > 0.4).reverse();
+      return {
+        segs, tick: (bk.length > 12 && i % 5 !== 0 && i !== bk.length - 1) ? '' : b.tick,
+        op: sel == null || sel === i ? 1 : 0.35,
+        tickColor: sel === i ? 'var(--color-text)' : 'color-mix(in srgb, var(--color-text) 42%, transparent)',
+        onClick: () => setSel(i),
+      };
+    });
+
+    const pickRows = CATS.map(c => {
+      const on = st.tracked.indexOf(c.id) >= 0;
+      let s = 0; for (let i = 1; i <= 14; i++) s += dayByCat(i)[CATS.indexOf(c)];
+      return {
+        name: c.name, avg: fmtShort(s / 14) + '/day',
+        color: CCOL[CATS.indexOf(c)],
+        swBg: on ? CCOL[CATS.indexOf(c)] : 'color-mix(in srgb, var(--color-text) 16%, transparent)',
+        swX: on ? '16px' : '2px',
+        dot: on ? CCOL[CATS.indexOf(c)] : 'color-mix(in srgb, var(--color-text) 18%, transparent)',
+        boxBorder: on ? 'var(--color-accent)' : 'color-mix(in srgb, var(--color-text) 35%, transparent)',
+        boxBg: on ? 'var(--color-accent)' : 'transparent',
+        check: on ? 'block' : 'none',
+        nameColor: on ? 'var(--color-text)' : 'color-mix(in srgb, var(--color-text) 42%, transparent)',
+        onClick: () => this.setState(s2 => ({ tracked: on ? s2.tracked.filter(x => x !== c.id) : s2.tracked.concat([c.id]) })),
+      };
+    });
+
+    // ── turn 2: overview + drill-in ──
+    const v2 = st.v2 || 'ov';
+    const r2 = st.r2 || 'week';
+    const NDAYS = { day: 1, week: 7, month: 30, year: 365 };
+    const RLABEL = { day: 'Day', week: 'Week', month: 'Month', year: 'Year' };
+    const dshort = i => { const d = new Date(TODAY.getTime() - i * DAY); return d.getDate() + ' ' + MON[d.getMonth()]; };
+    const DATES = {
+      day: dstr(0), week: dshort(6) + ' – ' + dshort(0), month: dshort(29) + ' – ' + dshort(0),
+      year: MON[(TODAY.getMonth() + 1) % 12] + ' ' + (TODAY.getFullYear() - 1) + ' – ' + MON[TODAY.getMonth()] + ' ' + TODAY.getFullYear(),
+    };
+    const ov = ['day', 'week', 'month', 'year'].map(id => {
+      const sl = this.slice(id, null, tr);
+      return {
+        label: RLABEL[id], dates: DATES[id], total: fmt(sl.total),
+        avg: id === 'day' ? 'to 8pm' : fmtShort(sl.total / NDAYS[id]) + '/day',
+        count: sl.rows.length,
+        top: sl.rows.slice(0, 3),
+        onClick: () => this.setState({ v2: 'detail', r2: id, sel2: null }),
+      };
+    });
+    const d = this.slice(r2, st.sel2, tr);
+    const dPrev = this.prevTotal(r2, tr);
+    const dDiff = d.total - dPrev;
+    const dPrevName = { day: 'yesterday', week: 'prior 7 days', month: 'prior 30 days', year: 'prior 12 months' }[r2];
+    const dSetSel = i => this.setState(s => ({ sel2: s.sel2 === i ? null : i }));
+    const dStacks = d.bk.map((b, i) => ({
+      segs: d.order.map(ci => ({ h: Math.max(0, (b.per[ci] / d.max) * 181), color: CCOL[ci] })).filter(s => s.h > 0.4).reverse(),
+      tick: (d.bk.length > 12 && i % 5 !== 0 && i !== d.bk.length - 1) ? '' : b.tick,
+      op: d.sel == null || d.sel === i ? 1 : 0.35,
+      tickColor: d.sel === i ? 'var(--color-text)' : 'color-mix(in srgb, var(--color-text) 42%, transparent)',
+      onClick: () => dSetSel(i),
+    }));
+
+    // ── turn 3: modern pass ──
+    const r3 = st.r3 || 'week';
+    const m = this.slice(r3, st.sel3, tr);
+    const mPrev = this.prevTotal(r3, tr);
+    const mDiff = m.total - mPrev;
+    const mPct = Math.round((Math.abs(mDiff) / Math.max(1, mPrev)) * 100);
+    const mPrevName = { day: 'yesterday', week: 'last week', month: 'last month', year: 'last year' }[r3];
+    const mSetSel = i => this.setState(s => ({ sel3: s.sel3 === i ? null : i }));
+    const mOv = ['day', 'week', 'month', 'year'].map(id => {
+      const sl = this.slice(id, null, tr);
+      return {
+        label: RLABEL[id], dates: DATES[id], total: fmt(sl.total), fact: factFor(id, sl.total),
+        avg: id === 'day' ? 'so far today' : fmtShort(sl.total / NDAYS[id]) + '/day',
+        more: sl.rows.length > 3 ? '+' + (sl.rows.length - 3) + ' more' : '',
+        top: sl.rows.slice(0, 3),
+        comp: sl.order.map(ci => ({ w: (sl.scoped[ci] / Math.max(1, sl.total)) * 100, color: CCOL[ci] })),
+        onClick: () => this.setState({ v3: 'detail', r3: id, sel3: null }),
+      };
+    });
+    const mStacks = m.bk.map((b, i) => {
+      const segs = m.order.map(ci => ({ h: Math.max(0, (b.per[ci] / m.max) * 164), color: CCOL[ci] })).filter(s => s.h > 0.6).reverse();
+      return {
+        segs: segs.map((s, k) => ({ h: s.h, color: s.color, r: k === 0 ? '6px 6px 0 0' : '0' })),
+        tick: (m.bk.length > 12 && i % 5 !== 0 && i !== m.bk.length - 1) ? '' : b.tick,
+        op: m.sel == null || m.sel === i ? 1 : 0.26,
+        tickColor: m.sel === i ? 'var(--color-text)' : 'color-mix(in srgb, var(--color-text) 42%, transparent)',
+        onClick: () => mSetSel(i),
+      };
+    });
+
+    // daily app timers
+    const LIM = st.limits || {};
+    const todayPer = dayByCat(0);
+    const nLim = Object.keys(LIM).length;
+    const openLimit = i => this.setState({ v3: 'limit', limitCat: i });
+    const limState = i => {
+      const lim = LIM[CATS[i].id], used = todayPer[i];
+      const over = lim != null && used >= lim;
+      return {
+        lim, used, over,
+        text: lim == null ? 'No limit' : over ? 'Limit reached' : limLabel(Math.round(lim - used)) + ' left',
+        bg: lim == null ? 'color-mix(in srgb, var(--color-text) 7%, transparent)' : over ? 'color-mix(in srgb, #b5576b 15%, transparent)' : 'color-mix(in srgb, #4f8c7b 15%, transparent)',
+        fg: lim == null ? 'color-mix(in srgb, var(--color-text) 52%, transparent)' : over ? '#8e3f52' : '#2f6355',
+      };
+    };
+    const mLimits = CATS.map((c, i) => {
+      const s = limState(i);
+      return {
+        name: c.name, color: CCOL[i], used: fmtShort(todayPer[i]) + ' today',
+        limStr: s.lim == null ? 'Off' : limLabel(s.lim),
+        text: s.text, bg: s.bg, fg: s.fg,
+        pct: s.lim == null ? 0 : Math.min(100, (s.used / s.lim) * 100),
+        barColor: s.over ? '#b5576b' : CCOL[i],
+        onClick: () => openLimit(i),
+      };
+    });
+    const li = st.limitCat != null ? st.limitCat : 0;
+    const lSt = limState(li);
+    const mRowsLim = m.rows.map(r => {
+      const s = limState(r.ci);
+      return Object.assign({}, r, {
+        limChip: s.lim == null ? 'Set limit' : limLabel(s.lim) + '/day',
+        limBg: s.lim == null ? 'color-mix(in srgb, var(--color-text) 6%, transparent)' : s.bg,
+        limFg: s.lim == null ? 'color-mix(in srgb, var(--color-text) 50%, transparent)' : s.fg,
+        onClick: () => openLimit(r.ci),
+      });
+    });
+
+    return {
+      m_isLimits: st.v3 === 'limits', m_isLimit: st.v3 === 'limit',
+      m_openLimits: () => this.setState({ v3: 'limits' }),
+      m_backLimits: () => this.setState({ v3: 'limits' }),
+      m_limits: mLimits,
+      m_limCount: nLim ? nLim + ' on' : 'Off',
+      m_lcName: CATS[li].name, m_lcColor: CCOL[li],
+      m_lcUsed: fmtShort(todayPer[li]),
+      m_lcLimit: lSt.lim == null ? 'No limit set' : limLabel(lSt.lim) + ' a day',
+      m_lcPct: lSt.lim == null ? 0 : Math.min(100, (todayPer[li] / lSt.lim) * 100),
+      m_lcBar: lSt.over ? '#b5576b' : CCOL[li],
+      m_lcState: lSt.text, m_lcStateBg: lSt.bg, m_lcStateFg: lSt.fg,
+      m_lcHint: lSt.lim == null ? 'Pick a daily budget. The app pauses when you hit it, and resets at midnight.' : 'Pauses ' + CATS[li].name.toLowerCase() + ' apps for the rest of the day once you hit it.',
+      m_presets: PRESETS.map(v => ({
+        label: limLabel(v),
+        bg: lSt.lim === v ? CCOL[li] : '#ffffff',
+        fg: lSt.lim === v ? '#ffffff' : 'var(--color-text)',
+        onClick: () => this.setState(s => ({ limits: Object.assign({}, s.limits, { [CATS[li].id]: v }) })),
+      })),
+      m_clearLimit: () => this.setState(s => { const n = Object.assign({}, s.limits); delete n[CATS[li].id]; return { limits: n }; }),
+      m_hasLimit: lSt.lim != null,
+      m_isOv: (st.v3 || 'ov') === 'ov', m_isDetail: st.v3 === 'detail', m_isPick: st.v3 === 'pick',
+      m_ov: mOv,
+      m_openPick: () => this.setState({ v3: 'pick' }),
+      m_back: () => this.setState({ v3: 'ov', sel3: null }),
+      m_ranges: ['day', 'week', 'month', 'year'].map(id => ({
+        label: RLABEL[id],
+        bg: r3 === id ? '#ffffff' : 'transparent',
+        fg: r3 === id ? 'var(--color-text)' : 'color-mix(in srgb, var(--color-text) 55%, transparent)',
+        sh: r3 === id ? '0 1px 3px rgba(29,31,32,.16)' : 'none',
+        onClick: () => this.setState({ r3: id, sel3: null }),
+      })),
+      m_fact: factFor(r3, m.total),
+      m_title: RLABEL[r3], m_scope: m.sel != null ? m.bk[m.sel].label : DATES[r3],
+      m_total: fmt(m.total),
+      m_avg: fmtShort(m.total / (m.sel != null ? 1 : NDAYS[r3])),
+      m_avgLabel: m.sel != null ? 'in this slice' : 'daily average',
+      m_delta: m.sel != null ? 'Tap the bar again to clear'
+        : Math.abs(mDiff) < 1 ? 'Same as ' + mPrevName
+        : (mDiff > 0 ? '↑ ' : '↓ ') + mPct + '% vs ' + mPrevName,
+      m_deltaBg: m.sel != null ? 'color-mix(in srgb, var(--color-text) 7%, transparent)'
+        : mDiff > 0 ? 'color-mix(in srgb, #b5576b 14%, transparent)' : 'color-mix(in srgb, #4f8c7b 15%, transparent)',
+      m_deltaFg: m.sel != null ? 'color-mix(in srgb, var(--color-text) 55%, transparent)'
+        : mDiff > 0 ? '#8e3f52' : '#2f6355',
+      m_stacks: mStacks, m_rows: mRowsLim,
+      m_comp: m.order.map(ci => ({ w: (m.scoped[ci] / Math.max(1, m.total)) * 100, color: CCOL[ci] })),
+      m_axisNote: { day: 'By hour', week: 'By day', month: 'By day', year: 'By month' }[r3],
+      m_count: m.rows.length + ' categories',
+      m_gap: r3 === 'month' ? 2 : r3 === 'day' ? 3 : 7,
+      d_isOv: v2 === 'ov', d_isDetail: v2 === 'detail', d_isPick: v2 === 'pick',
+      d_openPick: () => this.setState({ v2: 'pick' }),
+      d_back: () => this.setState({ v2: 'ov', sel2: null }),
+      d_ov: ov,
+      allLabel: st.tracked.length === CATS.length ? 'Clear all' : 'Select all',
+      toggleAll: () => this.setState(s => ({ tracked: s.tracked.length === CATS.length ? [] : CATS.map(c => c.id) })),
+      d_title: RLABEL[r2], d_dates: DATES[r2],
+      d_scope: d.sel != null ? d.bk[d.sel].label : DATES[r2],
+      d_total: fmt(d.total),
+      d_delta: d.sel != null ? 'Tap again to clear the selection'
+        : (Math.abs(dDiff) < 1 ? 'Level with ' + dPrevName : (dDiff > 0 ? '+' : '−') + fmt(Math.abs(dDiff)) + ' vs. ' + dPrevName),
+      d_deltaColor: d.sel != null ? 'color-mix(in srgb, var(--color-text) 45%, transparent)' : dDiff > 0 ? 'var(--color-accent-700)' : 'color-mix(in srgb, var(--color-text) 55%, transparent)',
+      d_avg: fmtShort(d.total / (d.sel != null ? 1 : NDAYS[r2])),
+      d_axisNote: { day: 'By hour · tap to scope', week: 'By day · tap to scope', month: 'By day · tap to scope', year: 'By month · tap to scope' }[r2],
+      d_stacks: dStacks, d_rows: d.rows,
+      d_legend: d.order.map(i => ({ name: CATS[i].name, color: CCOL[i] })),
+      d_gap: r2 === 'month' ? 2 : r2 === 'day' ? 3 : 7,
+      d_ranges: ['day', 'week', 'month', 'year'].map((id, i) => ({
+        label: RLABEL[id], bl: i === 0 ? '0' : '1px solid var(--color-divider)',
+        bg: r2 === id ? 'var(--color-accent)' : 'transparent',
+        fg: r2 === id ? 'var(--color-bg)' : 'var(--color-text)',
+        onClick: () => this.setState({ r2: id, sel2: null }),
+      })),
+      ranges: [['day', 'Day'], ['week', 'Week'], ['month', 'Month'], ['year', 'Year']].map(([id, label], i) => ({
+        label, bl: i === 0 ? '0' : '1px solid var(--color-divider)',
+        bg: range === id ? 'var(--color-accent)' : 'transparent',
+        fg: range === id ? 'var(--color-bg)' : 'var(--color-text)',
+        onClick: () => this.setState({ range: id, sel: null }),
+      })),
+      trackedLabel: st.tracked.length + '/' + CATS.length,
+      homeA: st.pick !== 'a', homeB: st.pick !== 'b', homeC: st.pick !== 'c',
+      pickA: st.pick === 'a', pickB: st.pick === 'b', pickC: st.pick === 'c',
+      openA: () => this.setState({ pick: 'a' }), openB: () => this.setState({ pick: 'b' }), openC: () => this.setState({ pick: 'c' }),
+      goBack: () => this.setState({ pick: null }),
+      scopeLabel, totalStr: fmt(rangeTotal), deltaStr, deltaColor,
+      deltaShort: (diff > 0 ? '+' : '−') + fmtShort(diff),
+      avgStr: fmtShort(rangeTotal / (sel != null ? 1 : nDays)),
+      axisNote: { day: 'By hour · tap to scope', week: 'By day · tap to scope', month: 'By day · tap to scope', year: 'By month · tap to scope' }[range],
+      listNote: sel != null ? bk[sel].label : rangeName,
+      peakStr: bk[peakI] ? bk[peakI].tick || bk[peakI].label : '',
+      line, cells, stacks, rows, pickRows,
+      gap: range === 'month' ? 2 : range === 'day' ? 3 : 7,
+      legend: order.map(i => ({ name: CATS[i].name, color: CCOL[i] })),
+      startRange,
+    };
+  }
+}
+</script>
+</body>
+</html>
