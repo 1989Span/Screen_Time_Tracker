@@ -22,6 +22,17 @@ npm run android  # Android emulator or device
 npm run ios      # iOS simulator
 ```
 
+### Checks
+
+```bash
+npm run lint       # ESLint (Expo config) with Prettier run as a lint rule
+npm run lint:fix   # fix what can be fixed automatically
+npm run format     # rewrite files with Prettier
+npx tsc --noEmit   # type check
+```
+
+Formatting rules live in `.prettierrc`, lint rules in `eslint.config.js`. The VS Code ESLint extension surfaces both as you type.
+
 ## What the app does
 
 Usage is tracked across eight categories — Social, Video, Work, Messaging, Games, Music, Reading and Navigation — over Day / Week / Month / Year. Four tabs at the bottom:

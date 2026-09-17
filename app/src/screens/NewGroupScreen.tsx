@@ -3,13 +3,15 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { alpha, color, font } from '../theme';
 import { BackChip, Card, Dot } from '../components/ui';
 import { ContactPicker } from '../components/ContactPicker';
+import { useNewGroupModel } from '../models/groups';
 
-export function NewGroupScreen({ model }: { model: any }) {
-  const n = model.newGroup;
+export function NewGroupScreen() {
+  const n = useNewGroupModel();
+
   return (
     <View style={styles.wrap}>
       <View style={styles.topRow}>
-        <BackChip label="Groups" onPress={model.backToGroups} />
+        <BackChip label="Groups" onPress={n.backToGroups} />
         <Text style={styles.title}>New group</Text>
       </View>
 
@@ -36,7 +38,7 @@ export function NewGroupScreen({ model }: { model: any }) {
           <Text style={styles.meta}>{n.trackedLabel}</Text>
         </View>
         <View style={styles.chips}>
-          {n.categories.map((c: any) => (
+          {n.categories.map((c) => (
             <Pressable
               key={c.id}
               onPress={c.onPress}
@@ -49,9 +51,7 @@ export function NewGroupScreen({ model }: { model: any }) {
             </Pressable>
           ))}
         </View>
-        <Text style={styles.meta}>
-          Invitees accept these rules when they join. Changing them later needs everyone to agree.
-        </Text>
+        <Text style={styles.meta}>Invitees accept these rules when they join. Changing them later needs everyone to agree.</Text>
       </Card>
 
       <ContactPicker picker={n.picker} />

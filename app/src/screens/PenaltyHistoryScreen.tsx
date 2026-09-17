@@ -3,12 +3,14 @@ import { StyleSheet, Text, View } from 'react-native';
 import { alpha, color, font } from '../theme';
 import { BackChip, Card } from '../components/ui';
 import { LockIcon } from '../components/Icons';
+import { usePenaltyHistoryModel } from '../models/penalty';
 
-export function PenaltyHistoryScreen({ model }: { model: any }) {
-  const h = model.penaltyHistory;
+export function PenaltyHistoryScreen() {
+  const h = usePenaltyHistoryModel();
+
   return (
     <View style={styles.wrap}>
-      <BackChip label="Overview" onPress={model.goOverview} />
+      <BackChip label="Overview" onPress={h.goOverview} />
       <Text style={styles.title}>Charge history</Text>
 
       <Card style={styles.summaryCard}>
@@ -43,7 +45,7 @@ export function PenaltyHistoryScreen({ model }: { model: any }) {
             </View>
           </View>
         )}
-        {h.rows.map((r: any, i: number) => (
+        {h.rows.map((r, i: number) => (
           <View key={i} style={[styles.row, i === h.rows.length - 1 && { borderBottomWidth: 0 }]}>
             <View style={{ flex: 1, gap: 1 }}>
               <Text style={styles.day}>{r.label}</Text>
@@ -66,7 +68,14 @@ const styles = StyleSheet.create({
   summaryCard: { padding: 18, gap: 4 },
   lockLabel: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   label: { fontSize: 11.5, color: alpha(color.text, 48) },
-  balance: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 34, lineHeight: 36, letterSpacing: -0.5, color: color.text },
+  balance: {
+    fontFamily: font.headingBold,
+    fontWeight: '700',
+    fontSize: 34,
+    lineHeight: 36,
+    letterSpacing: -0.5,
+    color: color.text,
+  },
   statsRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
   stat: { flex: 1, gap: 1, backgroundColor: alpha(color.text, 4), borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12 },
   statValue: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 18, color: color.text },

@@ -32,9 +32,13 @@ export const modernBg = '#f3f4f6';
 
 export function hexToRgb(hex: string): [number, number, number] {
   const h = hex.replace('#', '');
-  const n = h.length === 3
-    ? h.split('').map((c) => c + c).join('')
-    : h;
+  const n =
+    h.length === 3
+      ? h
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : h;
   const int = parseInt(n, 16);
   return [(int >> 16) & 255, (int >> 8) & 255, int & 255];
 }

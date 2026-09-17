@@ -2,25 +2,27 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { alpha, color, font } from '../theme';
 import { Avatar, BackChip, Card, Dot } from '../components/ui';
+import { useGroupRulesModel } from '../models/groups';
 
-export function GroupRulesScreen({ model }: { model: any }) {
-  const r = model.groupRules;
+export function GroupRulesScreen() {
+  const r = useGroupRulesModel();
+  if (!r) return null;
   return (
     <View style={styles.wrap}>
       <View style={styles.topRow}>
-        <BackChip label="Settings" onPress={model.backToGroupSettings} />
+        <BackChip label="Settings" onPress={r.backToSettings} />
         <Text style={styles.title}>{r.name} tracking</Text>
       </View>
       <Text style={styles.subtitle}>
-        A category stops counting toward this group's ranking only when every member agrees, and bringing one back needs
-        everyone too. Changes recalculate all past points and streaks.
+        A category stops counting toward this group’s ranking only when every member agrees, and bringing one back needs everyone
+        too. Changes recalculate all past points and streaks.
       </Text>
 
       <Card style={styles.card}>
         <Text style={styles.cardTitle}>Not tracked in this group</Text>
         {r.excluded.length ? (
           <View style={styles.chips}>
-            {r.excluded.map((c: any) => (
+            {r.excluded.map((c) => (
               <View key={c.id} style={styles.offChip}>
                 <Dot size={8} color={c.color} />
                 <Text style={styles.offChipText}>{c.name}</Text>
@@ -35,7 +37,7 @@ export function GroupRulesScreen({ model }: { model: any }) {
       {r.proposals.length > 0 && (
         <Card style={styles.card}>
           <Text style={styles.cardTitle}>Open votes</Text>
-          {r.proposals.map((p: any, i: number) => (
+          {r.proposals.map((p, i: number) => (
             <View key={p.id} style={[styles.proposal, i > 0 && styles.proposalDivider]}>
               <View style={styles.propHead}>
                 <Dot size={10} color={p.color} />
@@ -43,7 +45,7 @@ export function GroupRulesScreen({ model }: { model: any }) {
                 <Text style={styles.meta}>{p.progress}</Text>
               </View>
               <View style={styles.votes}>
-                {p.votes.map((v: any) => (
+                {p.votes.map((v) => (
                   <Avatar key={v.id} initial={v.initial} tone={v.color} size={24} faded={!v.agreed} />
                 ))}
                 <Text style={[styles.meta, { flex: 1, marginLeft: 4 }]} numberOfLines={2}>
@@ -73,7 +75,7 @@ export function GroupRulesScreen({ model }: { model: any }) {
       )}
 
       <Card style={styles.listCard}>
-        {r.categories.map((c: any, i: number) => (
+        {r.categories.map((c, i: number) => (
           <View key={c.id} style={[styles.catRow, i === r.categories.length - 1 && { borderBottomWidth: 0 }]}>
             <Dot size={10} color={c.off ? alpha(color.text, 20) : c.color} />
             <Text style={[styles.catName, c.off && { color: alpha(color.text, 45) }]}>{c.name}</Text>

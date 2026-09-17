@@ -116,8 +116,12 @@ export function factFor(range: RangeId, mins: number): string {
   const t = fmtShort(mins);
   if (mins < 5) return 'Nothing to report yet — the phone stayed in your pocket.';
   if (range === 'day') return 'Did you watch ' + r(mins / 112) + ' films back to back, or spend ' + t + ' on cats freaking out?';
-  if (range === 'week') return t + ' is ' + r(mins / 450) + ' flights to New York. You could have landed, had dinner and flown home.';
-  if (range === 'month') return 'The same ' + t + ' covers ' + r(mins / 480) + ' novels — or ' + r(mins / 24) + ' episodes you will not remember tomorrow.';
+  if (range === 'week')
+    return t + ' is ' + r(mins / 450) + ' flights to New York. You could have landed, had dinner and flown home.';
+  if (range === 'month')
+    return (
+      'The same ' + t + ' covers ' + r(mins / 480) + ' novels — or ' + r(mins / 24) + ' episodes you will not remember tomorrow.'
+    );
   return t + ' of your year went thumb-first. Enough to learn the guitar. Badly. Twice.';
 }
 
@@ -140,7 +144,14 @@ export const DATES: Record<RangeId, string> = {
   day: dstr(0),
   week: dshort(6) + ' – ' + dshort(0),
   month: dshort(29) + ' – ' + dshort(0),
-  year: MON[(TODAY.getMonth() + 1) % 12] + ' ' + (TODAY.getFullYear() - 1) + ' – ' + MON[TODAY.getMonth()] + ' ' + TODAY.getFullYear(),
+  year:
+    MON[(TODAY.getMonth() + 1) % 12] +
+    ' ' +
+    (TODAY.getFullYear() - 1) +
+    ' – ' +
+    MON[TODAY.getMonth()] +
+    ' ' +
+    TODAY.getFullYear(),
 };
 
 export interface Bucket {
@@ -222,7 +233,13 @@ export function slice(range: RangeId, sel: number | null, tr: boolean[]): Slice 
   const totals = bk.map((b) => tot(b.per));
   const max = Math.max(1, ...totals);
   const s = sel != null && sel < bk.length ? sel : null;
-  const scoped = s != null ? bk[s].per : bk.reduce((a, b) => (b.per.forEach((v, i) => (a[i] += v)), a), CATS.map(() => 0));
+  const scoped =
+    s != null
+      ? bk[s].per
+      : bk.reduce(
+          (a, b) => (b.per.forEach((v, i) => (a[i] += v)), a),
+          CATS.map(() => 0)
+        );
   const total = tot(scoped);
   const order = CATS.map((c, i) => i)
     .filter((i) => tr[i] && scoped[i] > 0.4)
@@ -273,7 +290,10 @@ export function memberDay(idx: number, scale: number[], seed: number): number[] 
   return CATS.map((a, ai) => {
     const f = a.work ? (wk ? 0.12 : 1.12) : wk ? 1.34 : 0.92;
     let v = a.base * scale[ai] * f * (0.55 + 0.95 * rnd(ai + 1 + seed * 17, idx + 3 + seed * 29));
-    if (idx === 0) v *= weights(ai).slice(0, CUR_HOUR + 1).reduce((s, w) => s + w, 0);
+    if (idx === 0)
+      v *= weights(ai)
+        .slice(0, CUR_HOUR + 1)
+        .reduce((s, w) => s + w, 0);
     return v;
   });
 }
@@ -347,7 +367,14 @@ export function chargeHistory(): ChargeDay[] {
     balance = Math.round((balance + charge) * 100) / 100;
     // dayLabel() rather than dstr(): subtracting 24h steps drifts a day
     // across the March DST change.
-    out.push({ label: dayLabel(idx), used,over: minutesOver(used, DEMO_PENALTY.limit), limit: DEMO_PENALTY.limit, charge, balance });
+    out.push({
+      label: dayLabel(idx),
+      used,
+      over: minutesOver(used, DEMO_PENALTY.limit),
+      limit: DEMO_PENALTY.limit,
+      charge,
+      balance,
+    });
   }
   _history = out.reverse();
   return _history;

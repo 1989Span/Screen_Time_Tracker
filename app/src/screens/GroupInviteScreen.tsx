@@ -3,13 +3,15 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { color, font } from '../theme';
 import { BackChip } from '../components/ui';
 import { ContactPicker } from '../components/ContactPicker';
+import { useGroupInviteModel } from '../models/groups';
 
-export function GroupInviteScreen({ model }: { model: any }) {
-  const iv = model.groupInvite;
+export function GroupInviteScreen() {
+  const iv = useGroupInviteModel();
+  if (!iv) return null;
   return (
     <View style={styles.wrap}>
       <View style={styles.topRow}>
-        <BackChip label="Settings" onPress={model.backToGroupSettings} />
+        <BackChip label="Settings" onPress={iv.backToSettings} />
         <Text style={styles.title} numberOfLines={1}>
           Invite to {iv.name}
         </Text>

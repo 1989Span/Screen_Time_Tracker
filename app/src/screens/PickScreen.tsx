@@ -2,8 +2,10 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { alpha, color, font } from '../theme';
 import { Card, Dot } from '../components/ui';
+import { useCategoriesModel } from '../models/overview';
 
-export function PickScreen({ model }: { model: any }) {
+export function PickScreen() {
+  const model = useCategoriesModel();
   return (
     <View style={styles.wrap}>
       <View style={{ gap: 4 }}>
@@ -17,8 +19,8 @@ export function PickScreen({ model }: { model: any }) {
       </View>
 
       <Card style={styles.card}>
-        {model.pickRows.map((p: any, i: number) => (
-          <Pressable key={p.id} onPress={p.onPress} style={[styles.row, i === model.pickRows.length - 1 && { borderBottomWidth: 0 }]}>
+        {model.rows.map((p, i: number) => (
+          <Pressable key={p.id} onPress={p.onPress} style={[styles.row, i === model.rows.length - 1 && { borderBottomWidth: 0 }]}>
             <Dot size={11} color={p.on ? p.color : alpha(color.text, 18)} />
             <View style={{ flex: 1, gap: 1 }}>
               <Text style={[styles.name, { color: p.on ? color.text : alpha(color.text, 42) }]}>{p.name}</Text>

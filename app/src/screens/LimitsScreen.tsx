@@ -2,17 +2,21 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { alpha, color, font } from '../theme';
 import { Card, Dot } from '../components/ui';
+import { useTimersModel } from '../models/timers';
 
-export function LimitsScreen({ model }: { model: any }) {
-  const rows = model.limits.list;
+export function LimitsScreen() {
+  const rows = useTimersModel().list;
+
   return (
     <View style={styles.wrap}>
       <View style={{ gap: 4 }}>
         <Text style={styles.title}>App timers</Text>
-        <Text style={styles.subtitle}>Give a category a daily budget. Apps pause when it runs out and start fresh at midnight.</Text>
+        <Text style={styles.subtitle}>
+          Give a category a daily budget. Apps pause when it runs out and start fresh at midnight.
+        </Text>
       </View>
       <Card style={styles.card}>
-        {rows.map((l: any, i: number) => (
+        {rows.map((l, i: number) => (
           <Pressable key={l.id} onPress={l.onPress} style={[styles.row, i === rows.length - 1 && { borderBottomWidth: 0 }]}>
             <View style={styles.topRow}>
               <Dot size={11} color={l.color} />

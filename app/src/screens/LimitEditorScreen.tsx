@@ -2,12 +2,14 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { alpha, color, font } from '../theme';
 import { BackChip, Card, Dot } from '../components/ui';
+import { useTimerEditorModel } from '../models/timers';
 
-export function LimitEditorScreen({ model }: { model: any }) {
-  const e = model.limitEditor;
+export function LimitEditorScreen() {
+  const e = useTimerEditorModel();
+
   return (
     <View style={styles.wrap}>
-      <BackChip label="App timers" onPress={model.backToLimits} />
+      <BackChip label="App timers" onPress={e.backToLimits} />
 
       <Card style={styles.card}>
         <View style={styles.headRow}>
@@ -34,7 +36,7 @@ export function LimitEditorScreen({ model }: { model: any }) {
         <View style={styles.grid}>
           {[0, 1].map((row) => (
             <View key={row} style={styles.gridRow}>
-              {e.presets.slice(row * 4, row * 4 + 4).map((p: any) => (
+              {e.presets.slice(row * 4, row * 4 + 4).map((p) => (
                 <Pressable
                   key={p.v}
                   onPress={p.onPress}
@@ -65,7 +67,14 @@ const styles = StyleSheet.create({
   stateChip: { paddingVertical: 4, paddingHorizontal: 9, borderRadius: 999 },
   stateText: { fontSize: 11.5, fontFamily: font.bodySemiBold },
   usedRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10 },
-  usedText: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 34, lineHeight: 33, letterSpacing: -0.5, color: color.text },
+  usedText: {
+    fontFamily: font.headingBold,
+    fontWeight: '700',
+    fontSize: 34,
+    lineHeight: 33,
+    letterSpacing: -0.5,
+    color: color.text,
+  },
   usedLabel: { fontSize: 11.5, color: alpha(color.text, 48) },
   limitText: { fontSize: 12.5, fontFamily: font.bodySemiBold, color: alpha(color.text, 60) },
   track: { height: 8, borderRadius: 999, backgroundColor: alpha(color.text, 7) },

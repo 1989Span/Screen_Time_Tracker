@@ -3,9 +3,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { alpha, color, font } from '../theme';
 import { Card } from './ui';
 import { ChevronRightIcon, LockIcon } from './Icons';
+import { usePenaltyCardModel } from '../models/penalty';
 
-export function PenaltyCard({ model }: { model: any }) {
-  const p = model.penalty;
+export function PenaltyCard() {
+  const p = usePenaltyCardModel();
   return (
     <Card style={styles.card}>
       <View style={styles.headRow}>
@@ -28,7 +29,7 @@ export function PenaltyCard({ model }: { model: any }) {
 
       <View style={styles.moneyRow}>
         <View style={styles.moneyCol}>
-          <Text style={styles.label}>Today's charge</Text>
+          <Text style={styles.label}>Today’s charge</Text>
           <Text style={styles.money}>{p.chargeToday}</Text>
           <Text style={styles.note}>{p.chargeNote}</Text>
         </View>
@@ -71,7 +72,14 @@ const styles = StyleSheet.create({
   track: { height: 8, borderRadius: 999, backgroundColor: alpha(color.text, 7) },
   fill: { height: '100%', borderRadius: 999 },
   moneyRow: { flexDirection: 'row', gap: 10 },
-  moneyCol: { flex: 1, gap: 2, backgroundColor: alpha(color.text, 4), borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12 },
+  moneyCol: {
+    flex: 1,
+    gap: 2,
+    backgroundColor: alpha(color.text, 4),
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
   lockLabel: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   money: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 22, letterSpacing: -0.3, color: color.text },
   note: { fontSize: 11, color: alpha(color.text, 48) },

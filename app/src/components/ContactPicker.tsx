@@ -2,8 +2,9 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { alpha, color, font } from '../theme';
 import { Avatar, Card } from './ui';
+import { ContactPickerViewModel } from '../models/groups';
 
-export function ContactPicker({ picker, title = 'Invite from contacts' }: { picker: any; title?: string }) {
+export function ContactPicker({ picker, title = 'Invite from contacts' }: { picker: ContactPickerViewModel; title?: string }) {
   return (
     <Card style={styles.card}>
       <View style={styles.headRow}>
@@ -18,7 +19,7 @@ export function ContactPicker({ picker, title = 'Invite from contacts' }: { pick
         style={styles.input}
       />
       <View>
-        {picker.contacts.map((c: any, i: number) => (
+        {picker.contacts.map((c, i: number) => (
           <Pressable
             key={c.id}
             onPress={c.onPress}

@@ -2,11 +2,12 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { alpha, color, font } from '../theme';
 import { BackChip, Card } from '../components/ui';
+import { PresetButton, usePenaltyEditorModel } from '../models/penalty';
 
-function PresetRow({ items }: { items: any[] }) {
+function PresetRow({ items }: { items: PresetButton[] }) {
   return (
     <View style={styles.presetRow}>
-      {items.map((p: any) => (
+      {items.map((p) => (
         <Pressable
           key={p.v}
           onPress={p.onPress}
@@ -19,7 +20,18 @@ function PresetRow({ items }: { items: any[] }) {
   );
 }
 
-function Field({ value, onChangeText, placeholder, prefix, suffix, error, keyboardType, maxLength }: any) {
+interface FieldProps {
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder: string;
+  prefix?: string;
+  suffix?: string;
+  error: boolean;
+  keyboardType: 'number-pad' | 'decimal-pad';
+  maxLength?: number;
+}
+
+function Field({ value, onChangeText, placeholder, prefix, suffix, error, keyboardType, maxLength }: FieldProps) {
   const active = value !== '';
   return (
     <View style={[styles.field, active && { borderColor: color.accent }, error && { borderColor: color.rose }]}>
@@ -38,12 +50,13 @@ function Field({ value, onChangeText, placeholder, prefix, suffix, error, keyboa
   );
 }
 
-export function PenaltyScreen({ model }: { model: any }) {
-  const e = model.penaltyEditor;
+export function PenaltyScreen() {
+  const e = usePenaltyEditorModel();
+
   return (
     <View style={styles.wrap}>
       <View style={styles.topRow}>
-        <BackChip label="Overview" onPress={model.goOverview} />
+        <BackChip label="Overview" onPress={e.goOverview} />
         <Text style={styles.title}>Penalty limit</Text>
       </View>
 
@@ -68,8 +81,24 @@ export function PenaltyScreen({ model }: { model: any }) {
         <PresetRow items={e.limitPresets.slice(4)} />
         <View style={styles.customRow}>
           <Text style={styles.customLabel}>Custom</Text>
-          <Field value={e.limitH} onChangeText={e.setLimitH} placeholder="0" suffix="hr" keyboardType="number-pad" maxLength={2} error={e.limitError !== ''} />
-          <Field value={e.limitM} onChangeText={e.setLimitM} placeholder="0" suffix="min" keyboardType="number-pad" maxLength={2} error={e.limitError !== ''} />
+          <Field
+            value={e.limitH}
+            onChangeText={e.setLimitH}
+            placeholder="0"
+            suffix="hr"
+            keyboardType="number-pad"
+            maxLength={2}
+            error={e.limitError !== ''}
+          />
+          <Field
+            value={e.limitM}
+            onChangeText={e.setLimitM}
+            placeholder="0"
+            suffix="min"
+            keyboardType="number-pad"
+            maxLength={2}
+            error={e.limitError !== ''}
+          />
         </View>
         {e.limitError !== '' && <Text style={styles.error}>{e.limitError}</Text>}
 
@@ -79,7 +108,14 @@ export function PenaltyScreen({ model }: { model: any }) {
         <PresetRow items={e.ratePresets} />
         <View style={styles.customRow}>
           <Text style={styles.customLabel}>Custom</Text>
-          <Field value={e.rateText} onChangeText={e.setRateText} placeholder="0.00" prefix="$" keyboardType="decimal-pad" error={e.rateError !== ''} />
+          <Field
+            value={e.rateText}
+            onChangeText={e.setRateText}
+            placeholder="0.00"
+            prefix="$"
+            keyboardType="decimal-pad"
+            error={e.rateError !== ''}
+          />
         </View>
         {e.rateError !== '' && <Text style={styles.error}>{e.rateError}</Text>}
 

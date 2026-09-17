@@ -3,10 +3,26 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { alpha, color, font } from '../theme';
 import { Avatar, BackChip, Card } from '../components/ui';
 import { ChevronRightIcon } from '../components/Icons';
+import { useGroupSettingsModel } from '../models/groups';
 
-function Row({ title, sub, note, onPress, last }: { title: string; sub: string; note?: string; onPress: () => void; last?: boolean }) {
+function Row({
+  title,
+  sub,
+  note,
+  onPress,
+  last,
+}: {
+  title: string;
+  sub: string;
+  note?: string;
+  onPress: () => void;
+  last?: boolean;
+}) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, last && { borderBottomWidth: 0 }, pressed && { opacity: 0.7 }]}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, last && { borderBottomWidth: 0 }, pressed && { opacity: 0.7 }]}
+    >
       <View style={{ flex: 1, gap: 1 }}>
         <Text style={styles.rowTitle}>{title}</Text>
         <Text style={styles.meta}>{sub}</Text>
@@ -17,12 +33,13 @@ function Row({ title, sub, note, onPress, last }: { title: string; sub: string; 
   );
 }
 
-export function GroupSettingsScreen({ model }: { model: any }) {
-  const s = model.groupSettings;
+export function GroupSettingsScreen() {
+  const s = useGroupSettingsModel();
+  if (!s) return null;
   return (
     <View style={styles.wrap}>
       <View style={styles.topRow}>
-        <BackChip label="Groups" onPress={model.backToGroups} />
+        <BackChip label="Groups" onPress={s.backToGroups} />
         <Text style={styles.title} numberOfLines={1}>
           {s.name} settings
         </Text>
@@ -31,7 +48,7 @@ export function GroupSettingsScreen({ model }: { model: any }) {
       <Card style={styles.card}>
         <Text style={styles.meta}>{s.memberLine}</Text>
         <View style={styles.members}>
-          {s.members.map((m: any) => (
+          {s.members.map((m) => (
             <View key={m.id} style={styles.member}>
               <Avatar initial={m.initial} tone={m.color} size={32} />
               <Text style={styles.memberName} numberOfLines={1}>

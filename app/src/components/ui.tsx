@@ -1,21 +1,13 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { alpha, color, font, shadow } from '../theme';
 import { BackIcon } from './Icons';
 
-export function Card({ children, style }: { children: React.ReactNode; style?: any }) {
+export function Card({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
-export function Chip({
-  icon,
-  label,
-  onPress,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onPress: () => void;
-}) {
+export function Chip({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}>
       {icon}
@@ -47,7 +39,17 @@ export function Dot({ size = 10, color: c }: { size?: number; color: string }) {
   return <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: c, flexShrink: 0 }} />;
 }
 
-export function Avatar({ initial, tone, size = 28, faded = false }: { initial: string; tone: string; size?: number; faded?: boolean }) {
+export function Avatar({
+  initial,
+  tone,
+  size = 28,
+  faded = false,
+}: {
+  initial: string;
+  tone: string;
+  size?: number;
+  faded?: boolean;
+}) {
   return (
     <View
       style={[

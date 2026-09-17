@@ -5,15 +5,17 @@ import { Card, CompositionBar, Dot } from '../components/ui';
 import { FactBox } from '../components/FactBox';
 import { PenaltyCard } from '../components/PenaltyCard';
 import { ChevronRightIcon } from '../components/Icons';
+import { useOverviewModel } from '../models/overview';
 
-export function OverviewScreen({ model }: { model: any }) {
+export function OverviewScreen() {
+  const model = useOverviewModel();
   return (
     <View style={styles.wrap}>
       <Text style={styles.title}>Wasted Time....</Text>
 
-      <PenaltyCard model={model} />
+      <PenaltyCard />
 
-      {model.overview.cards.map((c: any) => (
+      {model.cards.map((c) => (
         <Pressable key={c.id} onPress={c.onPress}>
           {({ pressed }) => (
             <Card style={[styles.timeCard, pressed && styles.timeCardPressed]}>
@@ -33,7 +35,7 @@ export function OverviewScreen({ model }: { model: any }) {
               <CompositionBar segments={c.comp} height={8} />
 
               <View style={{ gap: 7 }}>
-                {c.top.map((t: any, i: number) => (
+                {c.top.map((t, i: number) => (
                   <View key={i} style={styles.topRow}>
                     <Dot size={9} color={t.tone} />
                     <Text style={styles.topName}>{t.name}</Text>
@@ -60,12 +62,26 @@ export function OverviewScreen({ model }: { model: any }) {
 
 const styles = StyleSheet.create({
   wrap: { gap: 14 },
-  title: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 27, letterSpacing: -0.3, lineHeight: 30, color: color.text },
+  title: {
+    fontFamily: font.headingBold,
+    fontWeight: '700',
+    fontSize: 27,
+    letterSpacing: -0.3,
+    lineHeight: 30,
+    color: color.text,
+  },
   timeCard: { padding: 16, paddingTop: 16, paddingBottom: 14, gap: 12 },
   timeCardPressed: { backgroundColor: '#fbfbfc' },
   metaRow: { width: '100%', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   cardLabel: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 19, letterSpacing: -0.2, color: color.text },
-  cardTotal: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 29, lineHeight: 28, letterSpacing: -0.5, color: color.text },
+  cardTotal: {
+    fontFamily: font.headingBold,
+    fontWeight: '700',
+    fontSize: 29,
+    lineHeight: 28,
+    letterSpacing: -0.5,
+    color: color.text,
+  },
   metaText: { fontSize: 11.5, color: alpha(color.text, 48) },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   topName: { flex: 1, fontFamily: font.bodySemiBold, fontSize: 13.5, color: color.text },

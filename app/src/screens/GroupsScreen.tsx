@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { alpha, color, font } from '../theme';
 import { Avatar, Card, Dot } from '../components/ui';
 import { ChevronRightIcon, SettingsIcon } from '../components/Icons';
+import { GroupsViewModel, useGroupsModel } from '../models/groups';
 
 // Ranking row geometry: the bar and top-categories line indent past the rank
 // number and avatar, so derive the indent instead of hard-coding it.
@@ -11,8 +12,9 @@ const AVATAR = 28;
 const ROW_GAP = 9;
 const DETAIL_INDENT = RANK_W + ROW_GAP + AVATAR + ROW_GAP;
 
-export function GroupsScreen({ model }: { model: any }) {
-  const g = model.groups;
+export function GroupsScreen() {
+  const g = useGroupsModel();
+
   return (
     <View style={styles.wrap}>
       <View style={styles.titleRow}>
@@ -31,8 +33,10 @@ export function GroupsScreen({ model }: { model: any }) {
 
       {g.empty ? (
         <Card style={[styles.card, { alignItems: 'center', paddingVertical: 28 }]}>
-          <Text style={styles.cardTitle}>You're not in any groups</Text>
-          <Text style={[styles.meta, { textAlign: 'center' }]}>Create one and invite friends or family to keep each other accountable.</Text>
+          <Text style={styles.cardTitle}>You’re not in any groups</Text>
+          <Text style={[styles.meta, { textAlign: 'center' }]}>
+            Create one and invite friends or family to keep each other accountable.
+          </Text>
         </Card>
       ) : (
         <GroupBody g={g} />
@@ -41,11 +45,11 @@ export function GroupsScreen({ model }: { model: any }) {
   );
 }
 
-function GroupBody({ g }: { g: any }) {
+function GroupBody({ g }: { g: GroupsViewModel }) {
   return (
     <>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.segWrap}>
-        {g.tabs.map((t: any) => (
+        {g.tabs.map((t) => (
           <Pressable
             key={t.id}
             onPress={t.onPress}
@@ -66,18 +70,28 @@ function GroupBody({ g }: { g: any }) {
             <Text style={[styles.cardTitle, { flex: 1 }]}>Invites pending</Text>
             <Text style={styles.meta}>{g.pendingNote}</Text>
           </View>
-          {g.pending.map((p: any) => (
+          {g.pending.map((p) => (
             <View key={p.id} style={styles.pendingRow}>
               <Avatar initial={p.initial} tone={color.accent} size={26} faded />
               <View style={{ flex: 1, gap: 1 }}>
                 <Text style={styles.name}>{p.name}</Text>
                 <Text style={styles.meta}>{p.status}</Text>
               </View>
-              <Pressable onPress={p.accept} hitSlop={6} accessibilityRole="button" accessibilityLabel={'Simulate ' + p.name + ' accepting'}>
+              <Pressable
+                onPress={p.accept}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel={'Simulate ' + p.name + ' accepting'}
+              >
                 <Text style={styles.accept}>Accept (demo)</Text>
               </Pressable>
               {p.cancel && (
-                <Pressable onPress={p.cancel} hitSlop={6} accessibilityRole="button" accessibilityLabel={'Cancel invite to ' + p.name}>
+                <Pressable
+                  onPress={p.cancel}
+                  hitSlop={6}
+                  accessibilityRole="button"
+                  accessibilityLabel={'Cancel invite to ' + p.name}
+                >
                   <Text style={styles.cancel}>Cancel</Text>
                 </Pressable>
               )}
@@ -97,7 +111,7 @@ function GroupBody({ g }: { g: any }) {
           </View>
         </View>
 
-        {g.today.map((r: any) => (
+        {g.today.map((r) => (
           <View key={r.id} style={[styles.rankRow, r.you && styles.youRow]}>
             <View style={styles.rankLine}>
               <Text style={styles.rank}>{r.rank}</Text>
@@ -106,10 +120,12 @@ function GroupBody({ g }: { g: any }) {
               <Text style={styles.total}>{r.total}</Text>
             </View>
             <View style={styles.track}>
-              <View style={[styles.fill, { width: `${r.pct}%`, backgroundColor: r.rank === 1 ? color.teal : alpha(color.text, 22) }]} />
+              <View
+                style={[styles.fill, { width: `${r.pct}%`, backgroundColor: r.rank === 1 ? color.teal : alpha(color.text, 22) }]}
+              />
             </View>
             <View style={styles.topRow}>
-              {r.top.map((c: any) => (
+              {r.top.map((c) => (
                 <View key={c.name} style={styles.topItem}>
                   <Dot size={7} color={c.color} />
                   <Text style={styles.topText} numberOfLines={1}>
@@ -135,8 +151,11 @@ function GroupBody({ g }: { g: any }) {
           <Text style={[styles.cardTitle, { flex: 1 }]}>Points · All time</Text>
           <Text style={styles.meta}>{g.boardNote}</Text>
         </View>
-        {g.board.map((r: any, i: number) => (
-          <View key={r.id} style={[styles.boardRow, r.you && styles.youRow, i === g.board.length - 1 && { borderBottomWidth: 0 }]}>
+        {g.board.map((r, i: number) => (
+          <View
+            key={r.id}
+            style={[styles.boardRow, r.you && styles.youRow, i === g.board.length - 1 && { borderBottomWidth: 0 }]}
+          >
             <Text style={styles.rank}>{r.rank}</Text>
             <Avatar initial={r.initial} tone={r.color} size={AVATAR} />
             <View style={{ flex: 1, gap: 1 }}>
@@ -171,7 +190,14 @@ function GroupBody({ g }: { g: any }) {
 
 const styles = StyleSheet.create({
   wrap: { gap: 12 },
-  title: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 27, letterSpacing: -0.3, lineHeight: 30, color: color.text },
+  title: {
+    fontFamily: font.headingBold,
+    fontWeight: '700',
+    fontSize: 27,
+    letterSpacing: -0.3,
+    lineHeight: 30,
+    color: color.text,
+  },
   subtitle: { fontSize: 13, color: alpha(color.text, 55) },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   newBtn: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: 999, backgroundColor: color.accent },
@@ -181,7 +207,14 @@ const styles = StyleSheet.create({
   accept: { fontSize: 12.5, fontFamily: font.bodySemiBold, color: color.tealDark },
   segWrap: { flexGrow: 1, flexDirection: 'row', gap: 4, backgroundColor: alpha(color.text, 7), borderRadius: 999, padding: 4 },
   segBtn: { flexGrow: 1, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 999, alignItems: 'center' },
-  segBtnActive: { backgroundColor: '#ffffff', shadowColor: '#1d1f20', shadowOpacity: 0.16, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
+  segBtnActive: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#1d1f20',
+    shadowOpacity: 0.16,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
   segText: { fontFamily: font.bodySemiBold, fontSize: 13, color: alpha(color.text, 55) },
   segTextActive: { color: color.text },
   card: { padding: 14, gap: 8 },
@@ -196,7 +229,14 @@ const styles = StyleSheet.create({
   rankRow: { gap: 6, padding: 8, marginHorizontal: -8, borderRadius: 12 },
   youRow: { backgroundColor: alpha(color.accent, 9) },
   rankLine: { flexDirection: 'row', alignItems: 'center', gap: ROW_GAP },
-  rank: { width: RANK_W, textAlign: 'center', fontFamily: font.headingBold, fontWeight: '700', fontSize: 16, color: alpha(color.text, 55) },
+  rank: {
+    width: RANK_W,
+    textAlign: 'center',
+    fontFamily: font.headingBold,
+    fontWeight: '700',
+    fontSize: 16,
+    color: alpha(color.text, 55),
+  },
   name: { flex: 1, fontFamily: font.bodySemiBold, fontSize: 14.5, color: color.text },
   total: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 17, color: color.text },
   track: { height: 5, marginLeft: DETAIL_INDENT, borderRadius: 999, backgroundColor: alpha(color.text, 6) },
