@@ -1,12 +1,11 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { alpha, color, font } from '../theme';
-import { BackChip, Card, Dot } from '../components/ui';
+import { Card, Dot } from '../components/ui';
 
 export function PickScreen({ model }: { model: any }) {
   return (
     <View style={styles.wrap}>
-      <BackChip label="Back" onPress={model.goOverview} />
       <View style={{ gap: 4 }}>
         <View style={styles.headRow}>
           <Text style={styles.title}>Categories</Text>

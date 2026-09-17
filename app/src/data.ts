@@ -22,6 +22,7 @@ export const CATS: Cat[] = [
   { id: 'games', name: 'Games', base: 34, peak: 20 },
   { id: 'music', name: 'Music', base: 38, peak: 9 },
   { id: 'reading', name: 'Reading', base: 22, peak: 23 },
+  { id: 'navigation', name: 'Navigation', base: 16, peak: 8 },
 ];
 
 export { CCOL };
@@ -246,4 +247,108 @@ export function fourteenDayAvg(catIndex: number): number {
   let s = 0;
   for (let i = 1; i <= 14; i++) s += dayByCat(i)[catIndex];
   return s / 14;
+}
+
+// Groups — other members' days use the same shape as raw()/dayByCat(), with a
+// per-category usage scale and a seed so each person gets their own numbers.
+
+/** Calendar date `idx` days before today (DST-safe). */
+export function dateAt(idx: number): Date {
+  return new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate() - idx);
+}
+
+export function dayLabel(idx: number): string {
+  const d = dateAt(idx);
+  return DOW[d.getDay()] + ' ' + d.getDate() + ' ' + MON[d.getMonth()];
+}
+
+/** Your own day (all categories), full day for idx >= 1, so far for today. */
+export function myDay(idx: number): number[] {
+  return dayByCat(idx);
+}
+
+export function memberDay(idx: number, scale: number[], seed: number): number[] {
+  const dow = dateAt(idx).getDay();
+  const wk = dow === 0 || dow === 6;
+  return CATS.map((a, ai) => {
+    const f = a.work ? (wk ? 0.12 : 1.12) : wk ? 1.34 : 0.92;
+    let v = a.base * scale[ai] * f * (0.55 + 0.95 * rnd(ai + 1 + seed * 17, idx + 3 + seed * 29));
+    if (idx === 0) v *= weights(ai).slice(0, CUR_HOUR + 1).reduce((s, w) => s + w, 0);
+    return v;
+  });
+}
+
+// Penalty limit (simulated ledger — no real money moves). The demo pretends
+// the app was installed on INSTALL_DATE with DEMO_PENALTY active ever since;
+// every settled day's charge sits in a locked balance until UNLOCK_DATE.
+
+export interface PenaltySetting {
+  limit: number; // minutes per day
+  rate: number; // dollars per minute over
+}
+
+export const INSTALL_DATE = new Date(2026, 2, 1);
+export const UNLOCK_DATE = new Date(INSTALL_DATE.getFullYear() + 1, INSTALL_DATE.getMonth(), INSTALL_DATE.getDate());
+// 4h so that "today so far" (~4h 07m at CUR_HOUR) already shows an overage.
+export const DEMO_PENALTY: PenaltySetting = { limit: 240, rate: 0.1 };
+export const DEFAULT_PENALTY: PenaltySetting = { limit: 360, rate: 1 };
+export const PENALTY_LIMIT_PRESETS = [120, 180, 240, 300, 360, 420, 480, 600];
+export const RATE_PRESETS = [0.25, 0.5, 1, 2, 5];
+export const RATE_MIN = 0.01;
+export const RATE_MAX = 1000;
+
+export function fmtMoney(v: number): string {
+  const cents = Math.round(v * 100);
+  const whole = String(Math.floor(cents / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return '$' + whole + '.' + String(cents % 100).padStart(2, '0');
+}
+
+export function fmtDate(d: Date): string {
+  return d.getDate() + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+/** Whole minutes past the limit — partial minutes aren't charged. */
+export function minutesOver(used: number, limit: number): number {
+  return Math.max(0, Math.floor(used - limit));
+}
+
+export function chargeFor(used: number, s: PenaltySetting): number {
+  return Math.round(minutesOver(used, s.limit) * s.rate * 100) / 100;
+}
+
+export function trackedToday(tr: boolean[]): number {
+  return dayByCat(0).reduce((s, v, i) => s + (tr[i] ? v : 0), 0);
+}
+
+export function daysUntilUnlock(): number {
+  return Math.round((UNLOCK_DATE.getTime() - TODAY.getTime()) / DAY);
+}
+
+export interface ChargeDay {
+  label: string;
+  used: number;
+  over: number;
+  limit: number;
+  charge: number;
+  balance: number; // locked balance after this day settled
+}
+
+let _history: ChargeDay[] | null = null;
+/** Settled days, newest first (yesterday back to install day). Past days were
+ *  settled with every category tracked, so later toggles don't rewrite them. */
+export function chargeHistory(): ChargeDay[] {
+  if (_history) return _history;
+  const n = Math.round((TODAY.getTime() - INSTALL_DATE.getTime()) / DAY);
+  const out: ChargeDay[] = [];
+  let balance = 0;
+  for (let idx = n; idx >= 1; idx--) {
+    const used = dayByCat(idx).reduce((s, v) => s + v, 0);
+    const charge = chargeFor(used, DEMO_PENALTY);
+    balance = Math.round((balance + charge) * 100) / 100;
+    // dayLabel() rather than dstr(): subtracting 24h steps drifts a day
+    // across the March DST change.
+    out.push({ label: dayLabel(idx), used,over: minutesOver(used, DEMO_PENALTY.limit), limit: DEMO_PENALTY.limit, charge, balance });
+  }
+  _history = out.reverse();
+  return _history;
 }

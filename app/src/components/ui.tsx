@@ -47,7 +47,23 @@ export function Dot({ size = 10, color: c }: { size?: number; color: string }) {
   return <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: c, flexShrink: 0 }} />;
 }
 
+export function Avatar({ initial, tone, size = 28, faded = false }: { initial: string; tone: string; size?: number; faded?: boolean }) {
+  return (
+    <View
+      style={[
+        styles.avatar,
+        { width: size, height: size, borderRadius: size / 2 },
+        faded ? { borderWidth: 1.5, borderColor: alpha(tone, 45), borderStyle: 'dashed' } : { backgroundColor: tone },
+      ]}
+    >
+      <Text style={[styles.avatarText, { fontSize: size * 0.46, color: faded ? alpha(tone, 70) : '#ffffff' }]}>{initial}</Text>
+    </View>
+  );
+}
+
 export const styles = StyleSheet.create({
+  avatar: { alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  avatarText: { fontFamily: font.bodyBold },
   card: {
     width: '100%',
     backgroundColor: '#ffffff',

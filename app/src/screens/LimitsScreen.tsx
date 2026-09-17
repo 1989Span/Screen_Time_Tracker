@@ -1,13 +1,12 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { alpha, color, font } from '../theme';
-import { BackChip, Card, Dot } from '../components/ui';
+import { Card, Dot } from '../components/ui';
 
 export function LimitsScreen({ model }: { model: any }) {
   const rows = model.limits.list;
   return (
     <View style={styles.wrap}>
-      <BackChip label="Overview" onPress={model.goOverview} />
       <View style={{ gap: 4 }}>
         <Text style={styles.title}>App timers</Text>
         <Text style={styles.subtitle}>Give a category a daily budget. Apps pause when it runs out and start fresh at midnight.</Text>

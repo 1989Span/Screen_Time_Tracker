@@ -55,8 +55,8 @@ export const font = {
 };
 
 // One fixed color per category, in CATS order (Social, Video, Work,
-// Messaging, Games, Music, Reading) — harmonised around the steel accent.
-export const CCOL = ['#5980a6', '#b5576b', '#4f8c7b', '#6e71b8', '#c98a3e', '#8a6ca8', '#6f8a45'];
+// Messaging, Games, Music, Reading, Navigation) — harmonised around the steel accent.
+export const CCOL = ['#5980a6', '#b5576b', '#4f8c7b', '#6e71b8', '#c98a3e', '#8a6ca8', '#6f8a45', '#9a6b4f'];
 
 export const shadow = {
   card: {

@@ -1,20 +1,17 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { alpha, color, font } from '../theme';
-import { Card, Chip, CompositionBar, Dot } from '../components/ui';
+import { Card, CompositionBar, Dot } from '../components/ui';
 import { FactBox } from '../components/FactBox';
-import { ChevronRightIcon, ClockIcon, SettingsIcon } from '../components/Icons';
+import { PenaltyCard } from '../components/PenaltyCard';
+import { ChevronRightIcon } from '../components/Icons';
 
 export function OverviewScreen({ model }: { model: any }) {
   return (
     <View style={styles.wrap}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Wasted Time....</Text>
-        <View style={styles.headerChips}>
-          <Chip icon={<ClockIcon size={15} color={color.text} />} label={model.limCount} onPress={model.openLimits} />
-          <Chip icon={<SettingsIcon size={15} color={color.text} />} label={model.trackedLabel} onPress={model.openPick} />
-        </View>
-      </View>
+      <Text style={styles.title}>Wasted Time....</Text>
+
+      <PenaltyCard model={model} />
 
       {model.overview.cards.map((c: any) => (
         <Pressable key={c.id} onPress={c.onPress}>
@@ -63,9 +60,7 @@ export function OverviewScreen({ model }: { model: any }) {
 
 const styles = StyleSheet.create({
   wrap: { gap: 14 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   title: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 27, letterSpacing: -0.3, lineHeight: 30, color: color.text },
-  headerChips: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   timeCard: { padding: 16, paddingTop: 16, paddingBottom: 14, gap: 12 },
   timeCardPressed: { backgroundColor: '#fbfbfc' },
   metaRow: { width: '100%', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
