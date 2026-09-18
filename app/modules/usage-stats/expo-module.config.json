@@ -1,0 +1,6 @@
+{
+  "platforms": ["android"],
+  "android": {
+    "modules": ["com.span1989.gauge.usagestats.UsageStatsModule"]
+  }
+}

@@ -39,3 +39,10 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Local native module build output. `modules/` itself is source and must be
+# committed - autolinking reads it - but Gradle/CMake write their artifacts
+# inside it, which the generated /android ignore above does not cover.
+modules/*/android/build/
+modules/*/android/.cxx/
+modules/*/android/.gradle/

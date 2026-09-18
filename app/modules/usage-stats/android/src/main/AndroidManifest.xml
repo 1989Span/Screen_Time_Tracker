@@ -1,0 +1,25 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
+
+  <!-- Reading per-app screen time. This is a *special* permission, not a runtime
+       one: it cannot be requested with requestPermissions(), and the user must
+       grant it by hand in Settings > Special app access > Usage access. The
+       tools:ignore is required because the platform reserves the permission for
+       system apps, so lint flags the declaration even though it is the
+       documented way for a normal app to ask for usage access. -->
+  <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+                   tools:ignore="ProtectedPermissions" />
+
+  <!-- Needed on Android 11+ to see the full installed-app list rather than only
+       packages that declare themselves visible to us. Without it the app picker
+       would silently show a fraction of what is installed. -->
+  <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+                   tools:ignore="QueryAllPackagesPermission" />
+
+  <queries>
+    <intent>
+      <action android:name="android.intent.action.MAIN" />
+      <category android:name="android.intent.category.LAUNCHER" />
+    </intent>
+  </queries>
+</manifest>
