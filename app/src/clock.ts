@@ -101,3 +101,12 @@ export function invalidate(): void {
   dayEnd = Number.NaN;
   for (const clear of invalidators) clear();
 }
+
+/** Stable `YYYY-MM-DD` identity for today, for persisting "which day was this
+ *  written on". Compare stamps to detect that a day boundary was crossed
+ *  between app launches, which a numeric timestamp cannot tell you cheaply. */
+export function dayStamp(d: Date = startOfToday()): string {
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}

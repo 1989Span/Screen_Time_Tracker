@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import { modernBg } from './src/theme';
 import { useNavStore } from './src/state/navStore';
+import { useStoresHydrated } from './src/state/hydration';
 import { OverviewScreen } from './src/screens/OverviewScreen';
 import { DetailScreen } from './src/screens/DetailScreen';
 import { LimitsScreen } from './src/screens/LimitsScreen';
@@ -56,8 +57,11 @@ function Tracker() {
     BarlowCondensed_700Bold,
   });
   const view = useNavStore((s) => s.view);
+  const hydrated = useStoresHydrated();
 
-  if (!fontsLoaded) return <View style={styles.root} />;
+  // Hold the first paint until fonts and saved state are both ready, so the app
+  // never flashes default settings over the user's own.
+  if (!fontsLoaded || !hydrated) return <View style={styles.root} />;
 
   const Screen = SCREENS[view];
 

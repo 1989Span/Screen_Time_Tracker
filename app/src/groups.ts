@@ -18,6 +18,11 @@ export interface Member {
   name: string;
   color: string;
   joined: number; // days before today they joined; they compete on that day onward
+  // Generator inputs, stored so a persisted member can be rebuilt. `day` is a
+  // closure and does not survive JSON, so reviveMember() reattaches it from
+  // these. Your own row ignores both and reads your real usage instead.
+  seed: number;
+  scale: number[];
   day: (idx: number) => number[];
 }
 
@@ -42,10 +47,51 @@ export interface GroupRules {
 // Per-category usage scale, in CATS order (Social, Video, Work, Messaging,
 // Games, Music, Reading, Navigation).
 function person(id: string, name: string, color: string, joined: number, seed: number, scale: number[]): Member {
-  return { id, name, color, joined, day: (idx) => memberDay(idx, scale, seed) };
+  return { id, name, color, joined, seed, scale, day: (idx) => memberDay(idx, scale, seed) };
 }
 
-const you = (joined: number): Member => ({ id: 'you', name: 'You', color: '#5980a6', joined, day: myDay });
+export const YOU_ID = 'you';
+
+const you = (joined: number): Member => ({
+  id: YOU_ID,
+  name: 'You',
+  color: '#5980a6',
+  joined,
+  seed: 0,
+  scale: [],
+  day: myDay,
+});
+
+/** Everything about a member except the `day` closure — what actually persists. */
+export type StoredMember = Omit<Member, 'day'>;
+export type StoredGroup = Omit<Group, 'members'> & { members: StoredMember[] };
+
+/** Reattach the usage generator that JSON dropped. */
+export function reviveMember(m: StoredMember): Member {
+  return m.id === YOU_ID ? { ...m, day: myDay } : { ...m, day: (idx) => memberDay(idx, m.scale, m.seed) };
+}
+
+export function reviveGroup(g: StoredGroup): Group {
+  return { ...g, members: g.members.map(reviveMember) };
+}
+
+/** Guards against a persisted payload written by an older build (or a corrupt
+ *  one) reaching the UI as a member whose `day` would be undefined. */
+export function isStoredGroup(v: unknown): v is StoredGroup {
+  if (typeof v !== 'object' || v === null) return false;
+  const g = v as Partial<StoredGroup>;
+  if (typeof g.id !== 'string' || typeof g.name !== 'string' || typeof g.created !== 'number') return false;
+  if (!Array.isArray(g.members) || g.members.length === 0) return false;
+  return g.members.every(
+    (m) =>
+      typeof m?.id === 'string' &&
+      typeof m?.name === 'string' &&
+      typeof m?.color === 'string' &&
+      typeof m?.joined === 'number' &&
+      typeof m?.seed === 'number' &&
+      Array.isArray(m?.scale)
+  );
+}
 
 export const GROUPS: Group[] = [
   {
