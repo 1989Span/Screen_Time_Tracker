@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import {
   CATS,
   CCOL,
-  DATES,
+  dates,
   N_DAYS,
   RANGE_LABEL,
   RangeId,
@@ -24,7 +24,12 @@ import { useDetailStore } from '../state/detailStore';
 import { CategoryRow, Segment, limitState } from './shared';
 
 const RANGE_IDS: RangeId[] = ['day', 'week', 'month', 'year'];
-const PREV_NAME: Record<RangeId, string> = { day: 'yesterday', week: 'last week', month: 'last month', year: 'last year' };
+const PREV_NAME: Record<RangeId, string> = {
+  day: 'yesterday',
+  week: 'last week',
+  month: 'last month',
+  year: 'last year',
+};
 const AXIS_NOTE: Record<RangeId, string> = { day: 'By hour', week: 'By day', month: 'By day', year: 'By month' };
 
 export interface OverviewCard {
@@ -50,13 +55,14 @@ export function useOverviewModel(): OverviewViewModel {
 
   return useMemo(() => {
     const flags = trackedFlags(tracked);
+    const label = dates();
     return {
       cards: RANGE_IDS.map((id) => {
         const sl = slice(id, null, flags);
         return {
           id,
           label: RANGE_LABEL[id],
-          dates: DATES[id],
+          dates: label[id],
           total: fmt(sl.total),
           fact: factFor(id, sl.total),
           avg: id === 'day' ? 'so far today' : fmtShort(sl.total / N_DAYS[id]) + '/day',
@@ -124,6 +130,7 @@ export function useDetailModel(): DetailViewModel {
 
   return useMemo(() => {
     const flags = trackedFlags(tracked);
+    const label = dates();
     const m = slice(range, selected, flags);
     const previous = prevTotal(range, flags);
     const diff = m.total - previous;
@@ -139,7 +146,7 @@ export function useDetailModel(): DetailViewModel {
         onPress: () => setRange(id),
       })),
       fact: factFor(range, m.total),
-      scope: m.sel != null ? m.bk[m.sel].label : DATES[range],
+      scope: m.sel != null ? m.bk[m.sel].label : label[range],
       total: fmt(m.total),
       avg: fmtShort(m.total / (m.sel != null ? 1 : N_DAYS[range])),
       avgLabel: m.sel != null ? 'in this slice' : 'daily average',

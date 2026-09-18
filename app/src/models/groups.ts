@@ -57,10 +57,13 @@ function contactPicker(
         name: c.name,
         initial: c.name[0],
         hasApp: c.hasApp,
-        via: reason || (c.hasApp ? 'On the app · gets an in-app invite' : 'Not on the app · gets a download link by text'),
+        via:
+          reason || (c.hasApp ? 'On the app · gets an in-app invite' : 'Not on the app · gets a download link by text'),
         on,
         disabled: reason !== '',
-        onPress: reason ? undefined : () => set(on ? selected.filter((x) => x !== c.id) : selected.concat([c.id]), query),
+        onPress: reason
+          ? undefined
+          : () => set(on ? selected.filter((x) => x !== c.id) : selected.concat([c.id]), query),
       };
     }),
     summary:
@@ -81,7 +84,8 @@ const catNames = (ids: string[]) =>
     .map((c) => c.name)
     .join(', ');
 
-const rulesLineFor = (excluded: string[]) => (excluded.length ? 'Not tracked: ' + catNames(excluded) : 'All categories tracked');
+const rulesLineFor = (excluded: string[]) =>
+  excluded.length ? 'Not tracked: ' + catNames(excluded) : 'All categories tracked';
 
 const rulesNoteFor = (rules: GroupRules) => {
   const needsYou = rules.proposals.filter((p) => p.agreed.indexOf('you') < 0).length;
@@ -233,9 +237,12 @@ export function useGroupsModel(): GroupsViewModel {
         you: s.member.id === 'you',
         points: s.points + (s.points === 1 ? ' pt' : ' pts'),
         streak: s.streak > 0 ? s.streak + '-day streak' : '',
-        best: s.member.joined === 0 && group.created > 0 ? 'Joined today · first point at midnight' : 'Best run ' + s.best,
+        best:
+          s.member.joined === 0 && group.created > 0 ? 'Joined today · first point at midnight' : 'Best run ' + s.best,
       })),
-      boardNote: stats.winnersByDay.length ? stats.winnersByDay.length + ' days played' : 'First point awarded at midnight',
+      boardNote: stats.winnersByDay.length
+        ? stats.winnersByDay.length + ' days played'
+        : 'First point awarded at midnight',
       settingsNote: rulesNoteFor(rules),
       openSettings: store.openSettings,
       pending: invites.map((inv) => {
@@ -326,7 +333,8 @@ export function useGroupRulesModel(): GroupRulesViewModel | null {
           title: (p.kind === 'exclude' ? 'Stop tracking ' : 'Track again: ') + CATS[ci].name,
           color: CCOL[ci],
           progress: p.agreed.length + ' of ' + n + ' agreed',
-          waiting: n < MIN_GROUP_SIZE ? 'Takes effect once invitees join and agree' : 'Waiting on ' + waiting.join(', '),
+          waiting:
+            n < MIN_GROUP_SIZE ? 'Takes effect once invitees join and agree' : 'Waiting on ' + waiting.join(', '),
           votes: votesFor(p.agreed),
           youAgreed: p.agreed.indexOf('you') >= 0,
           agree: () => store.agree(p.cat),
@@ -408,8 +416,18 @@ export function useGroupSettingsModel(): GroupSettingsViewModel | null {
         n === 1
           ? 'You’re the only member, so leaving deletes ' + group.name + ' and cancels its pending invites.'
           : n - 1 < MIN_GROUP_SIZE
-            ? 'A group needs at least ' + MIN_GROUP_SIZE + ' people, so leaving ends ' + group.name + ' for ' + others + ' too.'
-            : 'You’ll drop out of ' + group.name + '’s rankings and points. The other ' + (n - 1) + ' stay in the group.',
+            ? 'A group needs at least ' +
+              MIN_GROUP_SIZE +
+              ' people, so leaving ends ' +
+              group.name +
+              ' for ' +
+              others +
+              ' too.'
+            : 'You’ll drop out of ' +
+              group.name +
+              '’s rankings and points. The other ' +
+              (n - 1) +
+              ' stay in the group.',
       askLeave: store.askLeave,
       cancelLeave: store.cancelLeave,
       leave: store.leave,

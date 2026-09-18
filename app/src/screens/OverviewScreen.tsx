@@ -86,7 +86,14 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   topName: { flex: 1, fontFamily: font.bodySemiBold, fontSize: 13.5, color: color.text },
   topShare: { fontSize: 11.5, color: alpha(color.text, 46) },
-  topTime: { width: 74, textAlign: 'right', fontFamily: font.headingBold, fontWeight: '700', fontSize: 14, color: color.text },
+  topTime: {
+    width: 74,
+    textAlign: 'right',
+    fontFamily: font.headingBold,
+    fontWeight: '700',
+    fontSize: 14,
+    color: color.text,
+  },
   footer: {
     width: '100%',
     flexDirection: 'row',

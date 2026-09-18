@@ -14,8 +14,8 @@ export function GroupRulesScreen() {
         <Text style={styles.title}>{r.name} tracking</Text>
       </View>
       <Text style={styles.subtitle}>
-        A category stops counting toward this group’s ranking only when every member agrees, and bringing one back needs everyone
-        too. Changes recalculate all past points and streaks.
+        A category stops counting toward this group’s ranking only when every member agrees, and bringing one back needs
+        everyone too. Changes recalculate all past points and streaks.
       </Text>
 
       <Card style={styles.card}>
@@ -96,7 +96,14 @@ export function GroupRulesScreen() {
 const styles = StyleSheet.create({
   wrap: { gap: 12 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  title: { flex: 1, fontFamily: font.headingBold, fontWeight: '700', fontSize: 22, letterSpacing: -0.2, color: color.text },
+  title: {
+    flex: 1,
+    fontFamily: font.headingBold,
+    fontWeight: '700',
+    fontSize: 22,
+    letterSpacing: -0.2,
+    color: color.text,
+  },
   subtitle: { fontSize: 12.5, lineHeight: 18, color: alpha(color.text, 55) },
   card: { padding: 14, gap: 10 },
   cardTitle: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 17, color: color.text },

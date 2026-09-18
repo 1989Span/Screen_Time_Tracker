@@ -91,7 +91,14 @@ export function GroupSettingsScreen() {
 const styles = StyleSheet.create({
   wrap: { gap: 12 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  title: { flex: 1, fontFamily: font.headingBold, fontWeight: '700', fontSize: 22, letterSpacing: -0.2, color: color.text },
+  title: {
+    flex: 1,
+    fontFamily: font.headingBold,
+    fontWeight: '700',
+    fontSize: 22,
+    letterSpacing: -0.2,
+    color: color.text,
+  },
   card: { padding: 14, gap: 10 },
   meta: { fontSize: 11.5, color: alpha(color.text, 48) },
   note: { fontSize: 11.5, fontFamily: font.bodySemiBold, color: color.roseDark },

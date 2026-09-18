@@ -17,7 +17,11 @@ export function LimitsScreen() {
       </View>
       <Card style={styles.card}>
         {rows.map((l, i: number) => (
-          <Pressable key={l.id} onPress={l.onPress} style={[styles.row, i === rows.length - 1 && { borderBottomWidth: 0 }]}>
+          <Pressable
+            key={l.id}
+            onPress={l.onPress}
+            style={[styles.row, i === rows.length - 1 && { borderBottomWidth: 0 }]}
+          >
             <View style={styles.topRow}>
               <Dot size={11} color={l.color} />
               <View style={{ flex: 1, gap: 1 }}>
@@ -50,7 +54,14 @@ const styles = StyleSheet.create({
   used: { fontSize: 11.5, color: alpha(color.text, 45) },
   stateChip: { paddingVertical: 4, paddingHorizontal: 9, borderRadius: 999 },
   stateText: { fontSize: 11.5, fontFamily: font.bodySemiBold },
-  limStr: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 15, minWidth: 44, textAlign: 'right', color: color.text },
+  limStr: {
+    fontFamily: font.headingBold,
+    fontWeight: '700',
+    fontSize: 15,
+    minWidth: 44,
+    textAlign: 'right',
+    color: color.text,
+  },
   track: { width: '100%', height: 5, borderRadius: 999, backgroundColor: alpha(color.text, 7) },
   fill: { height: '100%', borderRadius: 999 },
 });

@@ -3,7 +3,15 @@
 // so today's charge can't be dodged by loosening the limit mid-day.
 
 import { create } from 'zustand';
-import { DEFAULT_PENALTY, DEMO_PENALTY, PENALTY_LIMIT_PRESETS, PenaltySetting, RATE_MAX, RATE_MIN, RATE_PRESETS } from '../data';
+import {
+  DEFAULT_PENALTY,
+  DEMO_PENALTY,
+  PENALTY_LIMIT_PRESETS,
+  PenaltySetting,
+  RATE_MAX,
+  RATE_MIN,
+  RATE_PRESETS,
+} from '../data';
 import { goTo } from './navStore';
 
 export const sameSetting = (a: PenaltySetting | null, b: PenaltySetting | null) =>
@@ -43,7 +51,8 @@ interface PenaltyState {
 }
 
 /** What applies from tomorrow: a saved change, else today's setting. */
-export const pendingSetting = (s: Pick<PenaltyState, 'current' | 'next'>) => (s.next === undefined ? s.current : s.next);
+export const pendingSetting = (s: Pick<PenaltyState, 'current' | 'next'>) =>
+  s.next === undefined ? s.current : s.next;
 
 export const usePenaltyStore = create<PenaltyState>((set, get) => ({
   current: DEMO_PENALTY,

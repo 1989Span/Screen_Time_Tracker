@@ -34,7 +34,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
       <View style={styles.root}>
         <View style={styles.card}>
           <Text style={styles.title}>Something went wrong</Text>
-          <Text style={styles.body}>The screen stopped responding. Try again, and reload the app if it keeps happening.</Text>
+          <Text style={styles.body}>
+            The screen stopped responding. Try again, and reload the app if it keeps happening.
+          </Text>
           <Text style={styles.detail} numberOfLines={3}>
             {error.message}
           </Text>

@@ -94,7 +94,11 @@ export function DetailScreen() {
       </View>
       <Card style={styles.bkCard}>
         {d.rows.map((row, i: number) => (
-          <Pressable key={i} onPress={row.onPress} style={[styles.bkRow, i === d.rows.length - 1 && { borderBottomWidth: 0 }]}>
+          <Pressable
+            key={i}
+            onPress={row.onPress}
+            style={[styles.bkRow, i === d.rows.length - 1 && { borderBottomWidth: 0 }]}
+          >
             <View style={styles.bkTopRow}>
               <Dot size={10} color={row.tone} />
               <Text style={styles.bkName}>{row.name}</Text>
@@ -167,7 +171,14 @@ const styles = StyleSheet.create({
   bkTopRow: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 9 },
   bkName: { flex: 1, fontSize: 14.5, fontFamily: font.bodySemiBold, color: color.text },
   bkShare: { fontSize: 12, color: alpha(color.text, 46) },
-  bkTime: { width: 82, textAlign: 'right', fontFamily: font.headingBold, fontWeight: '700', fontSize: 15, color: color.text },
+  bkTime: {
+    width: 82,
+    textAlign: 'right',
+    fontFamily: font.headingBold,
+    fontWeight: '700',
+    fontSize: 15,
+    color: color.text,
+  },
   track: { width: '100%', height: 6, borderRadius: 999, backgroundColor: alpha(color.text, 7) },
   fill: { height: '100%', borderRadius: 999 },
   limChip: {

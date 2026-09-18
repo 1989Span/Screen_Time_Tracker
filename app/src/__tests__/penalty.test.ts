@@ -1,11 +1,11 @@
 import {
   CATS,
   DEMO_PENALTY,
-  INSTALL_DATE,
+  installDate,
   PenaltySetting,
   RATE_MAX,
   RATE_MIN,
-  UNLOCK_DATE,
+  unlockDate,
   chargeFor,
   chargeHistory,
   daysUntilUnlock,
@@ -75,7 +75,7 @@ describe('locked balance', () => {
   const history = chargeHistory();
 
   it('covers every settled day since install, newest first', () => {
-    const days = Math.round((UNLOCK_DATE.getTime() - INSTALL_DATE.getTime()) / 86400000) - daysUntilUnlock();
+    const days = Math.round((unlockDate().getTime() - installDate().getTime()) / 86400000) - daysUntilUnlock();
     expect(history).toHaveLength(days);
     expect(history[0].label).toContain('24 Aug');
     expect(history[history.length - 1].label).toContain('1 Mar');
@@ -102,14 +102,20 @@ describe('locked balance', () => {
   });
 
   it('unlocks one year after install', () => {
-    expect(fmtDate(INSTALL_DATE)).toBe('1 Mar 2026');
-    expect(fmtDate(UNLOCK_DATE)).toBe('1 Mar 2027');
+    expect(fmtDate(installDate())).toBe('1 Mar 2026');
+    expect(fmtDate(unlockDate())).toBe('1 Mar 2027');
     expect(daysUntilUnlock()).toBe(188);
   });
 
   it('matches the demo figures (update deliberately if the demo data changes)', () => {
     expect(DEMO_PENALTY).toEqual({ limit: 240, rate: 0.1 });
-    expect(fmtMoney(history[0].balance)).toBe('$4,411.80');
+    // Changed from $4,411.80 when date arithmetic moved off 24h stepping onto
+    // calendar stepping. Stepping back by 86_400_000ms from local midnight lands
+    // at 23:00 the previous day once a DST boundary is crossed, which misdated 8
+    // of the 177 days in this window and misclassified 2 as weekend vs weekday.
+    // The weekend factor changes usage, so it changed the charge. This value is
+    // the DST-correct one.
+    expect(fmtMoney(history[0].balance)).toBe('$4,417.80');
     expect(history).toHaveLength(177);
   });
 });

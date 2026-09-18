@@ -20,7 +20,11 @@ export function PickScreen() {
 
       <Card style={styles.card}>
         {model.rows.map((p, i: number) => (
-          <Pressable key={p.id} onPress={p.onPress} style={[styles.row, i === model.rows.length - 1 && { borderBottomWidth: 0 }]}>
+          <Pressable
+            key={p.id}
+            onPress={p.onPress}
+            style={[styles.row, i === model.rows.length - 1 && { borderBottomWidth: 0 }]}
+          >
             <Dot size={11} color={p.on ? p.color : alpha(color.text, 18)} />
             <View style={{ flex: 1, gap: 1 }}>
               <Text style={[styles.name, { color: p.on ? color.text : alpha(color.text, 42) }]}>{p.name}</Text>
@@ -40,7 +44,13 @@ const styles = StyleSheet.create({
   wrap: { gap: 16 },
   headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   title: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 24, letterSpacing: -0.2, color: color.text },
-  toggleAll: { fontSize: 13, fontFamily: font.bodySemiBold, color: color.accent700, paddingVertical: 6, paddingHorizontal: 2 },
+  toggleAll: {
+    fontSize: 13,
+    fontFamily: font.bodySemiBold,
+    color: color.accent700,
+    paddingVertical: 6,
+    paddingHorizontal: 2,
+  },
   subtitle: { fontSize: 13, lineHeight: 19, color: alpha(color.text, 55) },
   card: { paddingHorizontal: 16, paddingVertical: 4 },
   row: {

@@ -11,6 +11,7 @@
 // everyone's existing points and streaks untouched and starts at zero.
 
 import { CATS, CCOL, memberDay, myDay } from './data';
+import { checkDayRollover, onDayChange } from './clock';
 
 export interface Member {
   id: string;
@@ -175,12 +176,26 @@ export interface GroupStats {
   stats: MemberStats[];
 }
 
-const _stats: Record<string, GroupStats> = {};
+// Keyed by group + roster + excluded set. Every entry is derived from usage
+// "days before today", so the whole map is only valid for one calendar day.
+// Bounded because a session can mint a new key on every rules change.
+const STATS_CACHE_MAX = 48;
+let _stats = new Map<string, GroupStats>();
+onDayChange(() => {
+  _stats = new Map();
+});
 
 export function groupStats(g: Group, excluded: string[]): GroupStats {
+  checkDayRollover();
   const roster = g.members.map((m) => m.id + '@' + m.joined).join(',');
   const key = g.id + '|' + roster + '|' + excluded.slice().sort().join(',');
-  if (_stats[key]) return _stats[key];
+  const hit = _stats.get(key);
+  if (hit) {
+    // Refresh recency so the entries in active use survive eviction.
+    _stats.delete(key);
+    _stats.set(key, hit);
+    return hit;
+  }
   const winnersByDay: string[][] = [];
   const run: Record<string, number> = {};
   const stats = g.members.map((m) => ({ member: m, points: 0, streak: 0, best: 0 }));
@@ -205,8 +220,14 @@ export function groupStats(g: Group, excluded: string[]): GroupStats {
     });
   }
   stats.forEach((s) => (s.streak = run[s.member.id] || 0));
-  _stats[key] = { winnersByDay, stats };
-  return _stats[key];
+  const result: GroupStats = { winnersByDay, stats };
+  // Evict least-recently-used; Map preserves insertion order.
+  if (_stats.size >= STATS_CACHE_MAX) {
+    const oldest = _stats.keys().next();
+    if (!oldest.done) _stats.delete(oldest.value);
+  }
+  _stats.set(key, result);
+  return result;
 }
 
 /** A unanimous proposal takes effect and closes. Nothing settles until the

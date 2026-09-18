@@ -4,7 +4,13 @@ import { alpha, color, font } from '../theme';
 import { Avatar, Card } from './ui';
 import { ContactPickerViewModel } from '../models/groups';
 
-export function ContactPicker({ picker, title = 'Invite from contacts' }: { picker: ContactPickerViewModel; title?: string }) {
+export function ContactPicker({
+  picker,
+  title = 'Invite from contacts',
+}: {
+  picker: ContactPickerViewModel;
+  title?: string;
+}) {
   return (
     <Card style={styles.card}>
       <View style={styles.headRow}>
@@ -24,7 +30,11 @@ export function ContactPicker({ picker, title = 'Invite from contacts' }: { pick
             key={c.id}
             onPress={c.onPress}
             disabled={c.disabled}
-            style={[styles.row, i === picker.contacts.length - 1 && { borderBottomWidth: 0 }, c.disabled && { opacity: 0.5 }]}
+            style={[
+              styles.row,
+              i === picker.contacts.length - 1 && { borderBottomWidth: 0 },
+              c.disabled && { opacity: 0.5 },
+            ]}
           >
             <Avatar initial={c.initial} tone={c.hasApp ? color.accent : alpha(color.text, 35)} size={30} />
             <View style={{ flex: 1, gap: 1 }}>
@@ -32,7 +42,9 @@ export function ContactPicker({ picker, title = 'Invite from contacts' }: { pick
               <Text style={[styles.meta, c.hasApp && !c.disabled && { color: color.tealDark }]}>{c.via}</Text>
             </View>
             {!c.disabled && (
-              <View style={[styles.check, c.on && styles.checkOn]}>{c.on && <Text style={styles.checkMark}>✓</Text>}</View>
+              <View style={[styles.check, c.on && styles.checkOn]}>
+                {c.on && <Text style={styles.checkMark}>✓</Text>}
+              </View>
             )}
           </Pressable>
         ))}

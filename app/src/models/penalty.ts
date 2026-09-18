@@ -7,7 +7,7 @@ import {
   RATE_MAX,
   RATE_MIN,
   RATE_PRESETS,
-  UNLOCK_DATE,
+  unlockDate,
   chargeFor,
   chargeHistory,
   daysUntilUnlock,
@@ -23,7 +23,8 @@ import { parseLimit, parseRate, pendingSetting, sameSetting, usePenaltyStore } f
 import { trackedFlags, usePrefsStore } from '../state/prefsStore';
 import { CHIP_OFF, OVER_BAR, OVER_BG, OVER_FG, StateChip, UNDER_BG, UNDER_FG } from './shared';
 
-const settingText = (s: PenaltySetting | null) => (s ? limLabel(s.limit) + ' a day · ' + fmtMoney(s.rate) + '/min' : 'Off');
+const settingText = (s: PenaltySetting | null) =>
+  s ? limLabel(s.limit) + ' a day · ' + fmtMoney(s.rate) + '/min' : 'Off';
 
 const pendingText = (next: PenaltySetting | null | undefined) =>
   next === undefined ? '' : 'From tomorrow: ' + settingText(next);
@@ -82,7 +83,7 @@ export function usePenaltyCardModel(): PenaltyCardViewModel {
       chargeToday: fmtMoney(charge),
       chargeNote: current ? fmtMoney(current.rate) + '/min · settles at midnight' : 'No charge today',
       locked: fmtMoney(history.length ? history[0].balance : 0),
-      lockedNote: 'Locked until ' + fmtDate(UNLOCK_DATE),
+      lockedNote: 'Locked until ' + fmtDate(unlockDate()),
       pendingText: pendingText(next),
       openSettings: openEditor,
       openHistory,
@@ -160,7 +161,8 @@ export function usePenaltyEditorModel(): PenaltyEditorViewModel {
       save: store.save,
       canRemove: pending != null,
       remove: store.remove,
-      lockNote: 'Charges settle at midnight and stay locked until ' + fmtDate(UNLOCK_DATE) + '. Changes start tomorrow.',
+      lockNote:
+        'Charges settle at midnight and stay locked until ' + fmtDate(unlockDate()) + '. Changes start tomorrow.',
       goOverview: () => go('ov'),
     };
   }, [store, go]);
@@ -195,7 +197,7 @@ export function usePenaltyHistoryModel(): PenaltyHistoryViewModel {
 
     return {
       locked: fmtMoney(history.length ? history[0].balance : 0),
-      unlockText: 'Unlocks ' + fmtDate(UNLOCK_DATE) + ' · ' + daysUntilUnlock() + ' days to go',
+      unlockText: 'Unlocks ' + fmtDate(unlockDate()) + ' · ' + daysUntilUnlock() + ' days to go',
       daysOver: history.filter((d) => d.charge > 0).length + ' of ' + history.length,
       minutesOver: fmtShort(history.reduce((sum, d) => sum + d.over, 0)),
       today: current

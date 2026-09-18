@@ -121,7 +121,10 @@ function GroupBody({ g }: { g: GroupsViewModel }) {
             </View>
             <View style={styles.track}>
               <View
-                style={[styles.fill, { width: `${r.pct}%`, backgroundColor: r.rank === 1 ? color.teal : alpha(color.text, 22) }]}
+                style={[
+                  styles.fill,
+                  { width: `${r.pct}%`, backgroundColor: r.rank === 1 ? color.teal : alpha(color.text, 22) },
+                ]}
               />
             </View>
             <View style={styles.topRow}>
@@ -137,7 +140,9 @@ function GroupBody({ g }: { g: GroupsViewModel }) {
           </View>
         ))}
 
-        <Text style={styles.meta}>The point is awarded at midnight to the lowest full-day total. Ties each get a point.</Text>
+        <Text style={styles.meta}>
+          The point is awarded at midnight to the lowest full-day total. Ties each get a point.
+        </Text>
       </Card>
 
       {g.yesterday !== '' && (
@@ -205,7 +210,14 @@ const styles = StyleSheet.create({
   pendingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 2 },
   cancel: { fontSize: 12.5, fontFamily: font.bodySemiBold, color: color.roseDark },
   accept: { fontSize: 12.5, fontFamily: font.bodySemiBold, color: color.tealDark },
-  segWrap: { flexGrow: 1, flexDirection: 'row', gap: 4, backgroundColor: alpha(color.text, 7), borderRadius: 999, padding: 4 },
+  segWrap: {
+    flexGrow: 1,
+    flexDirection: 'row',
+    gap: 4,
+    backgroundColor: alpha(color.text, 7),
+    borderRadius: 999,
+    padding: 4,
+  },
   segBtn: { flexGrow: 1, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 999, alignItems: 'center' },
   segBtnActive: {
     backgroundColor: '#ffffff',

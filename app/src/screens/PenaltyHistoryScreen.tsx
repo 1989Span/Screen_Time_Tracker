@@ -77,7 +77,14 @@ const styles = StyleSheet.create({
     color: color.text,
   },
   statsRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
-  stat: { flex: 1, gap: 1, backgroundColor: alpha(color.text, 4), borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12 },
+  stat: {
+    flex: 1,
+    gap: 1,
+    backgroundColor: alpha(color.text, 4),
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
   statValue: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 18, color: color.text },
   listCard: { paddingHorizontal: 16, paddingVertical: 4 },
   row: {

@@ -25,7 +25,13 @@ export function BackChip({ label, onPress }: { label: string; onPress: () => voi
   );
 }
 
-export function CompositionBar({ segments, height = 8 }: { segments: { w: number; color: string }[]; height?: number }) {
+export function CompositionBar({
+  segments,
+  height = 8,
+}: {
+  segments: { w: number; color: string }[];
+  height?: number;
+}) {
   return (
     <View style={[styles.compBar, { height, borderRadius: height / 2 }]}>
       {segments.map((s, i) => (
@@ -58,7 +64,9 @@ export function Avatar({
         faded ? { borderWidth: 1.5, borderColor: alpha(tone, 45), borderStyle: 'dashed' } : { backgroundColor: tone },
       ]}
     >
-      <Text style={[styles.avatarText, { fontSize: size * 0.46, color: faded ? alpha(tone, 70) : '#ffffff' }]}>{initial}</Text>
+      <Text style={[styles.avatarText, { fontSize: size * 0.46, color: faded ? alpha(tone, 70) : '#ffffff' }]}>
+        {initial}
+      </Text>
     </View>
   );
 }

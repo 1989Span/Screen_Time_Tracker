@@ -42,22 +42,36 @@ export function NewGroupScreen() {
             <Pressable
               key={c.id}
               onPress={c.onPress}
-              style={[styles.catChip, c.on ? { backgroundColor: alpha(c.color, 14), borderColor: alpha(c.color, 40) } : null]}
+              style={[
+                styles.catChip,
+                c.on ? { backgroundColor: alpha(c.color, 14), borderColor: alpha(c.color, 40) } : null,
+              ]}
             >
               <Dot size={8} color={c.on ? c.color : alpha(color.text, 20)} />
-              <Text style={[styles.catChipText, !c.on && { color: alpha(color.text, 42), textDecorationLine: 'line-through' }]}>
+              <Text
+                style={[
+                  styles.catChipText,
+                  !c.on && { color: alpha(color.text, 42), textDecorationLine: 'line-through' },
+                ]}
+              >
                 {c.name}
               </Text>
             </Pressable>
           ))}
         </View>
-        <Text style={styles.meta}>Invitees accept these rules when they join. Changing them later needs everyone to agree.</Text>
+        <Text style={styles.meta}>
+          Invitees accept these rules when they join. Changing them later needs everyone to agree.
+        </Text>
       </Card>
 
       <ContactPicker picker={n.picker} />
 
       {n.error !== '' && <Text style={styles.error}>{n.error}</Text>}
-      <Pressable onPress={n.create} disabled={!n.canCreate} style={[styles.createBtn, !n.canCreate && { opacity: 0.4 }]}>
+      <Pressable
+        onPress={n.create}
+        disabled={!n.canCreate}
+        style={[styles.createBtn, !n.canCreate && { opacity: 0.4 }]}
+      >
         <Text style={styles.createText}>Create group & send invites</Text>
       </Pressable>
     </View>
@@ -67,7 +81,14 @@ export function NewGroupScreen() {
 const styles = StyleSheet.create({
   wrap: { gap: 12 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  title: { flex: 1, fontFamily: font.headingBold, fontWeight: '700', fontSize: 22, letterSpacing: -0.2, color: color.text },
+  title: {
+    flex: 1,
+    fontFamily: font.headingBold,
+    fontWeight: '700',
+    fontSize: 22,
+    letterSpacing: -0.2,
+    color: color.text,
+  },
   card: { padding: 14, gap: 10 },
   headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   cardTitle: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 17, color: color.text },

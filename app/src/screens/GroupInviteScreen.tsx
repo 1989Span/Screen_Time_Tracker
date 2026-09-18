@@ -29,7 +29,14 @@ export function GroupInviteScreen() {
 const styles = StyleSheet.create({
   wrap: { gap: 12 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  title: { flex: 1, fontFamily: font.headingBold, fontWeight: '700', fontSize: 22, letterSpacing: -0.2, color: color.text },
+  title: {
+    flex: 1,
+    fontFamily: font.headingBold,
+    fontWeight: '700',
+    fontSize: 22,
+    letterSpacing: -0.2,
+    color: color.text,
+  },
   sendBtn: { paddingVertical: 13, borderRadius: 12, alignItems: 'center', backgroundColor: color.accent },
   sendText: { fontFamily: font.bodySemiBold, fontSize: 14, color: '#ffffff' },
 });

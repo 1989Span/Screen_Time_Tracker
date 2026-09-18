@@ -1,8 +1,13 @@
 // Ported from `project/Gauge Screen Time.dc.html` (turn 3 script block).
-// Deterministic pseudo-random demo dataset — same formulas as the mockup,
-// anchored to the same fixed "today" so the numbers it shows match it.
+// Deterministic pseudo-random demo dataset — same formulas as the mockup.
+//
+// "Today" comes from ./clock rather than a frozen constant, so the app shows
+// real dates on a device and the generated numbers stay stable for a given
+// day. Every cache here is keyed by "days before today", which is only valid
+// for one calendar day — hence the onDayChange registrations below.
 
 import { CCOL } from './theme';
+import { checkDayRollover, currentHour, daysBetween, onDayChange, startOfToday, dateAt } from './clock';
 
 export type RangeId = 'day' | 'week' | 'month' | 'year';
 
@@ -30,10 +35,6 @@ export { CCOL };
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DOWI = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-const TODAY = new Date(2026, 7, 25);
-const CUR_HOUR = 19;
-const DAY = 86400000;
-
 export const RANGE_LABEL: Record<RangeId, string> = { day: 'Day', week: 'Week', month: 'Month', year: 'Year' };
 export const N_DAYS: Record<RangeId, number> = { day: 1, week: 7, month: 30, year: 365 };
 
@@ -59,10 +60,13 @@ function weights(ai: number): number[] {
   return _w[ai];
 }
 
-const _raw: Record<number, number[]> = {};
+let _raw: Record<number, number[]> = {};
+onDayChange(() => {
+  _raw = {};
+});
 function raw(idx: number): number[] {
   if (_raw[idx]) return _raw[idx];
-  const dow = new Date(TODAY.getTime() - idx * DAY).getDay();
+  const dow = dateAt(idx).getDay();
   const wk = dow === 0 || dow === 6;
   _raw[idx] = CATS.map((a, ai) => {
     const f = a.work ? (wk ? 0.12 : 1.12) : wk ? 1.34 : 0.92;
@@ -72,14 +76,15 @@ function raw(idx: number): number[] {
 }
 
 function hourByCat(idx: number, h: number): number[] {
-  if (idx === 0 && h > CUR_HOUR) return CATS.map(() => 0);
+  if (idx === 0 && h > currentHour()) return CATS.map(() => 0);
   return raw(idx).map((v, ai) => v * weights(ai)[h]);
 }
 
 function dayByCat(idx: number): number[] {
   if (idx !== 0) return raw(idx);
   const out = CATS.map(() => 0);
-  for (let h = 0; h <= CUR_HOUR; h++) hourByCat(0, h).forEach((v, i) => (out[i] += v));
+  const cur = currentHour();
+  for (let h = 0; h <= cur; h++) hourByCat(0, h).forEach((v, i) => (out[i] += v));
   return out;
 }
 
@@ -115,23 +120,30 @@ export function factFor(range: RangeId, mins: number): string {
   const r = (v: number) => (v >= 10 ? String(Math.round(v)) : String(Math.round(v * 10) / 10));
   const t = fmtShort(mins);
   if (mins < 5) return 'Nothing to report yet — the phone stayed in your pocket.';
-  if (range === 'day') return 'Did you watch ' + r(mins / 112) + ' films back to back, or spend ' + t + ' on cats freaking out?';
+  if (range === 'day')
+    return 'Did you watch ' + r(mins / 112) + ' films back to back, or spend ' + t + ' on cats freaking out?';
   if (range === 'week')
     return t + ' is ' + r(mins / 450) + ' flights to New York. You could have landed, had dinner and flown home.';
   if (range === 'month')
     return (
-      'The same ' + t + ' covers ' + r(mins / 480) + ' novels — or ' + r(mins / 24) + ' episodes you will not remember tomorrow.'
+      'The same ' +
+      t +
+      ' covers ' +
+      r(mins / 480) +
+      ' novels — or ' +
+      r(mins / 24) +
+      ' episodes you will not remember tomorrow.'
     );
   return t + ' of your year went thumb-first. Enough to learn the guitar. Badly. Twice.';
 }
 
 function dstr(idx: number): string {
-  const d = new Date(TODAY.getTime() - idx * DAY);
+  const d = dateAt(idx);
   return DOW[d.getDay()] + ' ' + d.getDate() + ' ' + MON[d.getMonth()];
 }
 
 function dshort(idx: number): string {
-  const d = new Date(TODAY.getTime() - idx * DAY);
+  const d = dateAt(idx);
   return d.getDate() + ' ' + MON[d.getMonth()];
 }
 
@@ -140,19 +152,18 @@ function hourLabel(h: number): string {
   return f(h) + '–' + f((h + 1) % 24);
 }
 
-export const DATES: Record<RangeId, string> = {
-  day: dstr(0),
-  week: dshort(6) + ' – ' + dshort(0),
-  month: dshort(29) + ' – ' + dshort(0),
-  year:
-    MON[(TODAY.getMonth() + 1) % 12] +
-    ' ' +
-    (TODAY.getFullYear() - 1) +
-    ' – ' +
-    MON[TODAY.getMonth()] +
-    ' ' +
-    TODAY.getFullYear(),
-};
+/** Human range labels for the current day. A function, not a const: freezing
+ *  these at module-import time is what pinned the old build to one date. */
+export function dates(): Record<RangeId, string> {
+  const t = startOfToday();
+  return {
+    day: dstr(0),
+    week: dshort(6) + ' – ' + dshort(0),
+    month: dshort(29) + ' – ' + dshort(0),
+    year:
+      MON[(t.getMonth() + 1) % 12] + ' ' + (t.getFullYear() - 1) + ' – ' + MON[t.getMonth()] + ' ' + t.getFullYear(),
+  };
+}
 
 export interface Bucket {
   per: number[];
@@ -161,6 +172,7 @@ export interface Bucket {
 }
 
 export function buckets(range: RangeId): Bucket[] {
+  checkDayRollover();
   const out: Bucket[] = [];
   if (range === 'day') {
     for (let h = 0; h < 24; h++) {
@@ -173,16 +185,17 @@ export function buckets(range: RangeId): Bucket[] {
   } else if (range === 'week' || range === 'month') {
     const n = range === 'week' ? 7 : 30;
     for (let i = n - 1; i >= 0; i--) {
-      const d = new Date(TODAY.getTime() - i * DAY);
+      const d = dateAt(i);
       out.push({ per: dayByCat(i), tick: range === 'week' ? DOWI[d.getDay()] : String(d.getDate()), label: dstr(i) });
     }
   } else {
     for (let i = 11; i >= 0; i--) {
-      const d = new Date(TODAY.getFullYear(), TODAY.getMonth() - i, 1);
+      const t = startOfToday();
+      const d = new Date(t.getFullYear(), t.getMonth() - i, 1);
       const per = CATS.map(() => 0);
       const n = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
       for (let k = 1; k <= n; k++) {
-        const idx = Math.round((TODAY.getTime() - new Date(d.getFullYear(), d.getMonth(), k).getTime()) / DAY);
+        const idx = daysBetween(new Date(d.getFullYear(), d.getMonth(), k), t);
         if (idx < 0) continue;
         dayByCat(idx).forEach((v, a) => (per[a] += v));
       }
@@ -193,10 +206,12 @@ export function buckets(range: RangeId): Bucket[] {
 }
 
 export function prevTotal(range: RangeId, tr: boolean[]): number {
+  checkDayRollover();
   const sum = (per: number[]) => per.reduce((s, v, i) => s + (tr[i] ? v : 0), 0);
   let t = 0;
   if (range === 'day') {
-    for (let h = 0; h <= CUR_HOUR; h++) t += sum(hourByCat(1, h));
+    const cur = currentHour();
+    for (let h = 0; h <= cur; h++) t += sum(hourByCat(1, h));
   } else if (range === 'week') {
     for (let i = 7; i < 14; i++) t += sum(dayByCat(i));
   } else if (range === 'month') {
@@ -228,7 +243,7 @@ export interface Slice {
 }
 
 export function slice(range: RangeId, sel: number | null, tr: boolean[]): Slice {
-  const bk = buckets(range);
+  const bk = buckets(range); // checks rollover
   const tot = (per: number[]) => per.reduce((s, v, i) => s + (tr[i] ? v : 0), 0);
   const totals = bk.map((b) => tot(b.per));
   const max = Math.max(1, ...totals);
@@ -257,10 +272,12 @@ export function slice(range: RangeId, sel: number | null, tr: boolean[]): Slice 
 }
 
 export function dayUsage(): number[] {
+  checkDayRollover();
   return dayByCat(0);
 }
 
 export function fourteenDayAvg(catIndex: number): number {
+  checkDayRollover();
   let s = 0;
   for (let i = 1; i <= 14; i++) s += dayByCat(i)[catIndex];
   return s / 14;
@@ -269,10 +286,8 @@ export function fourteenDayAvg(catIndex: number): number {
 // Groups — other members' days use the same shape as raw()/dayByCat(), with a
 // per-category usage scale and a seed so each person gets their own numbers.
 
-/** Calendar date `idx` days before today (DST-safe). */
-export function dateAt(idx: number): Date {
-  return new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate() - idx);
-}
+// Re-exported so callers get dates from the one clock, not a second copy.
+export { dateAt };
 
 export function dayLabel(idx: number): string {
   const d = dateAt(idx);
@@ -292,7 +307,7 @@ export function memberDay(idx: number, scale: number[], seed: number): number[] 
     let v = a.base * scale[ai] * f * (0.55 + 0.95 * rnd(ai + 1 + seed * 17, idx + 3 + seed * 29));
     if (idx === 0)
       v *= weights(ai)
-        .slice(0, CUR_HOUR + 1)
+        .slice(0, currentHour() + 1)
         .reduce((s, w) => s + w, 0);
     return v;
   });
@@ -307,9 +322,23 @@ export interface PenaltySetting {
   rate: number; // dollars per minute over
 }
 
-export const INSTALL_DATE = new Date(2026, 2, 1);
-export const UNLOCK_DATE = new Date(INSTALL_DATE.getFullYear() + 1, INSTALL_DATE.getMonth(), INSTALL_DATE.getDate());
-// 4h so that "today so far" (~4h 07m at CUR_HOUR) already shows an overage.
+/** How long the demo pretends the app has been installed. Real builds must
+ *  persist the true install date at first launch instead (see prefs store). */
+export const DEMO_INSTALL_DAYS_AGO = 177;
+
+/** Day the demo ledger starts. Clock-relative so history stays bounded
+ *  instead of growing forever against a frozen calendar date. */
+export function installDate(): Date {
+  return dateAt(DEMO_INSTALL_DAYS_AGO);
+}
+
+/** Charges unlock a year after install. */
+export function unlockDate(): Date {
+  const d = installDate();
+  return new Date(d.getFullYear() + 1, d.getMonth(), d.getDate());
+}
+
+// 4h so that "today so far" already shows an overage by mid-evening.
 export const DEMO_PENALTY: PenaltySetting = { limit: 240, rate: 0.1 };
 export const DEFAULT_PENALTY: PenaltySetting = { limit: 360, rate: 1 };
 export const PENALTY_LIMIT_PRESETS = [120, 180, 240, 300, 360, 420, 480, 600];
@@ -337,11 +366,12 @@ export function chargeFor(used: number, s: PenaltySetting): number {
 }
 
 export function trackedToday(tr: boolean[]): number {
+  checkDayRollover();
   return dayByCat(0).reduce((s, v, i) => s + (tr[i] ? v : 0), 0);
 }
 
 export function daysUntilUnlock(): number {
-  return Math.round((UNLOCK_DATE.getTime() - TODAY.getTime()) / DAY);
+  return daysBetween(startOfToday(), unlockDate());
 }
 
 export interface ChargeDay {
@@ -354,11 +384,15 @@ export interface ChargeDay {
 }
 
 let _history: ChargeDay[] | null = null;
+onDayChange(() => {
+  _history = null;
+});
 /** Settled days, newest first (yesterday back to install day). Past days were
  *  settled with every category tracked, so later toggles don't rewrite them. */
 export function chargeHistory(): ChargeDay[] {
+  checkDayRollover();
   if (_history) return _history;
-  const n = Math.round((TODAY.getTime() - INSTALL_DATE.getTime()) / DAY);
+  const n = daysBetween(installDate(), startOfToday());
   const out: ChargeDay[] = [];
   let balance = 0;
   for (let idx = n; idx >= 1; idx--) {

@@ -131,7 +131,11 @@ export function PenaltyScreen() {
             <Text style={styles.removeText}>Turn off</Text>
           </Pressable>
         )}
-        <Pressable onPress={e.save} disabled={!e.canSave} style={[styles.btn, styles.saveBtn, !e.canSave && { opacity: 0.4 }]}>
+        <Pressable
+          onPress={e.save}
+          disabled={!e.canSave}
+          style={[styles.btn, styles.saveBtn, !e.canSave && { opacity: 0.4 }]}
+        >
           <Text style={styles.saveText}>Save · starts tomorrow</Text>
         </Pressable>
       </View>
@@ -142,7 +146,14 @@ export function PenaltyScreen() {
 const styles = StyleSheet.create({
   wrap: { gap: 12 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  title: { flex: 1, fontFamily: font.headingBold, fontWeight: '700', fontSize: 22, letterSpacing: -0.2, color: color.text },
+  title: {
+    flex: 1,
+    fontFamily: font.headingBold,
+    fontWeight: '700',
+    fontSize: 22,
+    letterSpacing: -0.2,
+    color: color.text,
+  },
   card: { padding: 14, gap: 8 },
   statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   statusLabel: { fontSize: 12.5, color: alpha(color.text, 52) },

@@ -25,7 +25,8 @@ const noRules: GroupRules = { excluded: [], proposals: [] };
 const pointsOf = (g: Group, excluded: string[]) =>
   groupStats(g, excluded).stats.reduce<Record<string, number>>((acc, s) => ({ ...acc, [s.member.name]: s.points }), {});
 /** Every member agrees, in member order. */
-const everyoneAgrees = (g: Group, rules: GroupRules, cat: string) => g.members.reduce((acc, m) => vote(g, acc, cat, m.id), rules);
+const everyoneAgrees = (g: Group, rules: GroupRules, cat: string) =>
+  g.members.reduce((acc, m) => vote(g, acc, cat, m.id), rules);
 
 describe('demo groups', () => {
   it('are two groups that both include you', () => {
