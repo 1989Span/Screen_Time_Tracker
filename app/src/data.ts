@@ -1,36 +1,26 @@
-// Ported from `project/Gauge Screen Time.dc.html` (turn 3 script block).
-// Deterministic pseudo-random demo dataset — same formulas as the mockup.
+// Derivation and presentation over whatever usage source is installed.
+//
+// This file owns no data of its own any more. Ranges, buckets, totals, the
+// penalty ledger and every string the UI renders are computed here; the raw
+// per-day and per-hour numbers come from ./usage/source. Swapping the demo
+// generator for real Android UsageStats therefore touches nothing below.
 //
 // "Today" comes from ./clock rather than a frozen constant, so the app shows
-// real dates on a device and the generated numbers stay stable for a given
-// day. Every cache here is keyed by "days before today", which is only valid
-// for one calendar day — hence the onDayChange registrations below.
+// real dates on a device. Caches here are keyed by "days before today", which
+// is only valid for one calendar day — hence the onDayChange registrations.
 
 import { CCOL } from './theme';
 import { checkDayRollover, currentHour, daysBetween, onDayChange, startOfToday, dateAt } from './clock';
+import { CATS, Cat } from './usage/categories';
+import { hasUsageSource, usageSource } from './usage/source';
+import { demoSource } from './usage/demoSource';
 
 export type RangeId = 'day' | 'week' | 'month' | 'year';
 
-export interface Cat {
-  id: string;
-  name: string;
-  base: number;
-  peak: number;
-  work?: boolean;
-}
-
-export const CATS: Cat[] = [
-  { id: 'social', name: 'Social', base: 96, peak: 21 },
-  { id: 'video', name: 'Video', base: 74, peak: 22 },
-  { id: 'work', name: 'Work', base: 118, peak: 11, work: true },
-  { id: 'messaging', name: 'Messaging', base: 52, peak: 13 },
-  { id: 'games', name: 'Games', base: 34, peak: 20 },
-  { id: 'music', name: 'Music', base: 38, peak: 9 },
-  { id: 'reading', name: 'Reading', base: 22, peak: 23 },
-  { id: 'navigation', name: 'Navigation', base: 16, peak: 8 },
-];
-
-export { CCOL };
+// Re-exported so existing imports keep working; the definitions now live with
+// the source layer, because a real source is what decides what a category is.
+export { CATS, CCOL };
+export type { Cat };
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -38,55 +28,21 @@ const DOWI = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 export const RANGE_LABEL: Record<RangeId, string> = { day: 'Day', week: 'Week', month: 'Month', year: 'Year' };
 export const N_DAYS: Record<RangeId, number> = { day: 1, week: 7, month: 30, year: 365 };
 
-function rnd(a: number, b: number): number {
-  const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
-  return x - Math.floor(x);
-}
-
-const _w: Record<number, number[]> = {};
-function weights(ai: number): number[] {
-  if (_w[ai]) return _w[ai];
-  const p = CATS[ai].peak;
-  const w: number[] = [];
-  let s = 0;
-  for (let h = 0; h < 24; h++) {
-    let d = Math.abs(h - p);
-    d = Math.min(d, 24 - d);
-    const v = Math.exp(-(d * d) / 7) * (h < 6 ? 0.12 : 1);
-    w.push(v);
-    s += v;
-  }
-  _w[ai] = w.map((v) => v / s);
-  return _w[ai];
-}
-
-let _raw: Record<number, number[]> = {};
-onDayChange(() => {
-  _raw = {};
-});
-function raw(idx: number): number[] {
-  if (_raw[idx]) return _raw[idx];
-  const dow = dateAt(idx).getDay();
-  const wk = dow === 0 || dow === 6;
-  _raw[idx] = CATS.map((a, ai) => {
-    const f = a.work ? (wk ? 0.12 : 1.12) : wk ? 1.34 : 0.92;
-    return a.base * f * (1 + 0.14 * Math.sin(idx / 57)) * (0.55 + 0.95 * rnd(ai + 1, idx + 3));
-  });
-  return _raw[idx];
-}
-
+// The two primitives every derivation below is built on. Both delegate to the
+// installed source; both return fresh arrays so a caller cannot reach into a
+// source's cache and corrupt it for the rest of the process.
 function hourByCat(idx: number, h: number): number[] {
-  if (idx === 0 && h > currentHour()) return CATS.map(() => 0);
-  return raw(idx).map((v, ai) => v * weights(ai)[h]);
+  return usageSource().hourTotals(idx, h);
 }
 
 function dayByCat(idx: number): number[] {
-  if (idx !== 0) return raw(idx);
-  const out = CATS.map(() => 0);
-  const cur = currentHour();
-  for (let h = 0; h <= cur; h++) hourByCat(0, h).forEach((v, i) => (out[i] += v));
-  return out;
+  return usageSource().dayTotals(idx).slice();
 }
+
+// Day offsets change meaning at midnight, so the source's cache goes with ours.
+onDayChange(() => {
+  if (hasUsageSource()) usageSource().invalidate();
+});
 
 export function fmt(m: number): string {
   m = Math.round(m);
@@ -299,18 +255,10 @@ export function myDay(idx: number): number[] {
   return dayByCat(idx);
 }
 
+/** Another group member's day. Stays on the demo source: the OS only reports
+ *  this device, so real other-people data has to come from a backend. */
 export function memberDay(idx: number, scale: number[], seed: number): number[] {
-  const dow = dateAt(idx).getDay();
-  const wk = dow === 0 || dow === 6;
-  return CATS.map((a, ai) => {
-    const f = a.work ? (wk ? 0.12 : 1.12) : wk ? 1.34 : 0.92;
-    let v = a.base * scale[ai] * f * (0.55 + 0.95 * rnd(ai + 1 + seed * 17, idx + 3 + seed * 29));
-    if (idx === 0)
-      v *= weights(ai)
-        .slice(0, currentHour() + 1)
-        .reduce((s, w) => s + w, 0);
-    return v;
-  });
+  return demoSource.memberDay(idx, scale, seed);
 }
 
 // Penalty limit (simulated ledger — no real money moves). The demo pretends

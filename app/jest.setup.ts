@@ -3,6 +3,7 @@
 // `TODAY`/`CUR_HOUR` pair the data layer used to hardcode. Assertions about
 // generated usage, dates and the penalty ledger stay stable because of this.
 import { setFixedClock } from './src/clock';
+import { installDefaultUsageSource } from './src/usage/bootstrap';
 
 setFixedClock(new Date(2026, 7, 25, 19, 0, 0));
 
@@ -15,3 +16,6 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
+
+// The data layer reads through an installed usage source, so tests need one.
+installDefaultUsageSource();
