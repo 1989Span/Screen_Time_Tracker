@@ -28,6 +28,22 @@ const DOWI = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 export const RANGE_LABEL: Record<RangeId, string> = { day: 'Day', week: 'Week', month: 'Month', year: 'Year' };
 export const N_DAYS: Record<RangeId, number> = { day: 1, week: 7, month: 30, year: 365 };
 
+/** The series currently being measured, in the order every per-series array is
+ *  indexed. Dynamic: eight demo categories, or however many apps are tracked. */
+export function series() {
+  return usageSource().series();
+}
+
+/** How many series there are. Was CATS.length; never assume 8. */
+export function seriesCount(): number {
+  return usageSource().series().length;
+}
+
+/** A zero-filled accumulator sized to the current series. */
+function zeros(): number[] {
+  return new Array<number>(seriesCount()).fill(0);
+}
+
 // The two primitives every derivation below is built on. Both delegate to the
 // installed source; both return fresh arrays so a caller cannot reach into a
 // source's cache and corrupt it for the rest of the process.
@@ -148,7 +164,7 @@ export function buckets(range: RangeId): Bucket[] {
     for (let i = 11; i >= 0; i--) {
       const t = startOfToday();
       const d = new Date(t.getFullYear(), t.getMonth() - i, 1);
-      const per = CATS.map(() => 0);
+      const per = zeros();
       const n = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
       for (let k = 1; k <= n; k++) {
         const idx = daysBetween(new Date(d.getFullYear(), d.getMonth(), k), t);
@@ -204,25 +220,21 @@ export function slice(range: RangeId, sel: number | null, tr: boolean[]): Slice 
   const totals = bk.map((b) => tot(b.per));
   const max = Math.max(1, ...totals);
   const s = sel != null && sel < bk.length ? sel : null;
-  const scoped =
-    s != null
-      ? bk[s].per
-      : bk.reduce(
-          (a, b) => (b.per.forEach((v, i) => (a[i] += v)), a),
-          CATS.map(() => 0)
-        );
+  const scoped = s != null ? bk[s].per : bk.reduce((a, b) => (b.per.forEach((v, i) => (a[i] += v)), a), zeros());
   const total = tot(scoped);
-  const order = CATS.map((c, i) => i)
+  const ser = series();
+  const order = ser
+    .map((_, i) => i)
     .filter((i) => tr[i] && scoped[i] > 0.4)
     .sort((x, y) => scoped[y] - scoped[x]);
   const topV = order.length ? scoped[order[0]] : 1;
   const rows: SliceRow[] = order.map((i) => ({
-    name: CATS[i].name,
+    name: ser[i].name,
     time: fmt(scoped[i]),
     pct: Math.max(2, (scoped[i] / topV) * 100),
     share: Math.round((scoped[i] / Math.max(1, total)) * 100) + '%',
     ci: i,
-    tone: CCOL[i],
+    tone: ser[i].color,
   }));
   return { bk, totals, max, sel: s, scoped, total, order, rows };
 }

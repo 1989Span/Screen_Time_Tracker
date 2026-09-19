@@ -11,6 +11,8 @@
 
 import { CATS, Cat } from './categories';
 import { SourceStatus, UsageSource } from './source';
+import { Series } from './series';
+import { CCOL } from '../theme';
 import { currentHour, dateAt } from '../clock';
 
 /** Cheap deterministic hash in [0,1). Same formula as the mockup. */
@@ -56,8 +58,11 @@ export class DemoUsageSource implements UsageSource {
     return this._status;
   }
 
-  categories(): Cat[] {
-    return CATS;
+  /** The eight demo categories, presented as series. Colours come from the
+   *  hand-picked palette rather than colorForId, so the demo keeps matching the
+   *  original design. */
+  series(): Series[] {
+    return CATS.map((c, i) => ({ id: c.id, name: c.name, color: CCOL[i] }));
   }
 
   async load(_days: number): Promise<void> {

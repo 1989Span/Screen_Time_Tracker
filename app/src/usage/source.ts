@@ -18,7 +18,7 @@
 // Consequence: reads before load() resolves are served from whatever the source
 // has, so callers should gate the first paint on status === 'ready'.
 
-import { Cat } from './categories';
+import { Series } from './series';
 
 export type SourceStatus =
   | 'idle' // constructed, load() not called yet
@@ -31,9 +31,10 @@ export interface UsageSource {
   /** Stable identifier, for logs and for asserting which source is installed. */
   readonly id: string;
 
-  /** Categories this source can report. The demo source has a fixed list; a
-   *  real one derives them from the apps actually installed and used. */
-  categories(): Cat[];
+  /** The series this source reports, in the order every array below is indexed.
+   *  The demo source has a fixed eight; a real one returns the tracked apps, so
+   *  the count is dynamic and can change when the user edits their selection. */
+  series(): Series[];
 
   readonly status: SourceStatus;
 

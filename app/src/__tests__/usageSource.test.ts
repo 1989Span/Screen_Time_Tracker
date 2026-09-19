@@ -1,6 +1,6 @@
 import { invalidate, setFixedClock } from '../clock';
-import { CATS, dayUsage, prevTotal, slice, trackedToday } from '../data';
-import { Cat } from '../usage/categories';
+import { CATS, dayUsage, prevTotal, series, seriesCount, slice, trackedToday } from '../data';
+import { Series } from '../usage/series';
 import { SourceStatus, UsageSource, setUsageSource, usageSource } from '../usage/source';
 import { demoSource } from '../usage/demoSource';
 
@@ -14,8 +14,8 @@ class FlatSource implements UsageSource {
   loadedDays = 0;
   invalidated = 0;
   constructor(private readonly minutesPerCategoryPerDay: number) {}
-  categories(): Cat[] {
-    return CATS;
+  series(): Series[] {
+    return CATS.map((c) => ({ id: c.id, name: c.name, color: '#000000' }));
   }
   async load(days: number) {
     this.loadedDays = days;
@@ -113,5 +113,78 @@ describe('source caches cannot be corrupted by callers', () => {
     const scoped = slice('week', 3, allTracked);
     scoped.scoped[0] = 123456;
     expect(slice('week', null, allTracked).total).toBeCloseTo(before, 6);
+  });
+});
+
+describe('the series count is not hardwired to eight', () => {
+  /** A source with an arbitrary number of series, named like packages. */
+  class AppSource implements UsageSource {
+    readonly id = 'apps';
+    status: SourceStatus = 'ready';
+    private readonly list: Series[];
+    constructor(
+      count: number,
+      private readonly minutesEach: number
+    ) {
+      this.list = Array.from({ length: count }, (_, i) => ({
+        id: `com.example.app${i}`,
+        name: `App ${i}`,
+        color: '#123456',
+      }));
+    }
+    series(): Series[] {
+      return this.list;
+    }
+    async load() {
+      this.status = 'ready';
+    }
+    invalidate() {}
+    dayTotals(): number[] {
+      return this.list.map(() => this.minutesEach);
+    }
+    hourTotals(): number[] {
+      return this.list.map(() => this.minutesEach / 24);
+    }
+  }
+
+  it.each([1, 3, 30, 109])('derives correctly over %i series', (count) => {
+    setUsageSource(new AppSource(count, 12));
+    invalidate();
+    const all = Array.from({ length: count }, () => true);
+
+    expect(seriesCount()).toBe(count);
+    expect(series()).toHaveLength(count);
+    expect(dayUsage()).toHaveLength(count);
+    // count series x 12 min x 7 days
+    expect(slice('week', null, all).total).toBeCloseTo(count * 12 * 7, 6);
+    expect(slice('week', null, all).rows).toHaveLength(count);
+  });
+
+  it('labels rows and colours from the series, not a fixed palette', () => {
+    setUsageSource(new AppSource(3, 60));
+    invalidate();
+    const rows = slice('week', null, [true, true, true]).rows;
+    expect(rows.map((r) => r.name).sort()).toEqual(['App 0', 'App 1', 'App 2']);
+    expect(new Set(rows.map((r) => r.tone))).toEqual(new Set(['#123456']));
+  });
+
+  it('a year of 109 app series still aggregates', () => {
+    const all = Array.from({ length: 109 }, () => true);
+
+    setUsageSource(new AppSource(109, 5));
+    invalidate();
+    const single = slice('year', null, all);
+
+    // The year range is 12 *calendar months* ending with a partial current
+    // month, not a flat 365 days, so assert proportionality rather than an
+    // absolute figure. (Note N_DAYS.year is 365 and is used for the daily
+    // average, which is therefore a slight under-estimate - pre-existing.)
+    expect(single.total).toBeGreaterThan(0);
+    expect(single.bk).toHaveLength(12);
+    expect(single.rows).toHaveLength(109);
+
+    setUsageSource(new AppSource(109, 10));
+    invalidate();
+    expect(slice('year', null, all).total).toBeCloseTo(single.total * 2, 6);
   });
 });
