@@ -19,3 +19,42 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 
 // The data layer reads through an installed usage source, so tests need one.
 installDefaultUsageSource();
+
+// The usage-stats native module has no implementation under jest. Default to
+// "no permission, nothing installed", which is the honest shape for a test
+// environment; individual tests override with jest.spyOn where they need data.
+jest.mock('./modules/usage-stats', () => ({
+  UsageStats: {
+    hasPermission: () => false,
+    openSettings: () => {},
+    installedApps: async () => [],
+    queryTotals: async () => ({}),
+    queryEvents: async () => [],
+    probeRetention: async () => ({}),
+  },
+}));
+
+// expo-sqlite is native and does not resolve under jest. Stubbed so modules that
+// import it can be unit-tested; the SQL itself is verified on a device, not
+// against a hand-written fake SQL engine that would prove nothing about SQLite.
+jest.mock('expo-sqlite', () => {
+  const statement = {
+    executeAsync: async () => ({}),
+    finalizeAsync: async () => {},
+  };
+  const db = {
+    execAsync: async () => {},
+    runAsync: async () => ({ changes: 0, lastInsertRowId: 0 }),
+    getFirstAsync: async () => undefined,
+    getAllAsync: async () => [],
+    prepareAsync: async () => statement,
+    withTransactionAsync: async (fn: () => Promise<void>) => {
+      await fn();
+    },
+    closeAsync: async () => {},
+  };
+  return {
+    openDatabaseAsync: async () => db,
+    openDatabaseSync: () => db,
+  };
+});
