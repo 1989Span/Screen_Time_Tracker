@@ -103,7 +103,8 @@ export const useGroupsStore = create<GroupsState>()(
   persist(
     (set, get) => ({
       groups: GROUPS,
-      groupId: GROUPS[0].id,
+      // No seeded groups any more, so there may be nothing to select.
+      groupId: GROUPS[0]?.id ?? '',
       rules: INITIAL_RULES,
       invites: {},
       leaveConfirm: false,

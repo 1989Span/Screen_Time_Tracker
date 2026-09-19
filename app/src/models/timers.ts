@@ -1,7 +1,11 @@
-// App timers: the per-category list and the single-category editor.
+// App timers: the per-app list and the single-app editor.
+//
+// One row per tracked app rather than per category. The list is therefore as long
+// as the user's selection, and a limit belongs to a package name, not a position.
 
 import { useMemo } from 'react';
-import { CATS, CCOL, PRESETS, dayUsage, fmtShort, limLabel } from '../data';
+
+import { PRESETS, dayUsage, fmtShort, limLabel, series } from '../data';
 import { useNavStore } from '../state/navStore';
 import { useTimersStore } from '../state/timersStore';
 import { OVER_BAR, limitState } from './shared';
@@ -22,6 +26,8 @@ export interface TimerRow {
 
 export interface TimersViewModel {
   list: TimerRow[];
+  /** Shown when nothing is tracked, so an empty Timers tab explains itself. */
+  emptyNote: string | null;
 }
 
 export function useTimersModel(): TimersViewModel {
@@ -30,23 +36,25 @@ export function useTimersModel(): TimersViewModel {
 
   return useMemo(() => {
     const todayPer = dayUsage();
+    const list = series().map((ser, i) => {
+      const s = limitState(ser.id, i, limits, todayPer);
+      return {
+        id: ser.id,
+        name: ser.name,
+        color: ser.color,
+        used: fmtShort(todayPer[i] ?? 0) + ' today',
+        limStr: s.limit == null ? 'Off' : limLabel(s.limit),
+        text: s.text,
+        bg: s.bg,
+        fg: s.fg,
+        pct: s.limit == null ? 0 : Math.min(100, (s.used / s.limit) * 100),
+        barColor: s.over ? OVER_BAR : ser.color,
+        onPress: () => open(ser.id),
+      };
+    });
     return {
-      list: CATS.map((c, i) => {
-        const s = limitState(i, limits, todayPer);
-        return {
-          id: c.id,
-          name: c.name,
-          color: CCOL[i],
-          used: fmtShort(todayPer[i]) + ' today',
-          limStr: s.limit == null ? 'Off' : limLabel(s.limit),
-          text: s.text,
-          bg: s.bg,
-          fg: s.fg,
-          pct: s.limit == null ? 0 : Math.min(100, (s.used / s.limit) * 100),
-          barColor: s.over ? OVER_BAR : CCOL[i],
-          onPress: () => open(i),
-        };
-      }),
+      list,
+      emptyNote: list.length === 0 ? 'Pick some apps under Settings and they will show up here.' : null,
     };
   }, [limits, open]);
 }
@@ -77,31 +85,36 @@ export function useTimerEditorModel(): TimerEditorViewModel {
 
   return useMemo(() => {
     const todayPer = dayUsage();
-    const s = limitState(editing, limits, todayPer);
-    const used = todayPer[editing];
+    const list = series();
+    // The app being edited can vanish from the selection (or the device) between
+    // opening the editor and rendering it, so fall back rather than crash.
+    const index = list.findIndex((x) => x.id === editing);
+    const ser = index >= 0 ? list[index] : { id: editing, name: editing || 'App', color: OVER_BAR };
+    const s = limitState(ser.id, index, limits, todayPer);
+    const used = index >= 0 ? (todayPer[index] ?? 0) : 0;
 
     return {
-      name: CATS[editing].name,
-      color: CCOL[editing],
+      name: ser.name,
+      color: ser.color,
       used: fmtShort(used),
       limitText: s.limit == null ? 'No limit set' : limLabel(s.limit) + ' a day',
       pct: s.limit == null ? 0 : Math.min(100, (used / s.limit) * 100),
-      barColor: s.over ? OVER_BAR : CCOL[editing],
+      barColor: s.over ? OVER_BAR : ser.color,
       stateText: s.text,
       stateBg: s.bg,
       stateFg: s.fg,
       hint:
         s.limit == null
-          ? 'Pick a daily budget. The app pauses when you hit it, and resets at midnight.'
-          : 'Pauses ' + CATS[editing].name.toLowerCase() + ' apps for the rest of the day once you hit it.',
+          ? 'Pick a daily budget for this app. It resets at midnight.'
+          : `Once ${ser.name} passes this, the rest of the day counts as over.`,
       presets: PRESETS.map((v) => ({
         v,
         label: limLabel(v),
         active: s.limit === v,
-        onPress: () => setLimit(editing, v),
+        onPress: () => setLimit(ser.id, v),
       })),
       hasLimit: s.limit != null,
-      clear: () => clearLimit(editing),
+      clear: () => clearLimit(ser.id),
       backToLimits: () => go('limits'),
     };
   }, [limits, editing, setLimit, clearLimit, go]);

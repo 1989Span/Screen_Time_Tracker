@@ -1,11 +1,8 @@
+import { invalidate, setFixedClock } from '../clock';
 import {
-  CATS,
-  DEMO_PENALTY,
-  installDate,
   PenaltySetting,
   RATE_MAX,
   RATE_MIN,
-  unlockDate,
   chargeFor,
   chargeHistory,
   daysUntilUnlock,
@@ -15,9 +12,40 @@ import {
   limLabel,
   minutesOver,
   trackedToday,
+  unlockDateFrom,
 } from '../data';
+import { Series } from '../usage/series';
+import { SourceStatus, UsageSource, setUsageSource } from '../usage/source';
+import { emptySource } from '../usage/emptySource';
 
-const trackAll = CATS.map(() => true);
+const PINNED = new Date(2026, 7, 25, 19, 0, 0);
+
+/** A source with one series reporting a fixed number of minutes every day, so
+ *  ledger arithmetic can be asserted exactly rather than against generated data. */
+class FixedSource implements UsageSource {
+  readonly id = 'fixed';
+  readonly status: SourceStatus = 'ready';
+  constructor(private readonly minutesPerDay: number) {}
+  series(): Series[] {
+    return [{ id: 'com.example.app', name: 'Example', color: '#000000' }];
+  }
+  async load() {}
+  invalidate() {}
+  dayTotals(): number[] {
+    return [this.minutesPerDay];
+  }
+  hourTotals(): number[] {
+    return [this.minutesPerDay / 24];
+  }
+}
+
+const trackAll = [true];
+
+afterEach(() => {
+  setUsageSource(emptySource);
+  setFixedClock(PINNED);
+  invalidate();
+});
 const dollar: PenaltySetting = { limit: 60, rate: 1 };
 
 describe('minutes over the limit', () => {
@@ -71,17 +99,42 @@ describe('rate limits', () => {
   });
 });
 
-describe('locked balance', () => {
-  const history = chargeHistory();
+describe('the ledger', () => {
+  const setting: PenaltySetting = { limit: 60, rate: 0.5 };
 
-  it('covers every settled day since install, newest first', () => {
-    const days = Math.round((unlockDate().getTime() - installDate().getTime()) / 86400000) - daysUntilUnlock();
-    expect(history).toHaveLength(days);
-    expect(history[0].label).toContain('24 Aug');
-    expect(history[history.length - 1].label).toContain('1 Mar');
+  beforeEach(() => {
+    setUsageSource(new FixedSource(90)); // 30 minutes over a 60-minute limit
+    setFixedClock(PINNED);
+    invalidate();
   });
 
-  it('runs the balance up day by day to the final total', () => {
+  it('is empty when no penalty has been set', () => {
+    // Nothing is charged until the user opts in.
+    expect(chargeHistory(null, 30)).toEqual([]);
+  });
+
+  it('is empty before the penalty was switched on', () => {
+    // A limit set today cannot have charged for yesterday.
+    expect(chargeHistory(setting, 0)).toEqual([]);
+  });
+
+  it('covers only the days the penalty has been active, excluding today', () => {
+    // Today has not settled, so 5 active days means 5 settled rows behind it.
+    expect(chargeHistory(setting, 5)).toHaveLength(5);
+    expect(chargeHistory(setting, 1)).toHaveLength(1);
+  });
+
+  it('charges each day by that day’s overage at the chosen rate', () => {
+    for (const day of chargeHistory(setting, 4)) {
+      expect(day.limit).toBe(setting.limit);
+      expect(day.over).toBe(minutesOver(day.used, setting.limit));
+      expect(day.over).toBe(30);
+      expect(day.charge).toBeCloseTo(15, 2); // 30 minutes x $0.50
+    }
+  });
+
+  it('runs the balance up day by day, newest row holding the total', () => {
+    const history = chargeHistory(setting, 4);
     let running = 0;
     for (const day of [...history].reverse()) {
       running = Math.round((running + day.charge) * 100) / 100;
@@ -93,48 +146,54 @@ describe('locked balance', () => {
     );
   });
 
-  it('charges each day by that day’s overage', () => {
+  it('charges nothing on days under the limit', () => {
+    setUsageSource(new FixedSource(30)); // under a 60-minute limit
+    invalidate();
+    const history = chargeHistory(setting, 3);
+    expect(history).toHaveLength(3);
     for (const day of history) {
-      expect(day.over).toBe(minutesOver(day.used, day.limit));
-      expect(day.charge).toBeCloseTo(Math.round(day.over * DEMO_PENALTY.rate * 100) / 100, 2);
-      if (day.over === 0) expect(day.charge).toBe(0);
+      expect(day.over).toBe(0);
+      expect(day.charge).toBe(0);
+      expect(day.balance).toBe(0);
     }
   });
 
-  it('unlocks one year after install', () => {
-    expect(fmtDate(installDate())).toBe('1 Mar 2026');
-    expect(fmtDate(unlockDate())).toBe('1 Mar 2027');
-    expect(daysUntilUnlock()).toBe(188);
+  it('orders rows newest first', () => {
+    const history = chargeHistory(setting, 3);
+    expect(history[0].label).toContain('24 Aug');
+    expect(history[history.length - 1].label).toContain('22 Aug');
+  });
+});
+
+describe('unlocking', () => {
+  it('unlocks one year after the penalty started', () => {
+    const start = new Date(2026, 2, 1);
+    expect(fmtDate(unlockDateFrom(start))).toBe('1 Mar 2027');
   });
 
-  it('matches the demo figures (update deliberately if the demo data changes)', () => {
-    expect(DEMO_PENALTY).toEqual({ limit: 240, rate: 0.1 });
-    // Changed from $4,411.80 when date arithmetic moved off 24h stepping onto
-    // calendar stepping. Stepping back by 86_400_000ms from local midnight lands
-    // at 23:00 the previous day once a DST boundary is crossed, which misdated 8
-    // of the 177 days in this window and misclassified 2 as weekend vs weekday.
-    // The weekend factor changes usage, so it changed the charge. This value is
-    // the DST-correct one.
-    expect(fmtMoney(history[0].balance)).toBe('$4,417.80');
-    expect(history).toHaveLength(177);
+  it('counts the days remaining from today', () => {
+    setFixedClock(PINNED); // 25 Aug 2026
+    expect(daysUntilUnlock(new Date(2026, 2, 1))).toBe(188);
   });
 });
 
 describe('today so far', () => {
-  it('counts only the categories you track', () => {
-    const all = trackedToday(trackAll);
-    const none = trackedToday(CATS.map(() => false));
-    const social = trackedToday(CATS.map((c) => c.id === 'social'));
-
-    expect(none).toBe(0);
-    expect(social).toBeGreaterThan(0);
-    expect(all).toBeGreaterThan(social);
+  beforeEach(() => {
+    setUsageSource(new FixedSource(120));
+    setFixedClock(PINNED);
+    invalidate();
   });
 
-  it('is already over the demo limit, so the card shows a charge', () => {
+  it('counts only what you track', () => {
+    expect(trackedToday([false])).toBe(0);
+    expect(trackedToday(trackAll)).toBeCloseTo(120, 6);
+  });
+
+  it('produces a charge once today passes the limit', () => {
     const used = trackedToday(trackAll);
-    expect(minutesOver(used, DEMO_PENALTY.limit)).toBeGreaterThan(0);
-    expect(chargeFor(used, DEMO_PENALTY)).toBeGreaterThan(0);
+    const setting: PenaltySetting = { limit: 60, rate: 0.1 };
+    expect(minutesOver(used, setting.limit)).toBe(60);
+    expect(chargeFor(used, setting)).toBeCloseTo(6, 2);
   });
 });
 

@@ -18,27 +18,25 @@
 //     those days; we wrote them down while it still knew.
 //
 // Every day the OS can still answer for is re-recorded into the rollup on each
-// load, so history accumulates without needing a background job. Today is
-// recorded too and rewritten as it grows, which the (day, package) primary key
-// makes idempotent.
+// load, and a background task does the same while the app is closed so a fortnight
+// away does not lose those days. Today is recorded too and rewritten as it grows,
+// which the (day, package) primary key makes idempotent.
+//
+// Reads go through the rollup rather than the freshly-queried values, so recent
+// and old days travel one code path and cannot disagree.
 
 import { InstalledApp, UsageStats } from '../../modules/usage-stats';
 import { dayStamp, dateAt, now as clockNow, startOfToday } from '../clock';
 import { isCountable, seriesForApps } from './appFilter';
 import { dayWindow, hourlyFromEvents } from './hourly';
-import { readRange, recordDay } from './rollupStore';
+import { OS_RECORD_DAYS, recordOsDays } from './recorder';
+import { readRange } from './rollupStore';
 import { Series } from './series';
 import { SourceStatus, UsageSource } from './source';
 
 /** Days of raw events to fetch. Events are retained ~10 days; the hourly chart
  *  only ever shows one day, so a short window keeps the query cheap. */
 const EVENT_WINDOW_DAYS = 3;
-
-/** How far back to try the OS for per-day totals before falling back to the
- *  rollup. Generous: asking for a day the OS has dropped simply returns nothing. */
-const OS_DAILY_PROBE_DAYS = 14;
-
-const MS_PER_MINUTE = 60_000;
 
 export class AndroidUsageStatsSource implements UsageSource {
   readonly id = 'android-usage-stats';
@@ -87,41 +85,21 @@ export class AndroidUsageStatsSource implements UsageSource {
       const today = startOfToday();
       const nowMs = clockNow().getTime();
 
-      // --- Days the OS can still answer for -------------------------------
-      // One query per day: the native call sums buckets across whatever range it
-      // is given, so a per-day figure needs a per-day window.
-      const osDays = Math.min(days, OS_DAILY_PROBE_DAYS);
-      const fresh: { day: string; totals: Record<string, number> }[] = [];
-      for (let idx = 0; idx < osDays; idx++) {
-        const { start, end } = dayWindow(today, idx, nowMs);
-        if (end <= start) continue;
-        const raw = await UsageStats.queryTotals(start, end);
-        const totals: Record<string, number> = {};
-        for (const [pkg, ms] of Object.entries(raw)) {
-          if (!isCountable(pkg)) continue;
-          const minutes = ms / MS_PER_MINUTE;
-          if (minutes > 0) totals[pkg] = minutes;
-        }
-        // Record even an empty day: "recorded and quiet" must be distinguishable
-        // from "never recorded", which is what the coverage gate reads.
-        fresh.push({ day: dayStamp(dateAt(idx)), totals });
-        this.dayCache.set(idx, this.toSeriesArray(totals));
-      }
+      // --- Copy what the OS still knows into our own history --------------
+      // Shared with the background task, and it records every countable package
+      // rather than only the tracked ones, so adding an app later already has
+      // history behind it.
+      const osDays = Math.min(days, OS_RECORD_DAYS);
+      await recordOsDays(osDays);
 
-      // --- Persist, so these days survive the OS forgetting them ----------
-      for (const entry of fresh) {
-        await recordDay(entry);
-      }
-
-      // --- Older days come from our own history ---------------------------
-      if (days > osDays) {
-        const fromDay = dayStamp(dateAt(days - 1));
-        const toDay = dayStamp(dateAt(osDays));
-        const stored = await readRange(fromDay, toDay);
-        for (let idx = osDays; idx < days; idx++) {
-          const totals = stored[dayStamp(dateAt(idx))];
-          if (totals) this.dayCache.set(idx, this.toSeriesArray(totals));
-        }
+      // --- Read every day back out of the rollup --------------------------
+      // Reading through the rollup rather than keeping the freshly-queried values
+      // means one code path serves both recent and old days, so there is no seam
+      // where the two could disagree.
+      const stored = await readRange(dayStamp(dateAt(days - 1)), dayStamp(dateAt(0)));
+      for (let idx = 0; idx < days; idx++) {
+        const totals = stored[dayStamp(dateAt(idx))];
+        if (totals) this.dayCache.set(idx, this.toSeriesArray(totals));
       }
 
       // --- Hourly detail for the recent days the Day view can show --------

@@ -16,15 +16,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import {
-  DEFAULT_PENALTY,
-  DEMO_PENALTY,
-  PENALTY_LIMIT_PRESETS,
-  PenaltySetting,
-  RATE_MAX,
-  RATE_MIN,
-  RATE_PRESETS,
-} from '../data';
+import { DEFAULT_PENALTY, PENALTY_LIMIT_PRESETS, PenaltySetting, RATE_MAX, RATE_MIN, RATE_PRESETS } from '../data';
 import { dayStamp, onDayChange } from '../clock';
 import { goTo } from './navStore';
 import { STORAGE_VERSION, deviceStorage, storageKey } from './storage';
@@ -68,6 +60,10 @@ interface PenaltyState {
   next: PenaltySetting | null | undefined;
   /** Day stamp on which `current` took effect; drives the promotion above. */
   appliedOn: string;
+  /** Day stamp on which a penalty was first switched on, or '' if never.
+   *  The ledger starts here: applying today's limit to days before the user
+   *  opted in would invent a debt that was never incurred. */
+  startedOn: string;
   draft: PenaltySetting;
   rateText: string;
   limitH: string;
@@ -102,10 +98,12 @@ export function promote<T extends Pick<PenaltyState, 'current' | 'next' | 'appli
 export const usePenaltyStore = create<PenaltyState>()(
   persist(
     (set, get) => ({
-      current: DEMO_PENALTY,
+      // No penalty until the user sets one. There is no starting charge.
+      current: null,
       next: undefined,
       appliedOn: dayStamp(),
-      draft: DEMO_PENALTY,
+      startedOn: '',
+      draft: DEFAULT_PENALTY,
       rateText: '',
       limitH: '',
       limitM: '',
@@ -137,7 +135,12 @@ export const usePenaltyStore = create<PenaltyState>()(
         }),
 
       // Saving a draft identical to today's setting just cancels a pending change.
-      save: () => set((s) => ({ next: sameSetting(s.draft, s.current) ? undefined : { ...s.draft } })),
+      save: () =>
+        set((s) => ({
+          next: sameSetting(s.draft, s.current) ? undefined : { ...s.draft },
+          // First time a limit is saved, the ledger's clock starts.
+          startedOn: s.startedOn === '' ? dayStamp() : s.startedOn,
+        })),
       remove: () => set((s) => ({ next: s.current == null ? undefined : null })),
       undoPending: () => set({ next: undefined }),
 
@@ -150,7 +153,7 @@ export const usePenaltyStore = create<PenaltyState>()(
       name: storageKey('penalty'),
       version: STORAGE_VERSION,
       storage: deviceStorage,
-      partialize: (s) => ({ current: s.current, next: s.next, appliedOn: s.appliedOn }),
+      partialize: (s) => ({ current: s.current, next: s.next, appliedOn: s.appliedOn, startedOn: s.startedOn }),
       merge: (persisted, current) => {
         const p = persisted as Partial<PenaltyState> | undefined;
         if (!p) return current;
@@ -161,6 +164,7 @@ export const usePenaltyStore = create<PenaltyState>()(
           current: p.current === null ? null : isSetting(p.current) ? p.current : current.current,
           next: p.next === undefined ? undefined : p.next === null ? null : isSetting(p.next) ? p.next : undefined,
           appliedOn: typeof p.appliedOn === 'string' ? p.appliedOn : current.appliedOn,
+          startedOn: typeof p.startedOn === 'string' ? p.startedOn : current.startedOn,
         };
         // Reopening on a later day is exactly when "starts tomorrow" comes due.
         return { ...restored, ...(promote(restored, dayStamp()) ?? {}) };

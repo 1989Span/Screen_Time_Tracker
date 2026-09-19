@@ -28,7 +28,12 @@ export function AppPickerScreen() {
           </Pressable>
         </View>
         <Text style={styles.subtitle}>Only the apps you pick are measured. You can change this any time.</Text>
-        <Text style={styles.count}>{m.countLabel}</Text>
+        <View style={styles.metaRow}>
+          <Text style={styles.count}>{m.countLabel}</Text>
+          <Pressable onPress={m.bulkAction} accessibilityRole="button" hitSlop={8}>
+            <Text style={styles.bulk}>{m.bulkLabel}</Text>
+          </Pressable>
+        </View>
       </View>
 
       <TextInput
@@ -97,7 +102,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   subtitle: { fontSize: 13, lineHeight: 19, color: alpha(color.text, 55) },
+  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   count: { fontSize: 11.5, fontFamily: font.bodySemiBold, color: alpha(color.text, 45) },
+  bulk: { fontSize: 12.5, fontFamily: font.bodySemiBold, color: color.accent700, paddingVertical: 4 },
   input: {
     backgroundColor: '#ffffff',
     borderRadius: 12,

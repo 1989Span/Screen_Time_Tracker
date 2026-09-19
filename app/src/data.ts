@@ -13,7 +13,6 @@ import { CCOL } from './theme';
 import { checkDayRollover, currentHour, daysBetween, onDayChange, startOfToday, dateAt } from './clock';
 import { CATS, Cat } from './usage/categories';
 import { hasUsageSource, usageSource } from './usage/source';
-import { demoSource } from './usage/demoSource';
 
 export type RangeId = 'day' | 'week' | 'month' | 'year';
 
@@ -262,44 +261,32 @@ export function dayLabel(idx: number): string {
   return DOW[d.getDay()] + ' ' + d.getDate() + ' ' + MON[d.getMonth()];
 }
 
-/** Your own day (all categories), full day for idx >= 1, so far for today. */
-export function myDay(idx: number): number[] {
+/** Per-series usage for the day `idx` days before today. */
+export function dayUsageAt(idx: number): number[] {
+  checkDayRollover();
   return dayByCat(idx);
 }
 
-/** Another group member's day. Stays on the demo source: the OS only reports
- *  this device, so real other-people data has to come from a backend. */
-export function memberDay(idx: number, scale: number[], seed: number): number[] {
-  return demoSource.memberDay(idx, scale, seed);
-}
-
-// Penalty limit (simulated ledger — no real money moves). The demo pretends
-// the app was installed on INSTALL_DATE with DEMO_PENALTY active ever since;
-// every settled day's charge sits in a locked balance until UNLOCK_DATE.
+// Penalty limit. No real money moves: this is a ledger the app keeps against the
+// user's own recorded usage.
+//
+// Charges only exist for days that were actually recorded, and only from the day
+// the user switched the penalty on - the app does not know what the limit would
+// have been before that, and applying today's setting backwards would invent a
+// debt that was never incurred.
 
 export interface PenaltySetting {
   limit: number; // minutes per day
   rate: number; // dollars per minute over
 }
 
-/** How long the demo pretends the app has been installed. Real builds must
- *  persist the true install date at first launch instead (see prefs store). */
-export const DEMO_INSTALL_DAYS_AGO = 177;
-
-/** Day the demo ledger starts. Clock-relative so history stays bounded
- *  instead of growing forever against a frozen calendar date. */
-export function installDate(): Date {
-  return dateAt(DEMO_INSTALL_DAYS_AGO);
+/** Charges unlock a year after the penalty was first switched on. */
+export function unlockDateFrom(start: Date): Date {
+  return new Date(start.getFullYear() + 1, start.getMonth(), start.getDate());
 }
 
-/** Charges unlock a year after install. */
-export function unlockDate(): Date {
-  const d = installDate();
-  return new Date(d.getFullYear() + 1, d.getMonth(), d.getDate());
-}
-
-// 4h so that "today so far" already shows an overage by mid-evening.
-export const DEMO_PENALTY: PenaltySetting = { limit: 240, rate: 0.1 };
+/** What the editor starts on when the user has never set a limit. A starting
+ *  point for a form, not a charge: nothing accrues until they save it. */
 export const DEFAULT_PENALTY: PenaltySetting = { limit: 360, rate: 1 };
 export const PENALTY_LIMIT_PRESETS = [120, 180, 240, 300, 360, 420, 480, 600];
 export const RATE_PRESETS = [0.25, 0.5, 1, 2, 5];
@@ -330,8 +317,8 @@ export function trackedToday(tr: boolean[]): number {
   return dayByCat(0).reduce((s, v, i) => s + (tr[i] ? v : 0), 0);
 }
 
-export function daysUntilUnlock(): number {
-  return daysBetween(startOfToday(), unlockDate());
+export function daysUntilUnlock(start: Date): number {
+  return daysBetween(startOfToday(), unlockDateFrom(start));
 }
 
 export interface ChargeDay {
@@ -343,33 +330,36 @@ export interface ChargeDay {
   balance: number; // locked balance after this day settled
 }
 
-let _history: ChargeDay[] | null = null;
-onDayChange(() => {
-  _history = null;
-});
-/** Settled days, newest first (yesterday back to install day). Past days were
- *  settled with every category tracked, so later toggles don't rewrite them. */
-export function chargeHistory(): ChargeDay[] {
+/**
+ * Settled days, newest first: what the user's own recorded usage would have cost
+ * under the penalty they set.
+ *
+ * Bounded by `sinceDays`, the number of days the penalty has been active, so no
+ * charge is invented for a day before the user opted in. Today is excluded - it
+ * has not settled yet.
+ *
+ * Reads through the installed source, so it covers exactly the days that source
+ * has loaded; days with no recorded usage contribute nothing rather than a zero
+ * that would read as a quiet day.
+ */
+export function chargeHistory(setting: PenaltySetting | null, sinceDays: number): ChargeDay[] {
   checkDayRollover();
-  if (_history) return _history;
-  const n = daysBetween(installDate(), startOfToday());
+  if (setting == null || sinceDays < 1) return [];
   const out: ChargeDay[] = [];
   let balance = 0;
-  for (let idx = n; idx >= 1; idx--) {
-    const used = dayByCat(idx).reduce((s, v) => s + v, 0);
-    const charge = chargeFor(used, DEMO_PENALTY);
+  for (let idx = sinceDays; idx >= 1; idx--) {
+    const used = dayByCat(idx).reduce((sum, v) => sum + v, 0);
+    const charge = chargeFor(used, setting);
     balance = Math.round((balance + charge) * 100) / 100;
-    // dayLabel() rather than dstr(): subtracting 24h steps drifts a day
-    // across the March DST change.
+    // dayLabel() rather than 24h stepping, which drifts a day across a DST change.
     out.push({
       label: dayLabel(idx),
       used,
-      over: minutesOver(used, DEMO_PENALTY.limit),
-      limit: DEMO_PENALTY.limit,
+      over: minutesOver(used, setting.limit),
+      limit: setting.limit,
       charge,
       balance,
     });
   }
-  _history = out.reverse();
-  return _history;
+  return out.reverse();
 }

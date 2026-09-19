@@ -1,12 +1,21 @@
-import { GROUPS, StoredGroup, isStoredGroup, reviveGroup } from '../groups';
+import { StoredGroup, isStoredGroup, reviveGroup } from '../groups';
+import { testGroup, testMember } from '../__fixtures__/groups';
 import { promote } from '../state/penaltyStore';
+import { dayUsageAt } from '../data';
 
 /** What AsyncStorage actually does to a value on the way in and out. */
 const roundTrip = <T>(v: T): unknown => JSON.parse(JSON.stringify(v));
 
+// The app ships no seeded groups any more, so the fixture is built here.
+const sample = () =>
+  testGroup('friends', 'Friends', 30, [
+    testMember('you', 'You', { joined: 30, base: 60 }),
+    testMember('maya', 'Maya', { joined: 30, base: 40 }),
+  ]);
+
 describe('group persistence', () => {
   it('JSON drops Member.day, which is the bug revival exists to fix', () => {
-    const before = GROUPS[0];
+    const before = sample();
     expect(typeof before.members[0].day).toBe('function');
 
     const after = roundTrip(before) as StoredGroup;
@@ -14,8 +23,8 @@ describe('group persistence', () => {
     expect((after.members[0] as unknown as { day?: unknown }).day).toBeUndefined();
   });
 
-  it('reviveGroup reattaches a working generator after a round trip', () => {
-    const original = GROUPS[1];
+  it('reviveGroup reattaches a callable day function and preserves identity', () => {
+    const original = sample();
     const revived = reviveGroup(roundTrip(original) as StoredGroup);
 
     expect(revived.members).toHaveLength(original.members.length);
@@ -23,22 +32,33 @@ describe('group persistence', () => {
       const a = original.members[i];
       const b = revived.members[i];
       expect(b.id).toBe(a.id);
+      expect(b.name).toBe(a.name);
+      expect(b.joined).toBe(a.joined);
+      // The whole point: without this the next render throws on mem.day(0).
       expect(typeof b.day).toBe('function');
-      // Same inputs must reproduce the same usage, or points and streaks would
-      // silently change every time the app restarted.
-      expect(b.day(3)).toEqual(a.day(3));
-      expect(b.day(0)).toEqual(a.day(0));
+      expect(() => b.day(0)).not.toThrow();
+      expect(() => b.day(3)).not.toThrow();
     }
   });
 
-  it('revives your own row against your real usage, not a seeded profile', () => {
-    const you = reviveGroup(roundTrip(GROUPS[0]) as StoredGroup).members.find((m) => m.id === 'you');
+  it('revives your own row against real device usage', () => {
+    const you = reviveGroup(roundTrip(sample()) as StoredGroup).members.find((m) => m.id === 'you');
     expect(you).toBeDefined();
-    expect(you!.day(2)).toEqual(GROUPS[0].members.find((m) => m.id === 'you')!.day(2));
+    // Reads whatever the installed source reports, rather than a stored profile,
+    // so your standing reflects the device and not a snapshot.
+    expect(you!.day(2)).toEqual(dayUsageAt(2));
+  });
+
+  it('revives everyone else as zero rather than inventing a profile', () => {
+    const other = reviveGroup(roundTrip(sample()) as StoredGroup).members.find((m) => m.id !== 'you');
+    expect(other).toBeDefined();
+    // The OS only reports this device. Another person's usage needs a backend, and
+    // until there is one, zero is the only honest answer.
+    expect(other!.day(2).every((v) => v === 0)).toBe(true);
   });
 
   describe('isStoredGroup rejects payloads that would crash on revive', () => {
-    const valid = roundTrip(GROUPS[0]) as StoredGroup;
+    const valid = roundTrip(sample()) as StoredGroup;
 
     it('accepts a well-formed stored group', () => {
       expect(isStoredGroup(valid)).toBe(true);

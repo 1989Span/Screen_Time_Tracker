@@ -42,6 +42,9 @@ interface AppsState {
   setTracked: (packages: string[]) => void;
   setShowSystem: (value: boolean) => void;
   setQuery: (value: string) => void;
+  /** Track every app the picker currently offers, or clear the selection. */
+  selectAll: () => void;
+  clearAll: () => void;
 }
 
 export const useAppsStore = create<AppsState>()(
@@ -100,6 +103,16 @@ export const useAppsStore = create<AppsState>()(
       setShowSystem: (value) => set({ showSystem: value }),
 
       setQuery: (value) => set({ query: value }),
+
+      // Bulk actions operate on what the *filter* offers, not the raw installed
+      // list, so "select all" cannot secretly enable the screensaver, a launcher
+      // or (when system apps are hidden) dozens of packages the user never saw.
+      selectAll: () =>
+        set((s) => ({
+          tracked: offerableApps(s.installed, { showSystem: s.showSystem }).map((a) => a.packageName),
+        })),
+
+      clearAll: () => set({ tracked: [] }),
     }),
     {
       name: storageKey('apps'),

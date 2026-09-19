@@ -15,6 +15,7 @@ import {
   fourteenDayAvg,
   limLabel,
   prevTotal,
+  series,
   slice,
 } from '../data';
 import { useNavStore } from '../state/navStore';
@@ -131,6 +132,7 @@ export function useDetailModel(): DetailViewModel {
   return useMemo(() => {
     const flags = trackedFlags(tracked);
     const label = dates();
+    const seriesList = series();
     const m = slice(range, selected, flags);
     const previous = prevTotal(range, flags);
     const diff = m.total - previous;
@@ -173,17 +175,19 @@ export function useDetailModel(): DetailViewModel {
         };
       }),
       rows: m.rows.map((r) => {
-        const s = limitState(r.ci, limits, todayPer);
+        // r.ci indexes the series; the timer is keyed by that series' id.
+        const id = seriesList[r.ci]?.id ?? '';
+        const s = limitState(id, r.ci, limits, todayPer);
         return {
           ...r,
           limChip: s.limit == null ? 'Set limit' : limLabel(s.limit) + '/day',
           limBg: s.limit == null ? 'rgba(29,31,32,0.06)' : s.bg,
           limFg: s.limit == null ? 'rgba(29,31,32,0.50)' : s.fg,
-          onPress: () => openTimer(r.ci),
+          onPress: () => openTimer(id),
         };
       }),
       axisNote: AXIS_NOTE[range],
-      count: m.rows.length + ' categories',
+      count: m.rows.length + (m.rows.length === 1 ? ' app' : ' apps'),
       gap: range === 'month' ? 2 : range === 'day' ? 3 : 7,
       goOverview: () => go('ov'),
     };

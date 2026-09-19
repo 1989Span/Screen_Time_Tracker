@@ -2,7 +2,7 @@ import { invalidate, setFixedClock } from '../clock';
 import { CATS, dayUsage, prevTotal, series, seriesCount, slice, trackedToday } from '../data';
 import { Series } from '../usage/series';
 import { SourceStatus, UsageSource, setUsageSource, usageSource } from '../usage/source';
-import { demoSource } from '../usage/demoSource';
+import { emptySource } from '../usage/emptySource';
 
 const PINNED = new Date(2026, 7, 25, 19, 0, 0);
 const allTracked = CATS.map(() => true);
@@ -33,7 +33,7 @@ class FlatSource implements UsageSource {
 }
 
 afterEach(() => {
-  setUsageSource(demoSource);
+  setUsageSource(emptySource);
   setFixedClock(PINNED);
   invalidate();
 });
@@ -91,7 +91,7 @@ describe('the usage source seam', () => {
 
 describe('source caches cannot be corrupted by callers', () => {
   it('dayUsage hands back a copy, not the cache itself', () => {
-    setUsageSource(demoSource);
+    setUsageSource(new FlatSource(42));
     setFixedClock(PINNED);
     invalidate();
 
@@ -105,7 +105,7 @@ describe('source caches cannot be corrupted by callers', () => {
   });
 
   it('slice totals are unaffected by mutating a previous slice result', () => {
-    setUsageSource(demoSource);
+    setUsageSource(new FlatSource(42));
     setFixedClock(PINNED);
     invalidate();
 

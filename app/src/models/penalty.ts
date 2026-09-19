@@ -7,7 +7,7 @@ import {
   RATE_MAX,
   RATE_MIN,
   RATE_PRESETS,
-  unlockDate,
+  unlockDateFrom,
   chargeFor,
   chargeHistory,
   daysUntilUnlock,
@@ -18,6 +18,7 @@ import {
   minutesOver,
   trackedToday,
 } from '../data';
+import { dayStampToDate, daysSinceStamp } from '../usage/ledger';
 import { useNavStore } from '../state/navStore';
 import { parseLimit, parseRate, pendingSetting, sameSetting, usePenaltyStore } from '../state/penaltyStore';
 import { trackedFlags, usePrefsStore } from '../state/prefsStore';
@@ -60,10 +61,12 @@ export function usePenaltyCardModel(): PenaltyCardViewModel {
   const next = usePenaltyStore((s) => s.next);
   const openEditor = usePenaltyStore((s) => s.openEditor);
   const openHistory = usePenaltyStore((s) => s.openHistory);
+  const startedOn = usePenaltyStore((s) => s.startedOn);
 
   return useMemo(() => {
     const { used, over, charge } = today(current, tracked);
-    const history = chargeHistory();
+    // Only days since the user switched a penalty on can carry a charge.
+    const history = chargeHistory(current, daysSinceStamp(startedOn));
     const chip: StateChip =
       current == null
         ? CHIP_OFF
@@ -83,7 +86,8 @@ export function usePenaltyCardModel(): PenaltyCardViewModel {
       chargeToday: fmtMoney(charge),
       chargeNote: current ? fmtMoney(current.rate) + '/min · settles at midnight' : 'No charge today',
       locked: fmtMoney(history.length ? history[0].balance : 0),
-      lockedNote: 'Locked until ' + fmtDate(unlockDate()),
+      lockedNote:
+        startedOn === '' ? 'Nothing locked yet' : 'Locked until ' + fmtDate(unlockDateFrom(dayStampToDate(startedOn))),
       pendingText: pendingText(next),
       openSettings: openEditor,
       openHistory,
@@ -161,8 +165,7 @@ export function usePenaltyEditorModel(): PenaltyEditorViewModel {
       save: store.save,
       canRemove: pending != null,
       remove: store.remove,
-      lockNote:
-        'Charges settle at midnight and stay locked until ' + fmtDate(unlockDate()) + '. Changes start tomorrow.',
+      lockNote: 'Charges settle at midnight and stay locked for a year. Changes start tomorrow.',
       goOverview: () => go('ov'),
     };
   }, [store, go]);
@@ -189,15 +192,23 @@ export interface PenaltyHistoryViewModel {
 export function usePenaltyHistoryModel(): PenaltyHistoryViewModel {
   const tracked = usePrefsStore((s) => s.tracked);
   const current = usePenaltyStore((s) => s.current);
+  const startedOn = usePenaltyStore((s) => s.startedOn);
   const go = useNavStore((s) => s.go);
 
   return useMemo(() => {
-    const history = chargeHistory();
+    const history = chargeHistory(current, daysSinceStamp(startedOn));
     const { over, charge } = today(current, tracked);
 
     return {
       locked: fmtMoney(history.length ? history[0].balance : 0),
-      unlockText: 'Unlocks ' + fmtDate(unlockDate()) + ' · ' + daysUntilUnlock() + ' days to go',
+      unlockText:
+        startedOn === ''
+          ? 'No charges yet'
+          : 'Unlocks ' +
+            fmtDate(unlockDateFrom(dayStampToDate(startedOn))) +
+            ' · ' +
+            daysUntilUnlock(dayStampToDate(startedOn)) +
+            ' days to go',
       daysOver: history.filter((d) => d.charge > 0).length + ' of ' + history.length,
       minutesOver: fmtShort(history.reduce((sum, d) => sum + d.over, 0)),
       today: current

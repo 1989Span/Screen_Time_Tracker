@@ -1,5 +1,6 @@
-import { CATS, DEFAULT_PENALTY, DEMO_PENALTY } from '../data';
-import { CONTACTS, GROUPS, INITIAL_RULES, MIN_GROUP_SIZE, groupStats } from '../groups';
+import { CATS, DEFAULT_PENALTY } from '../data';
+import { Contact, MIN_GROUP_SIZE, groupStats } from '../groups';
+import { TEST_CONTACTS, testContact, testGroup, testMember } from '../__fixtures__/groups';
 import { useDetailStore } from '../state/detailStore';
 import { currentGroup, invitesFor, rulesFor, useGroupsStore } from '../state/groupsStore';
 import { useNavStore } from '../state/navStore';
@@ -43,9 +44,9 @@ describe('navigation', () => {
     expect(nav().view).toBe('detail');
     expect(detail().range).toBe('month');
 
-    timers().open(2);
+    timers().open('com.example.app');
     expect(nav().view).toBe('limit');
-    expect(timers().editing).toBe(2);
+    expect(timers().editing).toBe('com.example.app');
 
     penalty().openEditor();
     expect(nav().view).toBe('penalty');
@@ -70,11 +71,13 @@ describe('tracked categories', () => {
 });
 
 describe('timers', () => {
-  it('sets and clears a category budget', () => {
-    timers().setLimit(0, 60);
-    expect(timers().limits[CATS[0].id]).toBe(60);
-    timers().clearLimit(0);
-    expect(timers().limits[CATS[0].id]).toBeUndefined();
+  it('sets and clears a per-app budget, keyed by package', () => {
+    // Keyed by package, not index: the tracked list is reordered whenever the
+    // user edits it, and an index key would follow the slot, not the app.
+    timers().setLimit('com.instagram.android', 60);
+    expect(timers().limits['com.instagram.android']).toBe(60);
+    timers().clearLimit('com.instagram.android');
+    expect(timers().limits['com.instagram.android']).toBeUndefined();
   });
 });
 
@@ -95,9 +98,16 @@ describe('breakdown', () => {
 });
 
 describe('penalty limit', () => {
+  // No penalty ships with the app: `current` starts null and nothing is charged
+  // until the user saves a limit. These tests therefore set today's limit first.
+  const TODAY_SETTING = { limit: 240, rate: 0.1 };
+  beforeEach(() => {
+    usePenaltyStore.setState({ current: TODAY_SETTING, next: undefined, draft: TODAY_SETTING });
+  });
+
   it('seeds the editor from today’s setting', () => {
     penalty().openEditor();
-    expect(penalty().draft).toEqual(DEMO_PENALTY);
+    expect(penalty().draft).toEqual(TODAY_SETTING);
     // 4h is a preset button, so the custom hour/minute fields stay empty...
     expect(penalty().limitH).toBe('');
     expect(penalty().limitM).toBe('');
@@ -119,7 +129,7 @@ describe('penalty limit', () => {
     penalty().setRatePreset(1);
     penalty().save();
 
-    expect(penalty().current).toEqual(DEMO_PENALTY); // today is untouched
+    expect(penalty().current).toEqual(TODAY_SETTING); // today is untouched
     expect(pendingSetting(penalty())).toEqual({ limit: 360, rate: 1 });
   });
 
@@ -129,22 +139,22 @@ describe('penalty limit', () => {
     penalty().save();
     penalty().undoPending();
     expect(penalty().next).toBeUndefined();
-    expect(pendingSetting(penalty())).toEqual(DEMO_PENALTY);
+    expect(pendingSetting(penalty())).toEqual(TODAY_SETTING);
   });
 
   it('saving today’s setting again just cancels the pending change', () => {
     penalty().openEditor();
     penalty().setLimitPreset(360);
     penalty().save();
-    penalty().setLimitPreset(DEMO_PENALTY.limit);
-    penalty().setRatePreset(DEMO_PENALTY.rate);
+    penalty().setLimitPreset(TODAY_SETTING.limit);
+    penalty().setRatePreset(TODAY_SETTING.rate);
     penalty().save();
     expect(penalty().next).toBeUndefined();
   });
 
   it('turns the limit off from tomorrow', () => {
     penalty().remove();
-    expect(penalty().current).toEqual(DEMO_PENALTY);
+    expect(penalty().current).toEqual(TODAY_SETTING);
     expect(penalty().next).toBeNull();
     expect(pendingSetting(penalty())).toBeNull();
   });
@@ -170,7 +180,7 @@ describe('penalty limit', () => {
     expect(penalty().draft.limit).toBe(90);
   });
 
-  it('offers the default setting when the limit is off', () => {
+  it('offers the editor default when the limit is off', () => {
     usePenaltyStore.setState({ current: null, next: undefined });
     penalty().openEditor();
     expect(penalty().draft).toEqual(DEFAULT_PENALTY);
@@ -178,22 +188,60 @@ describe('penalty limit', () => {
 });
 
 describe('groups', () => {
-  it('starts on the Friends group with its seeded rules', () => {
+  // The app ships no groups, so these tests build the world they need. Two
+  // members is exactly MIN_GROUP_SIZE, which is what makes the voting rules
+  // observable.
+  // Usage is weighted onto single categories so that excluding one flips the
+  // ranking, which is what makes the retroactive-scoring test meaningful.
+  const alpha = () =>
+    testGroup('alpha', 'Alpha', 3, [
+      testMember('you', 'You', { joined: 3, base: 10, weights: { social: 1 } }),
+      testMember('bob', 'Bob', { joined: 3, base: 90, weights: { navigation: 1 } }),
+    ]);
+  const beta = () => testGroup('beta', 'Beta', 2, [testMember('you', 'You', { joined: 2, base: 30 })]);
+  // Bob has already agreed, so one vote from you completes unanimity in a
+  // two-member group.
+  const seededRules = {
+    alpha: {
+      excluded: ['music'],
+      proposals: [{ cat: 'navigation', kind: 'exclude' as const, agreed: ['bob'] }],
+    },
+    beta: { excluded: [], proposals: [] },
+  };
+  const contacts: Contact[] = TEST_CONTACTS;
+
+  beforeEach(() => {
+    useGroupsStore.setState({
+      groups: [alpha(), beta()],
+      groupId: 'alpha',
+      rules: seededRules,
+      invites: {},
+    });
+  });
+
+  it('starts on the selected group with its rules', () => {
     const group = currentGroup(groups())!;
-    expect(group.name).toBe('Friends');
-    expect(rulesFor(groups(), group.id)).toEqual(INITIAL_RULES.friends);
+    expect(group.name).toBe('Alpha');
+    expect(rulesFor(groups(), group.id)).toEqual(seededRules.alpha);
   });
 
   it('switches groups', () => {
-    groups().select(GROUPS[1].id);
-    expect(currentGroup(groups())!.name).toBe('Family');
+    groups().select('beta');
+    expect(currentGroup(groups())!.name).toBe('Beta');
+  });
+
+  it('has no group selected when there are none', () => {
+    // The shipped state: no seeded groups, so the tab shows its empty state
+    // rather than crashing on a missing first element.
+    useGroupsStore.setState({ groups: [], groupId: '' });
+    expect(currentGroup(groups())).toBeNull();
   });
 
   it('agreeing to the last open vote changes the ranking retroactively', () => {
     const group = currentGroup(groups())!;
     const before = groupStats(group, rulesFor(groups(), group.id).excluded).stats.map((s) => s.points);
 
-    groups().agree('navigation'); // Maya, Jordan and Priya already agreed
+    groups().agree('navigation'); // Bob already agreed, so this settles it
 
     const rules = rulesFor(groups(), group.id);
     expect(rules.excluded).toContain('navigation');
@@ -217,74 +265,10 @@ describe('groups', () => {
     expect(rulesFor(groups(), group.id).excluded).not.toContain('games');
   });
 
-  it('creates a group from the draft, with only the chosen categories tracked', () => {
-    groups().openNewGroup();
-    expect(nav().view).toBe('newGroup');
-    groups().setNgName('Work friends');
-    groups().toggleNgCategory('games');
-    groups().setNgPicked(['c-alex'], '');
-    groups().createGroup();
-
-    const group = currentGroup(groups())!;
-    expect(group.name).toBe('Work friends');
-    expect(group.members).toHaveLength(1); // just you until someone accepts
-    expect(rulesFor(groups(), group.id).excluded).toEqual(['games']);
-    expect(invitesFor(groups(), group.id)).toEqual([{ contactId: 'c-alex', via: 'app' }]);
-    expect(nav().view).toBe('groups');
-  });
-
   it('caps the group name and trims it when creating', () => {
     groups().openNewGroup();
     groups().setNgName('x'.repeat(50));
     expect(groups().ngName).toHaveLength(30);
-  });
-
-  it('sends invites and returns to settings', () => {
-    groups().openInvite();
-    groups().setIvPicked(['c-alex', 'c-sam'], '');
-    groups().sendInvites();
-
-    const group = currentGroup(groups())!;
-    expect(invitesFor(groups(), group.id)).toEqual([
-      { contactId: 'c-alex', via: 'app' },
-      { contactId: 'c-sam', via: 'link' }, // Sam has no app, so a download link
-    ]);
-    expect(groups().ivInvited).toEqual([]);
-    expect(nav().view).toBe('groupSettings');
-  });
-
-  it('accepting an invite adds the member and clears the invite', () => {
-    groups().openInvite();
-    groups().setIvPicked(['c-alex'], '');
-    groups().sendInvites();
-    const before = currentGroup(groups())!.members.length;
-
-    groups().acceptInvite('c-alex');
-
-    const group = currentGroup(groups())!;
-    expect(group.members).toHaveLength(before + 1);
-    expect(group.members[group.members.length - 1].joined).toBe(0);
-    expect(invitesFor(groups(), group.id)).toEqual([]);
-  });
-
-  it('will not cancel the last invite of a one-person group', () => {
-    groups().openNewGroup();
-    groups().setNgName('Solo');
-    groups().setNgPicked(['c-sam'], '');
-    groups().createGroup();
-    const group = currentGroup(groups())!;
-    expect(group.members.length + invitesFor(groups(), group.id).length).toBe(MIN_GROUP_SIZE);
-
-    groups().cancelInvite('c-sam');
-    expect(invitesFor(groups(), group.id)).toHaveLength(1); // refused
-  });
-
-  it('cancels an invite when the group stays big enough', () => {
-    groups().openInvite();
-    groups().setIvPicked(['c-alex'], '');
-    groups().sendInvites();
-    groups().cancelInvite('c-alex');
-    expect(invitesFor(groups(), currentGroup(groups())!.id)).toEqual([]);
   });
 
   it('leaving moves to the next group and drops its invites', () => {
@@ -295,7 +279,7 @@ describe('groups', () => {
 
     expect(groups().groups.map((g) => g.id)).not.toContain(leaving.id);
     expect(groups().invites[leaving.id]).toBeUndefined();
-    expect(currentGroup(groups())!.name).toBe('Family');
+    expect(currentGroup(groups())!.name).toBe('Beta');
     expect(groups().leaveConfirm).toBe(false);
     expect(nav().view).toBe('groups');
   });
@@ -307,7 +291,36 @@ describe('groups', () => {
     expect(currentGroup(groups())).toBeNull();
   });
 
-  it('knows the demo contacts it can invite', () => {
-    expect(CONTACTS.some((c) => c.id === 'c-alex')).toBe(true);
+  it('cannot invite anyone, because no contact list exists yet', () => {
+    // Inviting needs real contacts: address-book permission plus a backend to
+    // match them against. Until both exist the flow completes with nothing, which
+    // is honest - previously it appeared to work against invented people.
+    groups().openInvite();
+    groups().setIvPicked(['c-alex', 'c-sam'], '');
+    groups().sendInvites();
+    const group = currentGroup(groups())!;
+    expect(invitesFor(groups(), group.id)).toEqual([]);
+    expect(nav().view).toBe('groupSettings');
+  });
+
+  it('creates a group containing only you, with the chosen categories tracked', () => {
+    groups().openNewGroup();
+    groups().setNgName('Work friends');
+    groups().toggleNgCategory('games'); // off
+    groups().createGroup();
+
+    const group = currentGroup(groups())!;
+    expect(group.name).toBe('Work friends');
+    expect(group.members).toHaveLength(1); // just you; nobody to invite yet
+    expect(rulesFor(groups(), group.id).excluded).toEqual(['games']);
+    expect(nav().view).toBe('groups');
+  });
+
+  it('ships no contacts to invite', () => {
+    // Real contacts need address-book permission and a backend to match them
+    // against. Until then the list is empty rather than invented.
+
+    expect(require('../groups').CONTACTS).toEqual([]);
+    expect(contacts.some((c) => c.id === 'c-alex')).toBe(true); // fixtures only
   });
 });

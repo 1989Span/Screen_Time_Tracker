@@ -1,6 +1,6 @@
 // Pieces shared by more than one view model.
 
-import { CATS, limLabel } from '../data';
+import { limLabel } from '../data';
 
 export interface Segment {
   w: number; // percent of the bar
@@ -29,10 +29,16 @@ export const UNDER_BG = 'rgba(79,140,123,0.15)';
 export const UNDER_FG = '#2f6355';
 export const OVER_BAR = '#b5576b';
 
-/** A category's daily timer state: how much is left, and the chip colours. */
-export function limitState(catIndex: number, limits: Record<string, number>, todayPer: number[]) {
-  const limit = limits[CATS[catIndex].id];
-  const used = todayPer[catIndex];
+/**
+ * One series' daily timer state: how much is left, and the chip colours.
+ *
+ * Keyed by series id (a package name) rather than by index. Indices shift the
+ * moment the user edits which apps they track, so an index-keyed limit would
+ * silently attach itself to a different app.
+ */
+export function limitState(seriesId: string, index: number, limits: Record<string, number>, todayPer: number[]) {
+  const limit = limits[seriesId];
+  const used = todayPer[index] ?? 0;
   const over = limit != null && used >= limit;
   return {
     limit,

@@ -1,5 +1,26 @@
 import { dateAt, daysBetween, setFixedClock, startOfToday, currentHour, invalidate } from '../clock';
-import { chargeHistory, dates, dayUsage, DEMO_INSTALL_DAYS_AGO, installDate } from '../data';
+import { dates, dayUsage } from '../data';
+import { Series } from '../usage/series';
+import { SourceStatus, UsageSource, setUsageSource } from '../usage/source';
+import { emptySource } from '../usage/emptySource';
+
+/** Reports the weekday number of the day being asked about, so a date rollover
+ *  is directly observable in the output. */
+class WeekdaySource implements UsageSource {
+  readonly id = 'weekday';
+  readonly status: SourceStatus = 'ready';
+  series(): Series[] {
+    return [{ id: 's', name: 'S', color: '#000' }];
+  }
+  async load() {}
+  invalidate() {}
+  dayTotals(idx: number): number[] {
+    return [dateAt(idx).getDay() + 1];
+  }
+  hourTotals(idx: number): number[] {
+    return [(dateAt(idx).getDay() + 1) / 24];
+  }
+}
 
 const PINNED = new Date(2026, 7, 25, 19, 0, 0); // what jest.setup.ts installs
 afterEach(() => setFixedClock(PINNED));
@@ -49,21 +70,22 @@ describe('clock', () => {
 
   describe('day rollover', () => {
     it('drops day-scoped usage caches when the date changes', () => {
-      // Fri 28 Aug 2026 -> Sat 29 Aug 2026: weekday/weekend factors differ, so
-      // "today so far" must change. If the cache were not invalidated, raw(0)
-      // would still hold Friday's numbers under the index 0.
+      // Fri 28 Aug 2026 -> Sat 29 Aug 2026. The source reports the weekday, so if
+      // the cache were not invalidated the second read would still say Friday.
       const fri = new Date(2026, 7, 28, 19);
       const sat = new Date(2026, 7, 29, 19);
       expect(fri.getDay()).toBe(5);
       expect(sat.getDay()).toBe(6);
 
+      setUsageSource(new WeekdaySource());
       setFixedClock(fri);
-      const friday = dayUsage().reduce((s, v) => s + v, 0);
+      const friday = dayUsage()[0];
       setFixedClock(sat);
-      const saturday = dayUsage().reduce((s, v) => s + v, 0);
+      const saturday = dayUsage()[0];
 
-      expect(friday).toBeGreaterThan(0);
-      expect(saturday).not.toBeCloseTo(friday, 5);
+      expect(friday).toBe(6); // Friday = 5, +1
+      expect(saturday).toBe(7);
+      setUsageSource(emptySource);
     });
 
     it('range labels follow the clock instead of freezing at import', () => {
@@ -73,19 +95,6 @@ describe('clock', () => {
       const b = dates();
       expect(a.day).not.toBe(b.day);
       expect(a.day).toContain('Aug');
-    });
-  });
-
-  describe('demo ledger is clock-relative', () => {
-    it('install date tracks the clock, so history stays bounded', () => {
-      setFixedClock(new Date(2026, 7, 25, 19));
-      expect(daysBetween(installDate(), startOfToday())).toBe(DEMO_INSTALL_DAYS_AGO);
-      expect(chargeHistory()).toHaveLength(DEMO_INSTALL_DAYS_AGO);
-
-      // A year later the ledger is the same length, not 365 rows longer.
-      invalidate();
-      setFixedClock(new Date(2027, 7, 25, 19));
-      expect(chargeHistory()).toHaveLength(DEMO_INSTALL_DAYS_AGO);
     });
   });
 });

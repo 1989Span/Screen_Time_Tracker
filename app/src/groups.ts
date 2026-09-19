@@ -10,7 +10,7 @@
 // Members only compete on days since they joined. Someone joining later leaves
 // everyone's existing points and streaks untouched and starts at zero.
 
-import { CATS, CCOL, memberDay, myDay } from './data';
+import { CATS, dayUsageAt } from './data';
 import { checkDayRollover, onDayChange } from './clock';
 
 export interface Member {
@@ -46,10 +46,6 @@ export interface GroupRules {
 
 // Per-category usage scale, in CATS order (Social, Video, Work, Messaging,
 // Games, Music, Reading, Navigation).
-function person(id: string, name: string, color: string, joined: number, seed: number, scale: number[]): Member {
-  return { id, name, color, joined, seed, scale, day: (idx) => memberDay(idx, scale, seed) };
-}
-
 export const YOU_ID = 'you';
 
 const you = (joined: number): Member => ({
@@ -59,7 +55,9 @@ const you = (joined: number): Member => ({
   joined,
   seed: 0,
   scale: [],
-  day: myDay,
+  // Your own row reads your real usage. Other members would need a backend: the
+  // OS can only report this device, so there is nothing truthful to put here.
+  day: (idx) => dayUsageAt(idx),
 });
 
 /** Everything about a member except the `day` closure — what actually persists. */
@@ -68,7 +66,9 @@ export type StoredGroup = Omit<Group, 'members'> & { members: StoredMember[] };
 
 /** Reattach the usage generator that JSON dropped. */
 export function reviveMember(m: StoredMember): Member {
-  return m.id === YOU_ID ? { ...m, day: myDay } : { ...m, day: (idx) => memberDay(idx, m.scale, m.seed) };
+  // Your own row reads real device usage; anyone else has none until a backend
+  // provides it, so their history revives as zeros rather than invented numbers.
+  return m.id === YOU_ID ? { ...m, day: dayUsageAt } : { ...m, day: () => CATS.map(() => 0) };
 }
 
 export function reviveGroup(g: StoredGroup): Group {
@@ -93,47 +93,12 @@ export function isStoredGroup(v: unknown): v is StoredGroup {
   );
 }
 
-export const GROUPS: Group[] = [
-  {
-    id: 'friends',
-    name: 'Friends',
-    created: 86,
-    members: [
-      you(86),
-      person('maya', 'Maya', '#b5576b', 86, 1, [1.4, 1.1, 0.8, 1.3, 0.3, 1.0, 0.4, 0.6]),
-      person('jordan', 'Jordan', '#c98a3e', 86, 2, [0.7, 1.2, 0.9, 0.8, 2.2, 1.2, 0.2, 1.0]),
-      person('priya', 'Priya', '#4f8c7b', 86, 3, [0.9, 0.8, 1.1, 1.1, 0.3, 1.0, 1.9, 1.4]),
-    ],
-  },
-  {
-    id: 'family',
-    name: 'Family',
-    created: 131,
-    members: [
-      you(131),
-      person('mom', 'Mom', '#8a6ca8', 131, 4, [1.1, 0.9, 0.8, 1.5, 0.4, 0.6, 1.4, 1.2]),
-      person('dad', 'Dad', '#6f8a45', 131, 5, [0.6, 1.1, 1.4, 0.8, 0.5, 0.9, 1.0, 1.8]),
-      person('ellie', 'Ellie', '#6e71b8', 131, 6, [1.5, 1.4, 0.3, 1.4, 1.1, 1.3, 0.2, 0.4]),
-      person('joe', 'Grandpa Joe', '#416180', 131, 7, [0.8, 1.8, 0.3, 0.9, 1.0, 1.1, 2.4, 0.9]),
-    ],
-  },
-];
+// No seeded groups. A group needs other real people, which needs a backend the
+// app does not have yet, so the Groups tab shows its empty state rather than a
+// cast of invented members with invented usage.
+export const GROUPS: Group[] = [];
 
-// Seeded so every voting state is visible: a proposal waiting only on you, one
-// you've agreed to that's waiting on others, and a request to bring one back.
-export const INITIAL_RULES: Record<string, GroupRules> = {
-  friends: {
-    excluded: ['music'],
-    proposals: [
-      { cat: 'navigation', kind: 'exclude', agreed: ['maya', 'jordan', 'priya'] },
-      { cat: 'music', kind: 'include', agreed: ['jordan'] },
-    ],
-  },
-  family: {
-    excluded: ['navigation'],
-    proposals: [{ cat: 'work', kind: 'exclude', agreed: ['you', 'mom', 'dad'] }],
-  },
-};
+export const INITIAL_RULES: Record<string, GroupRules> = {};
 
 // Contacts (simulated). A real build can't see other people's installed apps:
 // it would hash contacts' phone numbers, match them server-side against
@@ -148,22 +113,9 @@ export interface Contact {
   memberId?: string; // the demo group member this contact is, if any
 }
 
-export const CONTACTS: Contact[] = [
-  { id: 'c-alex', name: 'Alex Chen', phone: '(555) 201-4432', hasApp: true },
-  { id: 'c-chris', name: 'Chris Patel', phone: '(555) 318-0921', hasApp: true },
-  { id: 'c-dana', name: 'Dana Kim', phone: '(850) 764-2210', hasApp: false },
-  { id: 'c-dad', name: 'Dad', phone: '(850) 410-8876', hasApp: true, memberId: 'dad' },
-  { id: 'c-ellie', name: 'Ellie', phone: '(850) 410-3390', hasApp: true, memberId: 'ellie' },
-  { id: 'c-joe', name: 'Grandpa Joe', phone: '(850) 882-1045', hasApp: true, memberId: 'joe' },
-  { id: 'c-jordan', name: 'Jordan', phone: '(555) 629-5518', hasApp: true, memberId: 'jordan' },
-  { id: 'c-maya', name: 'Maya', phone: '(555) 347-7702', hasApp: true, memberId: 'maya' },
-  { id: 'c-mom', name: 'Mom', phone: '(850) 410-8875', hasApp: true, memberId: 'mom' },
-  { id: 'c-morgan', name: 'Morgan Lee', phone: '(555) 850-6619', hasApp: false },
-  { id: 'c-priya', name: 'Priya', phone: '(555) 195-2287', hasApp: true, memberId: 'priya' },
-  { id: 'c-riley', name: 'Riley Adams', phone: '(555) 276-9034', hasApp: true },
-  { id: 'c-sam', name: 'Sam Rivera', phone: '(555) 931-4458', hasApp: false },
-  { id: 'c-taylor', name: 'Taylor Brooks', phone: '(555) 608-1173', hasApp: false },
-];
+// Real contacts would come from the address book with permission. Until then this
+// is empty rather than a list of invented friends.
+export const CONTACTS: Contact[] = [];
 
 export interface Invite {
   contactId: string;
@@ -195,13 +147,18 @@ export function makeGroup(id: string, name: string): Group {
 /** The member id a contact has (or would have) in a group. */
 export const memberIdOf = (c: Contact) => c.memberId || c.id;
 
-/** Adds an invitee who accepted today, with a stable made-up usage profile.
- *  Existing members and their points are unchanged. */
+/** Adds a contact who accepted. Their usage stays empty until a backend can
+ *  supply it - an invented profile would be worse than an honest zero. */
 export function joinGroup(g: Group, c: Contact): Group {
-  let h = 7;
-  for (let i = 0; i < c.id.length; i++) h = (h * 31 + c.id.charCodeAt(i)) % 9973;
-  const scale = CATS.map((_, i) => 0.6 + ((h * (i + 3)) % 9) / 10); // 0.6–1.4 per category
-  const member = person(memberIdOf(c), c.name, CCOL[h % CCOL.length], 0, 20 + (h % 50), scale);
+  const member: Member = {
+    id: memberIdOf(c),
+    name: c.name,
+    color: '#8a8f94',
+    joined: 0,
+    seed: 0,
+    scale: [],
+    day: () => CATS.map(() => 0),
+  };
   return { ...g, members: g.members.concat([member]) };
 }
 

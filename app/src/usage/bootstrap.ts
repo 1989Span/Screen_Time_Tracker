@@ -1,50 +1,47 @@
 // Chooses which usage source the app reads from, and is the only place that
 // decision is made.
 //
-// usageSource() throws when nothing is installed rather than quietly falling back
-// to the demo generator. That is deliberate: a release build silently showing
-// generated numbers as if they were the user's real screen time would be a far
-// worse failure than a loud one at startup.
+// There is no demo or generated data anywhere in the app: every number shown comes
+// from the device. Before the real source can answer, an empty source stands in
+// and every chart renders blank, which is what "no data yet" should look like.
+// usageSource() still throws when nothing at all is installed, because that is a
+// programming error rather than a state a user can reach.
 
 import { Platform } from 'react-native';
 
 import { useAppsStore, isConfigured } from '../state/appsStore';
 import { androidSource } from './androidSource';
-import { demoSource } from './demoSource';
+import { registerBackgroundSync } from './backgroundSync';
+import { emptySource } from './emptySource';
 import { setUsageSource } from './source';
 
 /** Longest span any screen asks for (the year card). */
 export const MAX_DAYS_NEEDED = 366;
 
 /**
- * Installs the demo generator.
+ * Installs the empty source.
  *
  * Called synchronously at startup so the data layer always has *a* source before
- * the first render - it throws otherwise. On Android this is immediately replaced
- * by the real source via installRealUsageSource(); on web it is the only option,
- * since there is no equivalent of UsageStatsManager in a browser.
+ * the first render - it throws otherwise. On Android this is replaced by the real
+ * source via installRealUsageSource(); elsewhere it stays, because no other
+ * platform here can report usage and inventing some would be worse than blank.
  */
 export function installDefaultUsageSource(): void {
-  setUsageSource(demoSource);
-  // Demo loading is synchronous arithmetic, so this resolves immediately; the
-  // call exists so the startup path is already shaped for a source that awaits.
-  void demoSource.load(MAX_DAYS_NEEDED);
+  setUsageSource(emptySource);
 }
 
-export type SourceKind = 'demo' | 'android';
+export type SourceKind = 'empty' | 'android';
 
 /**
- * Switches to real device data when the platform can provide it and the user has
- * finished setup, and reports which source ended up installed.
+ * Switches to real device data when the platform can provide it, and reports which
+ * source ended up installed.
  *
- * Deliberately does NOT fall back to demo data on Android when setup is
- * incomplete. The Android source is installed with its status set to 'denied' or
- * its series empty, so the UI shows the permission gate or the picker. Showing
- * generated numbers to someone who thinks they are looking at their own screen
- * time is the one outcome worth engineering against.
+ * The Android source is installed even when setup is incomplete - with status
+ * 'denied' or an empty series list - so the UI shows the permission gate or the
+ * picker rather than any stand-in numbers.
  */
 export async function installRealUsageSource(): Promise<SourceKind> {
-  if (Platform.OS !== 'android') return 'demo';
+  if (Platform.OS !== 'android') return 'empty';
 
   const store = useAppsStore.getState();
   await store.refresh();
@@ -56,6 +53,13 @@ export async function installRealUsageSource(): Promise<SourceKind> {
   // Only query when there is both permission and something selected to measure.
   if (isConfigured(state)) {
     await androidSource.load(MAX_DAYS_NEEDED);
+  }
+
+  // Keep history accumulating while the app is closed. Registration needs
+  // permission to be worth anything, but not a selection: recording covers every
+  // countable package regardless of what is currently tracked.
+  if (state.permission === 'granted') {
+    void registerBackgroundSync();
   }
   return 'android';
 }

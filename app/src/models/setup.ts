@@ -74,6 +74,9 @@ export interface AppPickerViewModel {
   selectedCount: number;
   /** Empty-state copy that distinguishes "no apps" from "no search results". */
   emptyNote: string | null;
+  /** "Select all apps" / "Clear all" — acts on what the filter offers. */
+  bulkLabel: string;
+  bulkAction: () => void;
   canContinue: boolean;
   /** Persist the choice and re-read usage for the new selection. */
   commit: () => Promise<void>;
@@ -89,6 +92,8 @@ export function useAppPickerModel(): AppPickerViewModel {
   const toggle = useAppsStore((s) => s.toggle);
   const setQuery = useAppsStore((s) => s.setQuery);
   const setShowSystem = useAppsStore((s) => s.setShowSystem);
+  const selectAll = useAppsStore((s) => s.selectAll);
+  const clearAll = useAppsStore((s) => s.clearAll);
 
   return useMemo(() => {
     const offerable = pickableApps({ installed, showSystem });
@@ -124,6 +129,9 @@ export function useAppPickerModel(): AppPickerViewModel {
       showSystem,
       toggleShowSystem: () => setShowSystem(!showSystem),
       countLabel: `${tracked.length} of ${offerable.length} ${offerable.length === 1 ? 'app' : 'apps'} tracked`,
+      // Flips to Clear once everything offered is already tracked.
+      bulkLabel: offerable.length > 0 && tracked.length >= offerable.length ? 'Clear all' : 'Select all apps',
+      bulkAction: offerable.length > 0 && tracked.length >= offerable.length ? clearAll : selectAll,
       selectedCount: tracked.length,
       emptyNote,
       // Tracking nothing would leave every chart empty, so require one.
@@ -131,5 +139,5 @@ export function useAppPickerModel(): AppPickerViewModel {
       commit: reloadUsage,
       loading,
     };
-  }, [installed, showSystem, tracked, query, loading, toggle, setQuery, setShowSystem]);
+  }, [installed, showSystem, tracked, query, loading, toggle, setQuery, setShowSystem, selectAll, clearAll]);
 }
