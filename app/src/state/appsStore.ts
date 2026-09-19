@@ -29,6 +29,9 @@ interface AppsState {
   loading: boolean;
   /** Set when the last refresh failed, so the UI can say so. */
   error: string | null;
+  /** Picker search text. Transient, like the group-invite drafts - a stale
+   *  search box on next launch would be confusing, not helpful. */
+  query: string;
 
   /** Re-read permission, the installed list and history coverage. */
   refresh: () => Promise<void>;
@@ -38,6 +41,7 @@ interface AppsState {
   toggle: (packageName: string) => void;
   setTracked: (packages: string[]) => void;
   setShowSystem: (value: boolean) => void;
+  setQuery: (value: string) => void;
 }
 
 export const useAppsStore = create<AppsState>()(
@@ -50,6 +54,7 @@ export const useAppsStore = create<AppsState>()(
       historyDays: 0,
       loading: false,
       error: null,
+      query: '',
 
       refresh: async () => {
         set({ loading: true, error: null });
@@ -93,6 +98,8 @@ export const useAppsStore = create<AppsState>()(
       setTracked: (packages) => set({ tracked: packages.filter(isCountable) }),
 
       setShowSystem: (value) => set({ showSystem: value }),
+
+      setQuery: (value) => set({ query: value }),
     }),
     {
       name: storageKey('apps'),

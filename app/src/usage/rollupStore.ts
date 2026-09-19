@@ -35,6 +35,22 @@ const SCHEMA_VERSION = 1;
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
+// All access is serialised through this chain.
+//
+// One connection cannot run two transactions at once - SQLite rejects the nested
+// BEGIN - and expo-sqlite surfaces that as an opaque "has been rejected" with the
+// real cause buried. Callers here are naturally concurrent (a load recording
+// fourteen days while a coverage query runs for the range gate), so rather than
+// hope they interleave safely, every operation queues.
+let tail: Promise<unknown> = Promise.resolve();
+
+function serialize<T>(work: () => Promise<T>): Promise<T> {
+  const run = tail.then(work, work);
+  // Keep the chain alive even when one operation rejects.
+  tail = run.catch(() => undefined);
+  return run;
+}
+
 async function open(): Promise<SQLite.SQLiteDatabase> {
   if (!dbPromise) {
     dbPromise = (async () => {
@@ -88,62 +104,70 @@ export interface DayTotals {
  * day as today's numbers grow.
  */
 export async function recordDay({ day, totals }: DayTotals): Promise<void> {
-  const db = await open();
-  const entries = Object.entries(totals).filter(([, m]) => m > 0);
-  await db.withTransactionAsync(async () => {
-    // Clear first: an app the user stopped using should drop out of that day
-    // rather than keep its last-written value forever.
-    await db.runAsync('DELETE FROM usage_day WHERE day = ?', day);
-    if (entries.length === 0) return;
-    const stmt = await db.prepareAsync('INSERT INTO usage_day (day, package, minutes) VALUES ($day, $pkg, $min)');
-    try {
-      for (const [pkg, minutes] of entries) {
-        await stmt.executeAsync({ $day: day, $pkg: pkg, $min: minutes });
+  return serialize(async () => {
+    const db = await open();
+    const entries = Object.entries(totals).filter(([, m]) => m > 0);
+    await db.withTransactionAsync(async () => {
+      // Clear first: an app the user stopped using should drop out of that day
+      // rather than keep its last-written value forever.
+      await db.runAsync('DELETE FROM usage_day WHERE day = ?', day);
+      if (entries.length === 0) return;
+      const stmt = await db.prepareAsync('INSERT INTO usage_day (day, package, minutes) VALUES ($day, $pkg, $min)');
+      try {
+        for (const [pkg, minutes] of entries) {
+          await stmt.executeAsync({ $day: day, $pkg: pkg, $min: minutes });
+        }
+      } finally {
+        await stmt.finalizeAsync();
       }
-    } finally {
-      await stmt.finalizeAsync();
-    }
+    });
   });
 }
 
 /** Per-app minutes for one day, or an empty object if that day is not recorded. */
 export async function readDay(day: string): Promise<Record<string, number>> {
-  const db = await open();
-  const rows = await db.getAllAsync<{ package: string; minutes: number }>(
-    'SELECT package, minutes FROM usage_day WHERE day = ?',
-    day
-  );
-  const out: Record<string, number> = {};
-  for (const r of rows) out[r.package] = r.minutes;
-  return out;
+  return serialize(async () => {
+    const db = await open();
+    const rows = await db.getAllAsync<{ package: string; minutes: number }>(
+      'SELECT package, minutes FROM usage_day WHERE day = ?',
+      day
+    );
+    const out: Record<string, number> = {};
+    for (const r of rows) out[r.package] = r.minutes;
+    return out;
+  });
 }
 
 /** Per-app minutes for every recorded day in [fromDay, toDay], keyed by day. */
 export async function readRange(fromDay: string, toDay: string): Promise<Record<string, Record<string, number>>> {
-  const db = await open();
-  const rows = await db.getAllAsync<{ day: string; package: string; minutes: number }>(
-    'SELECT day, package, minutes FROM usage_day WHERE day >= ? AND day <= ? ORDER BY day',
-    fromDay,
-    toDay
-  );
-  const out: Record<string, Record<string, number>> = {};
-  for (const r of rows) {
-    (out[r.day] ??= {})[r.package] = r.minutes;
-  }
-  return out;
+  return serialize(async () => {
+    const db = await open();
+    const rows = await db.getAllAsync<{ day: string; package: string; minutes: number }>(
+      'SELECT day, package, minutes FROM usage_day WHERE day >= ? AND day <= ? ORDER BY day',
+      fromDay,
+      toDay
+    );
+    const out: Record<string, Record<string, number>> = {};
+    for (const r of rows) {
+      (out[r.day] ??= {})[r.package] = r.minutes;
+    }
+    return out;
+  });
 }
 
 /** Totals per app across a day range, aggregated by SQLite rather than in JS. */
 export async function sumByPackage(fromDay: string, toDay: string): Promise<Record<string, number>> {
-  const db = await open();
-  const rows = await db.getAllAsync<{ package: string; total: number }>(
-    'SELECT package, SUM(minutes) AS total FROM usage_day WHERE day >= ? AND day <= ? GROUP BY package',
-    fromDay,
-    toDay
-  );
-  const out: Record<string, number> = {};
-  for (const r of rows) out[r.package] = r.total;
-  return out;
+  return serialize(async () => {
+    const db = await open();
+    const rows = await db.getAllAsync<{ package: string; total: number }>(
+      'SELECT package, SUM(minutes) AS total FROM usage_day WHERE day >= ? AND day <= ? GROUP BY package',
+      fromDay,
+      toDay
+    );
+    const out: Record<string, number> = {};
+    for (const r of rows) out[r.package] = r.total;
+    return out;
+  });
 }
 
 export interface HistoryCoverage {
@@ -160,18 +184,22 @@ export interface HistoryCoverage {
  * rendering a chart that is mostly blank.
  */
 export async function coverage(): Promise<HistoryCoverage> {
-  const db = await open();
-  const row = await db.getFirstAsync<{ days: number; oldest: string | null; newest: string | null }>(
-    'SELECT COUNT(DISTINCT day) AS days, MIN(day) AS oldest, MAX(day) AS newest FROM usage_day'
-  );
-  return { days: row?.days ?? 0, oldest: row?.oldest ?? null, newest: row?.newest ?? null };
+  return serialize(async () => {
+    const db = await open();
+    const row = await db.getFirstAsync<{ days: number; oldest: string | null; newest: string | null }>(
+      'SELECT COUNT(DISTINCT day) AS days, MIN(day) AS oldest, MAX(day) AS newest FROM usage_day'
+    );
+    return { days: row?.days ?? 0, oldest: row?.oldest ?? null, newest: row?.newest ?? null };
+  });
 }
 
 /** Days already recorded, as a set, so a backfill can skip them. */
 export async function recordedDays(): Promise<Set<string>> {
-  const db = await open();
-  const rows = await db.getAllAsync<{ day: string }>('SELECT DISTINCT day FROM usage_day ORDER BY day');
-  return new Set(rows.map((r) => r.day));
+  return serialize(async () => {
+    const db = await open();
+    const rows = await db.getAllAsync<{ day: string }>('SELECT DISTINCT day FROM usage_day ORDER BY day');
+    return new Set(rows.map((r) => r.day));
+  });
 }
 
 /**
@@ -182,11 +210,13 @@ export async function recordedDays(): Promise<Set<string>> {
  * few MB.
  */
 export async function prune(keepDays = 400): Promise<number> {
-  const db = await open();
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - keepDays);
-  const result = await db.runAsync('DELETE FROM usage_day WHERE day < ?', dayStamp(cutoff));
-  return result.changes;
+  return serialize(async () => {
+    const db = await open();
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - keepDays);
+    const result = await db.runAsync('DELETE FROM usage_day WHERE day < ?', dayStamp(cutoff));
+    return result.changes;
+  });
 }
 
 /** Testing helper: forget the cached handle so a fresh database can be opened. */

@@ -13,8 +13,24 @@
 
 import { UsageStats } from '../../modules/usage-stats';
 import { coverage, readDay, recordDay, sumByPackage } from './rollupStore';
+import { androidSource } from './androidSource';
 
 const DAY_MS = 86_400_000;
+
+/** expo-sqlite rejects with an opaque message and the real reason in `cause`. */
+function describe(e: unknown): string {
+  const parts: string[] = [String(e)];
+  let cur: unknown = e;
+  for (let depth = 0; depth < 4; depth++) {
+    const cause = (cur as { cause?: unknown } | null)?.cause;
+    if (cause === undefined || cause === null) break;
+    parts.push('caused by: ' + String(cause));
+    cur = cause;
+  }
+  const code = (e as { code?: unknown } | null)?.code;
+  if (code !== undefined) parts.push('code=' + String(code));
+  return parts.join(' | ');
+}
 
 export interface ProbeReport {
   granted: boolean;
@@ -124,6 +140,43 @@ export async function verifyRollupStore(): Promise<void> {
     console.log(`${tag} cleaned up: ${Object.keys(cleaned).length === 0}`);
     console.log(`${tag} OK`);
   } catch (e) {
-    console.log(`${tag} FAILED: ${String(e)}`);
+    console.log(`${tag} FAILED: ${describe(e)}`);
+  }
+}
+
+/**
+ * Drives AndroidUsageStatsSource end to end against the device and reports what
+ * it actually produces, so a screen full of zeros can be traced to its cause:
+ * permission, the query, the package filter, the series mapping, or the cache.
+ */
+export async function verifyAndroidSource(): Promise<void> {
+  const tag = '[SRC]';
+  try {
+    const apps = await UsageStats.installedApps();
+    // Pick something known to be heavy so zero is unambiguous evidence of a bug.
+    const probe = ['com.instagram.android', 'com.alltrails.alltrails'].filter((p) =>
+      apps.some((a) => a.packageName === p)
+    );
+    console.log(`${tag} probing packages: ${JSON.stringify(probe)}`);
+
+    androidSource.setTracked(probe, apps);
+    console.log(`${tag} series after setTracked: ${JSON.stringify(androidSource.series().map((x) => x.id))}`);
+
+    await androidSource.load(14);
+    console.log(`${tag} status after load: ${androidSource.status}`);
+
+    for (let idx = 0; idx < 5; idx++) {
+      console.log(`${tag} dayTotals(${idx}) = ${JSON.stringify(androidSource.dayTotals(idx))}`);
+    }
+
+    // Compare against the raw native call for the same window, to isolate whether
+    // the loss is in the query or in everything after it.
+    const now = Date.now();
+    const raw = await UsageStats.queryTotals(now - 86_400_000, now);
+    const rawForProbe = probe.map((p) => [p, Math.round((raw[p] ?? 0) / 60_000)]);
+    console.log(`${tag} raw native last 24h (minutes): ${JSON.stringify(rawForProbe)}`);
+    console.log(`${tag} raw native package count: ${Object.keys(raw).length}`);
+  } catch (e) {
+    console.log(`${tag} FAILED: ${describe(e)}`);
   }
 }

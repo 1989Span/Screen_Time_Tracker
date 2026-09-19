@@ -23,6 +23,9 @@ import { GroupInviteScreen } from './src/screens/GroupInviteScreen';
 import { NewGroupScreen } from './src/screens/NewGroupScreen';
 import { TabBar } from './src/components/TabBar';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { AppPickerScreen } from './src/screens/AppPickerScreen';
+import { PermissionScreen } from './src/screens/PermissionScreen';
+import { useSetupGate } from './src/state/useSetupGate';
 
 export default function App() {
   return (
@@ -45,6 +48,7 @@ const SCREENS = {
   limits: LimitsScreen,
   limit: LimitEditorScreen,
   pick: PickScreen,
+  apps: AppPickerScreen,
 } as const;
 
 function Tracker() {
@@ -58,25 +62,32 @@ function Tracker() {
   });
   const view = useNavStore((s) => s.view);
   const hydrated = useStoresHydrated();
+  const gate = useSetupGate();
 
   // Hold the first paint until fonts and saved state are both ready, so the app
   // never flashes default settings over the user's own.
   if (!fontsLoaded || !hydrated) return <View style={styles.root} />;
 
-  const Screen = SCREENS[view];
+  // Setup is a gate, not a destination: until the OS lets us read usage and the
+  // user has chosen something to measure, there is no real data to show, and
+  // showing generated numbers instead would misrepresent their own screen time.
+  const Screen = gate === 'permission' ? PermissionScreen : gate === 'apps' ? AppPickerScreen : SCREENS[view];
+  const routeKey = gate ?? view;
 
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
         <StatusBar style="dark" />
-        {/* Keyed by view so each screen opens scrolled to the top. */}
-        <ScrollView key={view} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {/* Keyed by route so each screen opens scrolled to the top. */}
+        <ScrollView key={routeKey} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Screen />
         </ScrollView>
       </SafeAreaView>
-      <SafeAreaView style={styles.tabArea} edges={['bottom', 'left', 'right']}>
-        <TabBar />
-      </SafeAreaView>
+      {gate === null && (
+        <SafeAreaView style={styles.tabArea} edges={['bottom', 'left', 'right']}>
+          <TabBar />
+        </SafeAreaView>
+      )}
     </SafeAreaProvider>
   );
 }

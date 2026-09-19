@@ -15,7 +15,8 @@ export type View =
   | 'groupSettings'
   | 'groupRules'
   | 'groupInvite'
-  | 'newGroup';
+  | 'newGroup'
+  | 'apps';
 
 export type Tab = 'overview' | 'groups' | 'timers' | 'settings';
 
@@ -32,13 +33,16 @@ export const TAB_OF: Record<View, Tab> = {
   limits: 'timers',
   limit: 'timers',
   pick: 'settings',
+  apps: 'settings',
 };
 
 export const TABS: { id: Tab; label: string; root: View }[] = [
   { id: 'overview', label: 'Overview', root: 'ov' },
   { id: 'groups', label: 'Groups', root: 'groups' },
   { id: 'timers', label: 'Timers', root: 'limits' },
-  { id: 'settings', label: 'Settings', root: 'pick' },
+  // Settings opens the app picker: the old category screen is obsolete now that
+  // tracking is per app, and the picker is how a user changes what is measured.
+  { id: 'settings', label: 'Settings', root: 'apps' },
 ];
 
 interface NavState {
