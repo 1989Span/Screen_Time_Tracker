@@ -32,6 +32,10 @@ export function OverviewScreen() {
                 </View>
               </View>
 
+              {/* A partial range still shows its real numbers, but says so, so a
+                  month-to-date total is not read as a whole month. */}
+              {c.coverageNote !== null && <Text style={styles.coverageNote}>{c.coverageNote}</Text>}
+
               <CompositionBar segments={c.comp} height={8} />
 
               <View style={{ gap: 7 }}>
@@ -105,6 +109,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   moreText: { fontSize: 12, fontFamily: font.bodySemiBold, color: color.accent700 },
+  coverageNote: { fontSize: 11, color: alpha(color.text, 45) },
   fullRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   fullText: { fontSize: 12, fontFamily: font.bodySemiBold, color: color.accent700 },
 });

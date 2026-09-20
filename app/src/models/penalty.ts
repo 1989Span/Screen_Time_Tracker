@@ -19,6 +19,7 @@ import {
   trackedToday,
 } from '../data';
 import { dayStampToDate, daysSinceStamp } from '../usage/ledger';
+import { useAppsStore } from '../state/appsStore';
 import { useNavStore } from '../state/navStore';
 import { parseLimit, parseRate, pendingSetting, sameSetting, usePenaltyStore } from '../state/penaltyStore';
 import { trackedFlags, usePrefsStore } from '../state/prefsStore';
@@ -62,6 +63,8 @@ export function usePenaltyCardModel(): PenaltyCardViewModel {
   const openEditor = usePenaltyStore((s) => s.openEditor);
   const openHistory = usePenaltyStore((s) => s.openHistory);
   const startedOn = usePenaltyStore((s) => s.startedOn);
+  // Usage loads asynchronously; without this the card keeps its empty values.
+  const dataVersion = useAppsStore((s) => s.dataVersion);
 
   return useMemo(() => {
     const { used, over, charge } = today(current, tracked);
@@ -92,7 +95,7 @@ export function usePenaltyCardModel(): PenaltyCardViewModel {
       openSettings: openEditor,
       openHistory,
     };
-  }, [tracked, current, next, openEditor, openHistory]);
+  }, [tracked, current, next, openEditor, openHistory, startedOn, dataVersion]);
 }
 
 export interface PresetButton {
@@ -193,6 +196,7 @@ export function usePenaltyHistoryModel(): PenaltyHistoryViewModel {
   const tracked = usePrefsStore((s) => s.tracked);
   const current = usePenaltyStore((s) => s.current);
   const startedOn = usePenaltyStore((s) => s.startedOn);
+  const dataVersion = useAppsStore((s) => s.dataVersion);
   const go = useNavStore((s) => s.go);
 
   return useMemo(() => {
@@ -226,5 +230,5 @@ export function usePenaltyHistoryModel(): PenaltyHistoryViewModel {
       })),
       goOverview: () => go('ov'),
     };
-  }, [tracked, current, go]);
+  }, [tracked, current, go, startedOn, dataVersion]);
 }

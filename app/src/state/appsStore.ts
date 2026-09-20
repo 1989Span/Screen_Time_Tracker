@@ -32,6 +32,15 @@ interface AppsState {
   /** Picker search text. Transient, like the group-invite drafts - a stale
    *  search box on next launch would be confusing, not helpful. */
   query: string;
+  /**
+   * Bumped whenever the usage source finishes loading.
+   *
+   * The source is filled asynchronously but read synchronously from useMemo, so
+   * without this nothing tells React the numbers arrived: the memo keeps the
+   * empty values it computed before the load resolved. Every view model that
+   * reads usage depends on this.
+   */
+  dataVersion: number;
 
   /** Re-read permission, the installed list and history coverage. */
   refresh: () => Promise<void>;
@@ -42,6 +51,8 @@ interface AppsState {
   setTracked: (packages: string[]) => void;
   setShowSystem: (value: boolean) => void;
   setQuery: (value: string) => void;
+  /** Announce that freshly loaded usage is available to read. */
+  markDataLoaded: () => void;
   /** Track every app the picker currently offers, or clear the selection. */
   selectAll: () => void;
   clearAll: () => void;
@@ -58,6 +69,7 @@ export const useAppsStore = create<AppsState>()(
       loading: false,
       error: null,
       query: '',
+      dataVersion: 0,
 
       refresh: async () => {
         set({ loading: true, error: null });
@@ -103,6 +115,8 @@ export const useAppsStore = create<AppsState>()(
       setShowSystem: (value) => set({ showSystem: value }),
 
       setQuery: (value) => set({ query: value }),
+
+      markDataLoaded: () => set((s) => ({ dataVersion: s.dataVersion + 1 })),
 
       // Bulk actions operate on what the *filter* offers, not the raw installed
       // list, so "select all" cannot secretly enable the screensaver, a launcher

@@ -11,9 +11,7 @@ export function LimitsScreen() {
     <View style={styles.wrap}>
       <View style={{ gap: 4 }}>
         <Text style={styles.title}>App timers</Text>
-        <Text style={styles.subtitle}>
-          Give a category a daily budget. Apps pause when it runs out and start fresh at midnight.
-        </Text>
+        <Text style={styles.subtitle}>Give an app a daily budget. It starts fresh at midnight.</Text>
       </View>
       <Card style={styles.card}>
         {rows.map((l, i: number) => (

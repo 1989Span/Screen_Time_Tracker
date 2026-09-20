@@ -6,6 +6,7 @@
 import { useMemo } from 'react';
 
 import { PRESETS, dayUsage, fmtShort, limLabel, series } from '../data';
+import { useAppsStore } from '../state/appsStore';
 import { useNavStore } from '../state/navStore';
 import { useTimersStore } from '../state/timersStore';
 import { OVER_BAR, limitState } from './shared';
@@ -31,6 +32,7 @@ export interface TimersViewModel {
 }
 
 export function useTimersModel(): TimersViewModel {
+  const dataVersion = useAppsStore((s) => s.dataVersion);
   const limits = useTimersStore((s) => s.limits);
   const open = useTimersStore((s) => s.open);
 
@@ -56,7 +58,7 @@ export function useTimersModel(): TimersViewModel {
       list,
       emptyNote: list.length === 0 ? 'Pick some apps under Settings and they will show up here.' : null,
     };
-  }, [limits, open]);
+  }, [limits, open, dataVersion]);
 }
 
 export interface TimerEditorViewModel {
@@ -77,6 +79,7 @@ export interface TimerEditorViewModel {
 }
 
 export function useTimerEditorModel(): TimerEditorViewModel {
+  const dataVersion = useAppsStore((s) => s.dataVersion);
   const limits = useTimersStore((s) => s.limits);
   const editing = useTimersStore((s) => s.editing);
   const setLimit = useTimersStore((s) => s.setLimit);
@@ -117,5 +120,5 @@ export function useTimerEditorModel(): TimerEditorViewModel {
       clear: () => clearLimit(ser.id),
       backToLimits: () => go('limits'),
     };
-  }, [limits, editing, setLimit, clearLimit, go]);
+  }, [limits, editing, setLimit, clearLimit, go, dataVersion]);
 }

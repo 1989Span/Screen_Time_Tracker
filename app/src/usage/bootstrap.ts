@@ -53,6 +53,8 @@ export async function installRealUsageSource(): Promise<SourceKind> {
   // Only query when there is both permission and something selected to measure.
   if (isConfigured(state)) {
     await androidSource.load(MAX_DAYS_NEEDED);
+    // Tell the view models the cache is warm; they cannot see it otherwise.
+    useAppsStore.getState().markDataLoaded();
   }
 
   // Keep history accumulating while the app is closed. Registration needs
@@ -73,5 +75,6 @@ export async function reloadUsage(): Promise<void> {
   androidSource.setTracked(state.tracked, state.installed);
   if (isConfigured(state)) {
     await androidSource.load(MAX_DAYS_NEEDED);
+    useAppsStore.getState().markDataLoaded();
   }
 }

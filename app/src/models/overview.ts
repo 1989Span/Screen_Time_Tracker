@@ -18,6 +18,8 @@ import {
   series,
   slice,
 } from '../data';
+import { useAppsStore } from '../state/appsStore';
+import { rangeAvailability } from '../usage/rangeAvailability';
 import { useNavStore } from '../state/navStore';
 import { usePrefsStore, trackedFlags } from '../state/prefsStore';
 import { useTimersStore } from '../state/timersStore';
@@ -41,6 +43,9 @@ export interface OverviewCard {
   fact: string;
   avg: string;
   more: string;
+  /** Null when the range is fully covered; otherwise how partial it is, so a
+   *  month-to-date chart cannot be mistaken for a whole month. */
+  coverageNote: string | null;
   top: CategoryRow[];
   comp: Segment[];
   onPress: () => void;
@@ -51,12 +56,16 @@ export interface OverviewViewModel {
 }
 
 export function useOverviewModel(): OverviewViewModel {
+  // Usage arrives asynchronously; without this the memo keeps its empty values.
+  const dataVersion = useAppsStore((s) => s.dataVersion);
+  const historyDays = useAppsStore((s) => s.historyDays);
   const tracked = usePrefsStore((s) => s.tracked);
   const openRange = useDetailStore((s) => s.openRange);
 
   return useMemo(() => {
     const flags = trackedFlags(tracked);
     const label = dates();
+    const coverage = rangeAvailability(historyDays);
     return {
       cards: RANGE_IDS.map((id) => {
         const sl = slice(id, null, flags);
@@ -68,13 +77,14 @@ export function useOverviewModel(): OverviewViewModel {
           fact: factFor(id, sl.total),
           avg: id === 'day' ? 'so far today' : fmtShort(sl.total / N_DAYS[id]) + '/day',
           more: sl.rows.length > 3 ? '+' + (sl.rows.length - 3) + ' more' : '',
+          coverageNote: coverage[id].note,
           top: sl.rows.slice(0, 3),
           comp: sl.order.map((ci) => ({ w: (sl.scoped[ci] / Math.max(1, sl.total)) * 100, color: CCOL[ci] })),
           onPress: () => openRange(id),
         };
       }),
     };
-  }, [tracked, openRange]);
+  }, [tracked, openRange, dataVersion, historyDays]);
 }
 
 export interface RangeTab {
@@ -120,6 +130,7 @@ export interface DetailViewModel {
 }
 
 export function useDetailModel(): DetailViewModel {
+  const dataVersion = useAppsStore((s) => s.dataVersion);
   const tracked = usePrefsStore((s) => s.tracked);
   const range = useDetailStore((s) => s.range);
   const selected = useDetailStore((s) => s.selected);
@@ -191,7 +202,7 @@ export function useDetailModel(): DetailViewModel {
       gap: range === 'month' ? 2 : range === 'day' ? 3 : 7,
       goOverview: () => go('ov'),
     };
-  }, [tracked, range, selected, limits, setRange, toggleBucket, openTimer, go]);
+  }, [tracked, range, selected, limits, setRange, toggleBucket, openTimer, go, dataVersion]);
 }
 
 export interface CategoryToggle {
@@ -210,6 +221,7 @@ export interface CategoriesViewModel {
 }
 
 export function useCategoriesModel(): CategoriesViewModel {
+  const dataVersion = useAppsStore((s) => s.dataVersion);
   const tracked = usePrefsStore((s) => s.tracked);
   const toggle = usePrefsStore((s) => s.toggle);
   const toggleAll = usePrefsStore((s) => s.toggleAll);
@@ -227,6 +239,6 @@ export function useCategoriesModel(): CategoriesViewModel {
       allLabel: tracked.length === CATS.length ? 'Clear all' : 'Select all',
       toggleAll,
     }),
-    [tracked, toggle, toggleAll]
+    [tracked, toggle, toggleAll, dataVersion]
   );
 }
