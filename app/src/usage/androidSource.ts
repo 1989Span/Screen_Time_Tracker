@@ -50,6 +50,10 @@ export class AndroidUsageStatsSource implements UsageSource {
   /** `${dayIndex}:${hour}` -> minutes per series. */
   private hourCache = new Map<string, number[]>();
 
+  /** True when hourly figures were spread from a daily total rather than derived
+   *  from real events, so the UI can say so instead of implying precision. */
+  hourlyIsApproximate = false;
+
   get status(): SourceStatus {
     return this._status;
   }
@@ -88,9 +92,11 @@ export class AndroidUsageStatsSource implements UsageSource {
       // --- Copy what the OS still knows into our own history --------------
       // Shared with the background task, and it records every countable package
       // rather than only the tracked ones, so adding an app later already has
-      // history behind it.
+      // history behind it. It hands back the events it fetched so the hourly
+      // chart below reuses them instead of querying twice - and so hours and
+      // days are derived from exactly the same data.
       const osDays = Math.min(days, OS_RECORD_DAYS);
-      await recordOsDays(osDays);
+      const recorded = await recordOsDays(osDays);
 
       // --- Read every day back out of the rollup --------------------------
       // Reading through the rollup rather than keeping the freshly-queried values
@@ -103,8 +109,11 @@ export class AndroidUsageStatsSource implements UsageSource {
       }
 
       // --- Hourly detail for the recent days the Day view can show --------
-      const eventsFrom = dayWindow(today, EVENT_WINDOW_DAYS - 1, nowMs).start;
-      const rawEvents = await UsageStats.queryEvents(eventsFrom, nowMs);
+      // Reuses the events the recorder already fetched. Previously this issued
+      // its own queryEvents call *after* the day totals were cached, so anything
+      // that failed here left Week populated and Day stuck at zero - which is
+      // exactly how the Day card read 0m while the OS held 74 minutes.
+      const rawEvents = recorded.events;
       for (let idx = 0; idx < EVENT_WINDOW_DAYS; idx++) {
         const { start, end } = dayWindow(today, idx, nowMs);
         if (end <= start) continue;
@@ -114,6 +123,28 @@ export class AndroidUsageStatsSource implements UsageSource {
           if (!perPkg) continue;
           this.hourCache.set(`${idx}:${h}`, this.toSeriesArray(perPkg));
         }
+      }
+
+      // Events can be missing entirely (a device that keeps none, or a query
+      // that failed). Rather than leave the Day chart blank while Week shows
+      // real numbers, fall back to spreading the day's recorded total evenly
+      // across the hours that have happened - flagged as approximate, because
+      // pretending to hour-level precision we do not have would be worse.
+      if (rawEvents.length === 0) {
+        this.hourlyIsApproximate = true;
+        for (let idx = 0; idx < EVENT_WINDOW_DAYS; idx++) {
+          const dayTotal = this.dayCache.get(idx);
+          if (!dayTotal) continue;
+          const hoursElapsed = idx === 0 ? new Date(nowMs).getHours() + 1 : 24;
+          for (let h = 0; h < hoursElapsed; h++) {
+            this.hourCache.set(
+              `${idx}:${h}`,
+              dayTotal.map((v) => v / hoursElapsed)
+            );
+          }
+        }
+      } else {
+        this.hourlyIsApproximate = false;
       }
 
       this._status = 'ready';
