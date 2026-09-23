@@ -11,6 +11,49 @@
 
 import { Contact, Group, Member } from '../groups';
 import { CATS } from '../data';
+import { Series } from '../usage/series';
+import { SourceStatus, UsageSource, setUsageSource } from '../usage/source';
+
+/**
+ * A source whose series are the categories.
+ *
+ * Groups is the one feature still shaped around categories: a member's `per`
+ * array and a group's excluded ids are both category-indexed. countedTotal maps
+ * position to id through the installed source, so these tests need a source that
+ * agrees with the fixtures. (Once Groups moves to per-app, this goes with it.)
+ */
+class CategorySeriesSource implements UsageSource {
+  readonly id = 'test-categories';
+  status: SourceStatus = 'ready';
+  series(): Series[] {
+    return CATS.map((c) => ({ id: c.id, name: c.name, color: '#5980a6' }));
+  }
+  async load() {}
+  dayTotals(): number[] {
+    return CATS.map(() => 0);
+  }
+  hourTotals(): number[] {
+    return CATS.map(() => 0);
+  }
+  invalidate() {}
+}
+
+/** Install it; call from beforeEach in any suite that exercises groups. */
+export const installCategorySeries = () => setUsageSource(new CategorySeriesSource());
+
+/** A per-app source of `n` apps, for asserting groups survives a real selection. */
+export function installAppSeries(n: number) {
+  setUsageSource({
+    id: 'test-apps',
+    status: 'ready' as SourceStatus,
+    series: (): Series[] =>
+      Array.from({ length: n }, (_, i) => ({ id: 'app.' + i, name: 'App ' + i, color: '#123456' })),
+    load: async () => {},
+    dayTotals: () => new Array<number>(n).fill(0),
+    hourTotals: () => new Array<number>(n).fill(0),
+    invalidate: () => {},
+  });
+}
 
 /**
  * A member whose usage is fully controlled.

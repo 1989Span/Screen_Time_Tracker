@@ -10,8 +10,11 @@
 // Members only compete on days since they joined. Someone joining later leaves
 // everyone's existing points and streaks untouched and starts at zero.
 
-import { CATS, dayUsageAt } from './data';
+import { dayUsageAt, series, seriesCount } from './data';
 import { checkDayRollover, onDayChange } from './clock';
+
+/** No usage at all, sized to the current series so every `per` array matches. */
+const noUsage = (): number[] => new Array<number>(seriesCount()).fill(0);
 
 export interface Member {
   id: string;
@@ -68,7 +71,7 @@ export type StoredGroup = Omit<Group, 'members'> & { members: StoredMember[] };
 export function reviveMember(m: StoredMember): Member {
   // Your own row reads real device usage; anyone else has none until a backend
   // provides it, so their history revives as zeros rather than invented numbers.
-  return m.id === YOU_ID ? { ...m, day: dayUsageAt } : { ...m, day: () => CATS.map(() => 0) };
+  return m.id === YOU_ID ? { ...m, day: dayUsageAt } : { ...m, day: noUsage };
 }
 
 export function reviveGroup(g: StoredGroup): Group {
@@ -157,14 +160,22 @@ export function joinGroup(g: Group, c: Contact): Group {
     joined: 0,
     seed: 0,
     scale: [],
-    day: () => CATS.map(() => 0),
+    day: noUsage,
   };
   return { ...g, members: g.members.concat([member]) };
 }
 
-/** Total of the categories that count, given the group's excluded ids. */
+/**
+ * Total of the apps that count, given the group's excluded ids.
+ *
+ * Indexes the live series, not CATS: `per` comes from dayUsageAt and is as long
+ * as the user's selection, so CATS[i] was undefined past the eighth app and this
+ * threw on render for anyone tracking more than eight.
+ */
 export function countedTotal(per: number[], excluded: string[]): number {
-  return per.reduce((s, v, i) => s + (excluded.indexOf(CATS[i].id) >= 0 ? 0 : v), 0);
+  if (excluded.length === 0) return per.reduce((s, v) => s + v, 0);
+  const ids = series();
+  return per.reduce((s, v, i) => s + (excluded.indexOf(ids[i]?.id ?? '') >= 0 ? 0 : v), 0);
 }
 
 export interface MemberStats {
@@ -239,9 +250,9 @@ function settle(g: Group, rules: GroupRules, cat: string): GroupRules {
   if (g.members.length < MIN_GROUP_SIZE) return rules;
   const done = rules.proposals.find((p) => p.cat === cat && p.agreed.length === g.members.length);
   if (!done) return rules;
-  // At least one category must stay tracked; the proposal stays open until
-  // another category is brought back.
-  if (done.kind === 'exclude' && rules.excluded.length + 1 >= CATS.length) return rules;
+  // At least one app must stay tracked; the proposal stays open until another
+  // is brought back.
+  if (done.kind === 'exclude' && rules.excluded.length + 1 >= seriesCount()) return rules;
   return {
     excluded: done.kind === 'exclude' ? rules.excluded.concat([cat]) : rules.excluded.filter((c) => c !== cat),
     proposals: rules.proposals.filter((p) => p !== done),
@@ -259,7 +270,7 @@ export function vote(g: Group, rules: GroupRules, cat: string, memberId: string)
  *  other open exclude proposals as if they pass. */
 export function canProposeExclude(rules: GroupRules, cat: string): boolean {
   const pending = rules.proposals.filter((p) => p.kind === 'exclude' && p.cat !== cat).length;
-  return CATS.length - rules.excluded.length - pending > 1;
+  return seriesCount() - rules.excluded.length - pending > 1;
 }
 
 /** Proposing counts as agreeing. */

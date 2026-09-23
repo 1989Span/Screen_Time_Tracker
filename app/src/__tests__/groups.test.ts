@@ -15,7 +15,16 @@ import {
   vote,
   withdraw,
 } from '../groups';
-import { TEST_CONTACTS, testContact, testGroup, testMember } from '../__fixtures__/groups';
+import {
+  TEST_CONTACTS,
+  installAppSeries,
+  installCategorySeries,
+  testContact,
+  testGroup,
+  testMember,
+} from '../__fixtures__/groups';
+
+beforeEach(installCategorySeries);
 
 const noRules: GroupRules = { excluded: [], proposals: [] };
 
@@ -111,6 +120,27 @@ describe('scoring', () => {
     const { winnersByDay, stats } = groupStats(solo, []);
     expect(winnersByDay.every((d) => d.length === 0)).toBe(true);
     expect(stats[0].points).toBe(0);
+  });
+});
+
+describe('countedTotal with a real per-app selection', () => {
+  // A member's `per` comes from dayUsageAt, which is as long as the user's
+  // selection - 82 apps on the test device. countedTotal used to map position to
+  // id through CATS, so CATS[8] was undefined and the Groups tab threw on render
+  // for anyone tracking more than eight apps.
+  it('does not throw when there are more apps than legacy categories', () => {
+    installAppSeries(40);
+    const per = new Array<number>(40).fill(3);
+    expect(() => countedTotal(per, ['app.0'])).not.toThrow();
+    expect(countedTotal(per, [])).toBe(120);
+    expect(countedTotal(per, ['app.0', 'app.39'])).toBe(114);
+  });
+
+  it('excludes by app id, wherever the app sits in the list', () => {
+    installAppSeries(40);
+    const per = new Array<number>(40).fill(3);
+    // Index 30 is far past the end of the old eight-entry palette.
+    expect(countedTotal(per, ['app.30'])).toBe(117);
   });
 });
 

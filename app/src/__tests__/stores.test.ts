@@ -1,6 +1,6 @@
 import { CATS, DEFAULT_PENALTY } from '../data';
 import { Contact, MIN_GROUP_SIZE, groupStats } from '../groups';
-import { TEST_CONTACTS, testContact, testGroup, testMember } from '../__fixtures__/groups';
+import { TEST_CONTACTS, installCategorySeries, testContact, testGroup, testMember } from '../__fixtures__/groups';
 import { useDetailStore } from '../state/detailStore';
 import { currentGroup, invitesFor, rulesFor, useGroupsStore } from '../state/groupsStore';
 import { useNavStore } from '../state/navStore';
@@ -23,6 +23,7 @@ const initial = {
 };
 
 beforeEach(() => {
+  installCategorySeries();
   useNavStore.setState(initial.nav, true);
   useTimersStore.setState(initial.timers, true);
   useDetailStore.setState(initial.detail, true);
