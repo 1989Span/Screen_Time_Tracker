@@ -1,7 +1,7 @@
 // Groups: the group page, tracking rules, settings, inviting and new groups.
 
 import { useMemo } from 'react';
-import { CATS, CCOL, dateAt, fmtDate, fmtShort } from '../data';
+import { CATS, CCOL, dateAt, fmtDate, fmtShort, series } from '../data';
 import {
   CONTACTS,
   Contact,
@@ -182,6 +182,7 @@ export function useGroupsModel(): GroupsViewModel {
     const excluded = rules.excluded;
     const invites = invitesFor(store, group.id);
     const stats = groupStats(group, excluded);
+    const seriesList = series();
     const n = group.members.length;
 
     const todayRows = group.members
@@ -216,11 +217,19 @@ export function useGroupsModel(): GroupsViewModel {
         you: r.mem.id === 'you',
         total: fmtShort(r.total),
         pct: Math.max(2, (r.total / todayMax) * 100),
-        top: CATS.map((c, ci) => ci)
-          .filter((ci) => excluded.indexOf(CATS[ci].id) < 0)
+        // Over the member's own usage array, which is one entry per tracked
+        // app. Mapping over CATS instead showed only the first eight and
+        // labelled them with category names.
+        top: r.per
+          .map((_, ci) => ci)
+          .filter((ci) => r.per[ci] > 0.4 && excluded.indexOf(seriesList[ci]?.id ?? '') < 0)
           .sort((a, b) => r.per[b] - r.per[a])
           .slice(0, 3)
-          .map((ci) => ({ name: CATS[ci].name, time: fmtShort(r.per[ci]), color: CCOL[ci] })),
+          .map((ci) => ({
+            name: seriesList[ci]?.name ?? '',
+            time: fmtShort(r.per[ci]),
+            color: seriesList[ci]?.color ?? '#8a8f94',
+          })),
       })),
       yesterday: winners.length
         ? winners.map(nameOf).join(' & ') +
