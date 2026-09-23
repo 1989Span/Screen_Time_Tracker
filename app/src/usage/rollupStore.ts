@@ -31,7 +31,7 @@ import { dayStamp } from '../clock';
 const DB_NAME = 'gauge-history.db';
 
 /** Bump and add a migration below when the schema changes. */
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
@@ -66,6 +66,12 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
   // WAL keeps a daily write from blocking reads. The primary key is (day,
   // package) so re-recording a day replaces it rather than double-counting -
   // which matters because today's total grows all day and gets rewritten.
+  //
+  // observed_day records that a day was *looked at*, separately from whether any
+  // usage was found. Without it, "we checked and you used nothing" and "we never
+  // checked" are indistinguishable, and the only way to tell them apart was to
+  // write an empty row set - which meant deleting whatever was already there.
+  // That destroyed history on every launch where the OS returned nothing.
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
     CREATE TABLE IF NOT EXISTS usage_day (
@@ -75,10 +81,16 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
       PRIMARY KEY (day, package)
     );
     CREATE INDEX IF NOT EXISTS usage_day_day ON usage_day (day);
+    CREATE TABLE IF NOT EXISTS observed_day (
+      day TEXT PRIMARY KEY NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS meta (
       key   TEXT PRIMARY KEY NOT NULL,
       value TEXT NOT NULL
     );
+    -- Days already holding usage were obviously observed; backfill so the
+    -- coverage count does not drop when this migration lands.
+    INSERT OR IGNORE INTO observed_day (day) SELECT DISTINCT day FROM usage_day;
   `);
   const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM meta WHERE key = ?', 'schemaVersion');
   if (row?.value !== String(SCHEMA_VERSION)) {
@@ -106,12 +118,24 @@ export interface DayTotals {
 export async function recordDay({ day, totals }: DayTotals): Promise<void> {
   return serialize(async () => {
     const db = await open();
-    const entries = Object.entries(totals).filter(([, m]) => m > 0);
+    const entries = Object.entries(totals).filter(([, m]) => Number.isFinite(m) && m > 0);
+
     await db.withTransactionAsync(async () => {
-      // Clear first: an app the user stopped using should drop out of that day
-      // rather than keep its last-written value forever.
-      await db.runAsync('DELETE FROM usage_day WHERE day = ?', day);
+      // The day was looked at either way.
+      await db.runAsync('INSERT OR IGNORE INTO observed_day (day) VALUES (?)', day);
+
+      // Nothing to write: leave whatever is already stored alone.
+      //
+      // This is the whole point of the table. The OS keeps roughly ten days and
+      // then forgets; the rollup exists to remember what it forgets. Replacing a
+      // day with an empty result - which is what the OS returns for any day it
+      // has aged out - would delete exactly the history this table was built to
+      // preserve, on every single launch.
       if (entries.length === 0) return;
+
+      // With data in hand, replace the day so an app that fell out of use drops
+      // out rather than keeping its last-written value forever.
+      await db.runAsync('DELETE FROM usage_day WHERE day = ?', day);
       const stmt = await db.prepareAsync('INSERT INTO usage_day (day, package, minutes) VALUES ($day, $pkg, $min)');
       try {
         for (const [pkg, minutes] of entries) {
@@ -120,6 +144,18 @@ export async function recordDay({ day, totals }: DayTotals): Promise<void> {
       } finally {
         await stmt.finalizeAsync();
       }
+    });
+  });
+}
+
+/** Forget a day entirely - both its usage and the record that it was observed.
+ *  Only for deliberate resets; the normal path never deletes history. */
+export async function forgetDay(day: string): Promise<void> {
+  return serialize(async () => {
+    const db = await open();
+    await db.withTransactionAsync(async () => {
+      await db.runAsync('DELETE FROM usage_day WHERE day = ?', day);
+      await db.runAsync('DELETE FROM observed_day WHERE day = ?', day);
     });
   });
 }
@@ -186,8 +222,10 @@ export interface HistoryCoverage {
 export async function coverage(): Promise<HistoryCoverage> {
   return serialize(async () => {
     const db = await open();
+    // Counted from observed_day: a day we checked and found quiet is real
+    // history, and should advance the Month/Year coverage just like a busy one.
     const row = await db.getFirstAsync<{ days: number; oldest: string | null; newest: string | null }>(
-      'SELECT COUNT(DISTINCT day) AS days, MIN(day) AS oldest, MAX(day) AS newest FROM usage_day'
+      'SELECT COUNT(*) AS days, MIN(day) AS oldest, MAX(day) AS newest FROM observed_day'
     );
     return { days: row?.days ?? 0, oldest: row?.oldest ?? null, newest: row?.newest ?? null };
   });
@@ -197,7 +235,7 @@ export async function coverage(): Promise<HistoryCoverage> {
 export async function recordedDays(): Promise<Set<string>> {
   return serialize(async () => {
     const db = await open();
-    const rows = await db.getAllAsync<{ day: string }>('SELECT DISTINCT day FROM usage_day ORDER BY day');
+    const rows = await db.getAllAsync<{ day: string }>('SELECT day FROM observed_day ORDER BY day');
     return new Set(rows.map((r) => r.day));
   });
 }
@@ -214,7 +252,9 @@ export async function prune(keepDays = 400): Promise<number> {
     const db = await open();
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - keepDays);
-    const result = await db.runAsync('DELETE FROM usage_day WHERE day < ?', dayStamp(cutoff));
+    const stamp = dayStamp(cutoff);
+    const result = await db.runAsync('DELETE FROM usage_day WHERE day < ?', stamp);
+    await db.runAsync('DELETE FROM observed_day WHERE day < ?', stamp);
     return result.changes;
   });
 }

@@ -37,17 +37,45 @@ jest.mock('./modules/usage-stats', () => ({
 // expo-sqlite is native and does not resolve under jest. Stubbed so modules that
 // import it can be unit-tested; the SQL itself is verified on a device, not
 // against a hand-written fake SQL engine that would prove nothing about SQLite.
+// expo-sqlite is native and does not resolve under jest. This stub records every
+// statement so tests can assert on *which* SQL ran - which is how the rollup's
+// "never delete on an empty result" rule is protected from regressing. The real
+// SQL is still verified on a device; this guards the control flow around it.
+const sqlLog: string[] = [];
+(globalThis as unknown as { __sqlLog: string[] }).__sqlLog = sqlLog;
+
 jest.mock('expo-sqlite', () => {
+  // Resolved on each call, not captured once: jest.mock factories are hoisted
+  // above the assignment above, so a value captured here would be undefined.
+  const g = globalThis as unknown as { __sqlLog?: string[] };
+  const log = () => (g.__sqlLog ??= []);
   const statement = {
-    executeAsync: async () => ({}),
+    executeAsync: async (...args: unknown[]) => {
+      log().push('EXEC ' + JSON.stringify(args));
+      return {};
+    },
     finalizeAsync: async () => {},
   };
   const db = {
-    execAsync: async () => {},
-    runAsync: async () => ({ changes: 0, lastInsertRowId: 0 }),
-    getFirstAsync: async () => undefined,
-    getAllAsync: async () => [],
-    prepareAsync: async () => statement,
+    execAsync: async (sql: string) => {
+      log().push(sql);
+    },
+    runAsync: async (sql: string) => {
+      log().push(sql);
+      return { changes: 0, lastInsertRowId: 0 };
+    },
+    getFirstAsync: async (sql: string) => {
+      log().push(sql);
+      return undefined;
+    },
+    getAllAsync: async (sql: string) => {
+      log().push(sql);
+      return [];
+    },
+    prepareAsync: async (sql: string) => {
+      log().push('PREPARE ' + sql);
+      return statement;
+    },
     withTransactionAsync: async (fn: () => Promise<void>) => {
       await fn();
     },
