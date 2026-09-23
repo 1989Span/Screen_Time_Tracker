@@ -3,7 +3,6 @@
 import { useMemo } from 'react';
 import {
   CATS,
-  CCOL,
   dates,
   N_DAYS,
   RANGE_LABEL,
@@ -22,7 +21,12 @@ import { rangeAvailability } from '../usage/rangeAvailability';
 import { useNavStore } from '../state/navStore';
 import { useTimersStore } from '../state/timersStore';
 import { useDetailStore } from '../state/detailStore';
-import { CategoryRow, Segment, limitState } from './shared';
+import { CategoryRow, OVER_BAR, Segment, limitState } from './shared';
+
+// Bars and segments are coloured from the series itself. CCOL is a fixed
+// 8-entry palette in CATS order: indexing it by a series index gave the wrong
+// colour for the first eight apps and undefined for every one after them.
+const tone = (list: ReturnType<typeof series>, ci: number) => list[ci]?.color ?? OVER_BAR;
 
 const RANGE_IDS: RangeId[] = ['day', 'week', 'month', 'year'];
 const PREV_NAME: Record<RangeId, string> = {
@@ -61,6 +65,7 @@ export function useOverviewModel(): OverviewViewModel {
 
   return useMemo(() => {
     const label = dates();
+    const seriesList = series();
     const coverage = rangeAvailability(historyDays);
     return {
       cards: RANGE_IDS.map((id) => {
@@ -75,7 +80,10 @@ export function useOverviewModel(): OverviewViewModel {
           more: sl.rows.length > 3 ? '+' + (sl.rows.length - 3) + ' more' : '',
           coverageNote: coverage[id].note,
           top: sl.rows.slice(0, 3),
-          comp: sl.order.map((ci) => ({ w: (sl.scoped[ci] / Math.max(1, sl.total)) * 100, color: CCOL[ci] })),
+          comp: sl.order.map((ci) => ({
+            w: (sl.scoped[ci] / Math.max(1, sl.total)) * 100,
+            color: tone(seriesList, ci),
+          })),
           onPress: () => openRange(id),
         };
       }),
@@ -165,10 +173,10 @@ export function useDetailModel(): DetailViewModel {
             : (diff > 0 ? '↑ ' : '↓ ') + pct + '% vs ' + PREV_NAME[range],
       deltaPositive: diff > 0,
       deltaNeutral: m.sel != null,
-      comp: m.order.map((ci) => ({ w: (m.scoped[ci] / Math.max(1, m.total)) * 100, color: CCOL[ci] })),
+      comp: m.order.map((ci) => ({ w: (m.scoped[ci] / Math.max(1, m.total)) * 100, color: tone(seriesList, ci) })),
       stacks: m.bk.map((b, i) => {
         const segs = m.order
-          .map((ci) => ({ h: Math.max(0, (b.per[ci] / m.max) * 164), color: CCOL[ci] }))
+          .map((ci) => ({ h: Math.max(0, (b.per[ci] / m.max) * 164), color: tone(seriesList, ci) }))
           .filter((s) => s.h > 0.6)
           .reverse();
         return {
