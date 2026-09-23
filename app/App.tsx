@@ -26,6 +26,7 @@ import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { AppPickerScreen } from './src/screens/AppPickerScreen';
 import { PermissionScreen } from './src/screens/PermissionScreen';
 import { useSetupGate } from './src/state/useSetupGate';
+import { DISABLED_VIEWS } from './src/features';
 
 export default function App() {
   return (
@@ -71,8 +72,11 @@ function Tracker() {
   // Setup is a gate, not a destination: until the OS lets us read usage and the
   // user has chosen something to measure, there is no real data to show, and
   // showing generated numbers instead would misrepresent their own screen time.
-  const Screen = gate === 'permission' ? PermissionScreen : gate === 'apps' ? AppPickerScreen : SCREENS[view];
-  const routeKey = gate ?? view;
+  // A view behind a disabled feature flag falls back to Overview rather than
+  // rendering an orphan screen with no way back.
+  const routed = DISABLED_VIEWS.includes(view) ? 'ov' : view;
+  const Screen = gate === 'permission' ? PermissionScreen : gate === 'apps' ? AppPickerScreen : SCREENS[routed];
+  const routeKey = gate ?? routed;
 
   return (
     <SafeAreaProvider>

@@ -4,6 +4,7 @@ import { alpha, color, font } from '../theme';
 import { Card, CompositionBar, Dot } from '../components/ui';
 import { FactBox } from '../components/FactBox';
 import { PenaltyCard } from '../components/PenaltyCard';
+import { PENALTY_LIMIT_ENABLED } from '../features';
 import { ChevronRightIcon } from '../components/Icons';
 import { useOverviewModel } from '../models/overview';
 
@@ -13,7 +14,7 @@ export function OverviewScreen() {
     <View style={styles.wrap}>
       <Text style={styles.title}>Wasted Time....</Text>
 
-      <PenaltyCard />
+      {PENALTY_LIMIT_ENABLED && <PenaltyCard />}
 
       {model.cards.map((c) => (
         <Pressable key={c.id} onPress={c.onPress}>
