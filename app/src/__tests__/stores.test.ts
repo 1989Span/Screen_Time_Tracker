@@ -5,11 +5,9 @@ import { useDetailStore } from '../state/detailStore';
 import { currentGroup, invitesFor, rulesFor, useGroupsStore } from '../state/groupsStore';
 import { useNavStore } from '../state/navStore';
 import { pendingSetting, usePenaltyStore } from '../state/penaltyStore';
-import { usePrefsStore } from '../state/prefsStore';
 import { useTimersStore } from '../state/timersStore';
 
 const nav = () => useNavStore.getState();
-const prefs = () => usePrefsStore.getState();
 const timers = () => useTimersStore.getState();
 const detail = () => useDetailStore.getState();
 const penalty = () => usePenaltyStore.getState();
@@ -18,7 +16,6 @@ const groups = () => useGroupsStore.getState();
 // Stores are module singletons, so put each one back before the next test.
 const initial = {
   nav: useNavStore.getState(),
-  prefs: usePrefsStore.getState(),
   timers: useTimersStore.getState(),
   detail: useDetailStore.getState(),
   penalty: usePenaltyStore.getState(),
@@ -27,7 +24,6 @@ const initial = {
 
 beforeEach(() => {
   useNavStore.setState(initial.nav, true);
-  usePrefsStore.setState(initial.prefs, true);
   useTimersStore.setState(initial.timers, true);
   useDetailStore.setState(initial.detail, true);
   usePenaltyStore.setState(initial.penalty, true);
@@ -50,23 +46,6 @@ describe('navigation', () => {
 
     penalty().openEditor();
     expect(nav().view).toBe('penalty');
-  });
-});
-
-describe('tracked categories', () => {
-  it('starts with everything tracked and toggles one at a time', () => {
-    expect(prefs().tracked).toHaveLength(CATS.length);
-    prefs().toggle('social');
-    expect(prefs().tracked).not.toContain('social');
-    prefs().toggle('social');
-    expect(prefs().tracked).toContain('social');
-  });
-
-  it('clears all, then selects all', () => {
-    prefs().toggleAll();
-    expect(prefs().tracked).toEqual([]);
-    prefs().toggleAll();
-    expect(prefs().tracked).toHaveLength(CATS.length);
   });
 });
 

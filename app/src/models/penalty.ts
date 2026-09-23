@@ -22,7 +22,6 @@ import { dayStampToDate, daysSinceStamp } from '../usage/ledger';
 import { useAppsStore } from '../state/appsStore';
 import { useNavStore } from '../state/navStore';
 import { parseLimit, parseRate, pendingSetting, sameSetting, usePenaltyStore } from '../state/penaltyStore';
-import { trackedFlags, usePrefsStore } from '../state/prefsStore';
 import { CHIP_OFF, OVER_BAR, OVER_BG, OVER_FG, StateChip, UNDER_BG, UNDER_FG } from './shared';
 
 const settingText = (s: PenaltySetting | null) =>
@@ -50,14 +49,13 @@ export interface PenaltyCardViewModel {
 }
 
 /** Today's usage against the limit, plus the resulting charge. */
-function today(current: PenaltySetting | null, tracked: string[]) {
-  const used = trackedToday(trackedFlags(tracked));
+function today(current: PenaltySetting | null) {
+  const used = trackedToday();
   const over = current ? minutesOver(used, current.limit) : 0;
   return { used, over, charge: current ? chargeFor(used, current) : 0 };
 }
 
 export function usePenaltyCardModel(): PenaltyCardViewModel {
-  const tracked = usePrefsStore((s) => s.tracked);
   const current = usePenaltyStore((s) => s.current);
   const next = usePenaltyStore((s) => s.next);
   const openEditor = usePenaltyStore((s) => s.openEditor);
@@ -67,7 +65,7 @@ export function usePenaltyCardModel(): PenaltyCardViewModel {
   const dataVersion = useAppsStore((s) => s.dataVersion);
 
   return useMemo(() => {
-    const { used, over, charge } = today(current, tracked);
+    const { used, over, charge } = today(current);
     // Only days since the user switched a penalty on can carry a charge.
     const history = chargeHistory(current, daysSinceStamp(startedOn));
     const chip: StateChip =
@@ -95,7 +93,7 @@ export function usePenaltyCardModel(): PenaltyCardViewModel {
       openSettings: openEditor,
       openHistory,
     };
-  }, [tracked, current, next, openEditor, openHistory, startedOn, dataVersion]);
+  }, [current, next, openEditor, openHistory, startedOn, dataVersion]);
 }
 
 export interface PresetButton {
@@ -193,7 +191,6 @@ export interface PenaltyHistoryViewModel {
 }
 
 export function usePenaltyHistoryModel(): PenaltyHistoryViewModel {
-  const tracked = usePrefsStore((s) => s.tracked);
   const current = usePenaltyStore((s) => s.current);
   const startedOn = usePenaltyStore((s) => s.startedOn);
   const dataVersion = useAppsStore((s) => s.dataVersion);
@@ -201,7 +198,7 @@ export function usePenaltyHistoryModel(): PenaltyHistoryViewModel {
 
   return useMemo(() => {
     const history = chargeHistory(current, daysSinceStamp(startedOn));
-    const { over, charge } = today(current, tracked);
+    const { over, charge } = today(current);
 
     return {
       locked: fmtMoney(history.length ? history[0].balance : 0),
@@ -230,5 +227,5 @@ export function usePenaltyHistoryModel(): PenaltyHistoryViewModel {
       })),
       goOverview: () => go('ov'),
     };
-  }, [tracked, current, go, startedOn, dataVersion]);
+  }, [current, go, startedOn, dataVersion]);
 }

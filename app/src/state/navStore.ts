@@ -6,7 +6,6 @@ import { create } from 'zustand';
 export type View =
   | 'ov'
   | 'detail'
-  | 'pick'
   | 'limits'
   | 'limit'
   | 'penalty'
@@ -32,7 +31,6 @@ export const TAB_OF: Record<View, Tab> = {
   newGroup: 'groups',
   limits: 'timers',
   limit: 'timers',
-  pick: 'settings',
   apps: 'settings',
 };
 

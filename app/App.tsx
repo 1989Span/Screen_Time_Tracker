@@ -13,7 +13,6 @@ import { OverviewScreen } from './src/screens/OverviewScreen';
 import { DetailScreen } from './src/screens/DetailScreen';
 import { LimitsScreen } from './src/screens/LimitsScreen';
 import { LimitEditorScreen } from './src/screens/LimitEditorScreen';
-import { PickScreen } from './src/screens/PickScreen';
 import { PenaltyScreen } from './src/screens/PenaltyScreen';
 import { PenaltyHistoryScreen } from './src/screens/PenaltyHistoryScreen';
 import { GroupsScreen } from './src/screens/GroupsScreen';
@@ -48,7 +47,6 @@ const SCREENS = {
   newGroup: NewGroupScreen,
   limits: LimitsScreen,
   limit: LimitEditorScreen,
-  pick: PickScreen,
   apps: AppPickerScreen,
 } as const;
 

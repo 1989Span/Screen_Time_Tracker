@@ -39,8 +39,6 @@ class FixedSource implements UsageSource {
   }
 }
 
-const trackAll = [true];
-
 afterEach(() => {
   setUsageSource(emptySource);
   setFixedClock(PINNED);
@@ -185,12 +183,11 @@ describe('today so far', () => {
   });
 
   it('counts only what you track', () => {
-    expect(trackedToday([false])).toBe(0);
-    expect(trackedToday(trackAll)).toBeCloseTo(120, 6);
+    expect(trackedToday()).toBeCloseTo(120, 6);
   });
 
   it('produces a charge once today passes the limit', () => {
-    const used = trackedToday(trackAll);
+    const used = trackedToday();
     const setting: PenaltySetting = { limit: 60, rate: 0.1 };
     expect(minutesOver(used, setting.limit)).toBe(60);
     expect(chargeFor(used, setting)).toBeCloseTo(6, 2);

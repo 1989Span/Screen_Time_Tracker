@@ -12,7 +12,6 @@ import {
   factFor,
   fmt,
   fmtShort,
-  fourteenDayAvg,
   limLabel,
   prevTotal,
   series,
@@ -21,7 +20,6 @@ import {
 import { useAppsStore } from '../state/appsStore';
 import { rangeAvailability } from '../usage/rangeAvailability';
 import { useNavStore } from '../state/navStore';
-import { usePrefsStore, trackedFlags } from '../state/prefsStore';
 import { useTimersStore } from '../state/timersStore';
 import { useDetailStore } from '../state/detailStore';
 import { CategoryRow, Segment, limitState } from './shared';
@@ -59,16 +57,14 @@ export function useOverviewModel(): OverviewViewModel {
   // Usage arrives asynchronously; without this the memo keeps its empty values.
   const dataVersion = useAppsStore((s) => s.dataVersion);
   const historyDays = useAppsStore((s) => s.historyDays);
-  const tracked = usePrefsStore((s) => s.tracked);
   const openRange = useDetailStore((s) => s.openRange);
 
   return useMemo(() => {
-    const flags = trackedFlags(tracked);
     const label = dates();
     const coverage = rangeAvailability(historyDays);
     return {
       cards: RANGE_IDS.map((id) => {
-        const sl = slice(id, null, flags);
+        const sl = slice(id, null);
         return {
           id,
           label: RANGE_LABEL[id],
@@ -84,7 +80,7 @@ export function useOverviewModel(): OverviewViewModel {
         };
       }),
     };
-  }, [tracked, openRange, dataVersion, historyDays]);
+  }, [openRange, dataVersion, historyDays]);
 }
 
 export interface RangeTab {
@@ -131,7 +127,6 @@ export interface DetailViewModel {
 
 export function useDetailModel(): DetailViewModel {
   const dataVersion = useAppsStore((s) => s.dataVersion);
-  const tracked = usePrefsStore((s) => s.tracked);
   const range = useDetailStore((s) => s.range);
   const selected = useDetailStore((s) => s.selected);
   const setRange = useDetailStore((s) => s.setRange);
@@ -141,11 +136,10 @@ export function useDetailModel(): DetailViewModel {
   const go = useNavStore((s) => s.go);
 
   return useMemo(() => {
-    const flags = trackedFlags(tracked);
     const label = dates();
     const seriesList = series();
-    const m = slice(range, selected, flags);
-    const previous = prevTotal(range, flags);
+    const m = slice(range, selected);
+    const previous = prevTotal(range);
     const diff = m.total - previous;
     const pct = Math.round((Math.abs(diff) / Math.max(1, previous)) * 100);
     const todayPer = dayUsage();
@@ -202,43 +196,5 @@ export function useDetailModel(): DetailViewModel {
       gap: range === 'month' ? 2 : range === 'day' ? 3 : 7,
       goOverview: () => go('ov'),
     };
-  }, [tracked, range, selected, limits, setRange, toggleBucket, openTimer, go, dataVersion]);
-}
-
-export interface CategoryToggle {
-  id: string;
-  name: string;
-  avg: string;
-  color: string;
-  on: boolean;
-  onPress: () => void;
-}
-
-export interface CategoriesViewModel {
-  rows: CategoryToggle[];
-  allLabel: string;
-  toggleAll: () => void;
-}
-
-export function useCategoriesModel(): CategoriesViewModel {
-  const dataVersion = useAppsStore((s) => s.dataVersion);
-  const tracked = usePrefsStore((s) => s.tracked);
-  const toggle = usePrefsStore((s) => s.toggle);
-  const toggleAll = usePrefsStore((s) => s.toggleAll);
-
-  return useMemo(
-    () => ({
-      rows: CATS.map((c, i) => ({
-        id: c.id,
-        name: c.name,
-        avg: fmtShort(fourteenDayAvg(i)) + '/day',
-        color: CCOL[i],
-        on: tracked.indexOf(c.id) >= 0,
-        onPress: () => toggle(c.id),
-      })),
-      allLabel: tracked.length === CATS.length ? 'Clear all' : 'Select all',
-      toggleAll,
-    }),
-    [tracked, toggle, toggleAll, dataVersion]
-  );
+  }, [range, selected, limits, setRange, toggleBucket, openTimer, go, dataVersion]);
 }

@@ -5,7 +5,6 @@ import { SourceStatus, UsageSource, setUsageSource, usageSource } from '../usage
 import { emptySource } from '../usage/emptySource';
 
 const PINNED = new Date(2026, 7, 25, 19, 0, 0);
-const allTracked = CATS.map(() => true);
 
 /** A source with numbers simple enough to assert derived totals by hand. */
 class FlatSource implements UsageSource {
@@ -44,32 +43,35 @@ describe('the usage source seam', () => {
     invalidate();
 
     // 8 categories x 60 min x 7 days
-    expect(slice('week', null, allTracked).total).toBeCloseTo(8 * 60 * 7, 6);
-    expect(slice('month', null, allTracked).total).toBeCloseTo(8 * 60 * 30, 6);
+    expect(slice('week', null).total).toBeCloseTo(8 * 60 * 7, 6);
+    expect(slice('month', null).total).toBeCloseTo(8 * 60 * 30, 6);
     expect(dayUsage()).toEqual(CATS.map(() => 60));
-    expect(trackedToday(allTracked)).toBeCloseTo(8 * 60, 6);
+    expect(trackedToday()).toBeCloseTo(8 * 60, 6);
   });
 
-  it('honours the tracked flags on top of whatever the source returns', () => {
+  it('counts exactly the series the source exposes, with no mask of its own', () => {
+    // Selection is applied upstream, by what the source puts in series(). A
+    // mask here used to be sized to the 8 legacy categories and silently
+    // dropped every app past index 7 once selection became per-app.
     setUsageSource(new FlatSource(60));
     invalidate();
-    const onlyTwo = CATS.map((_, i) => i < 2);
-    expect(slice('week', null, onlyTwo).total).toBeCloseTo(2 * 60 * 7, 6);
+    expect(slice('week', null).rows).toHaveLength(CATS.length);
+    expect(slice('week', null).total).toBeCloseTo(CATS.length * 60 * 7, 6);
   });
 
   it('compares against the previous period using the same source', () => {
     setUsageSource(new FlatSource(30));
     invalidate();
-    expect(prevTotal('week', allTracked)).toBeCloseTo(8 * 30 * 7, 6);
+    expect(prevTotal('week')).toBeCloseTo(8 * 30 * 7, 6);
   });
 
   it('swapping sources changes the numbers, proving nothing is hardcoded', () => {
     setUsageSource(new FlatSource(10));
     invalidate();
-    const low = slice('week', null, allTracked).total;
+    const low = slice('week', null).total;
     setUsageSource(new FlatSource(20));
     invalidate();
-    const high = slice('week', null, allTracked).total;
+    const high = slice('week', null).total;
     expect(high).toBeCloseTo(low * 2, 6);
   });
 
@@ -109,10 +111,10 @@ describe('source caches cannot be corrupted by callers', () => {
     setFixedClock(PINNED);
     invalidate();
 
-    const before = slice('week', null, allTracked).total;
-    const scoped = slice('week', 3, allTracked);
+    const before = slice('week', null).total;
+    const scoped = slice('week', 3);
     scoped.scoped[0] = 123456;
-    expect(slice('week', null, allTracked).total).toBeCloseTo(before, 6);
+    expect(slice('week', null).total).toBeCloseTo(before, 6);
   });
 });
 
@@ -150,30 +152,27 @@ describe('the series count is not hardwired to eight', () => {
   it.each([1, 3, 30, 109])('derives correctly over %i series', (count) => {
     setUsageSource(new AppSource(count, 12));
     invalidate();
-    const all = Array.from({ length: count }, () => true);
 
     expect(seriesCount()).toBe(count);
     expect(series()).toHaveLength(count);
     expect(dayUsage()).toHaveLength(count);
     // count series x 12 min x 7 days
-    expect(slice('week', null, all).total).toBeCloseTo(count * 12 * 7, 6);
-    expect(slice('week', null, all).rows).toHaveLength(count);
+    expect(slice('week', null).total).toBeCloseTo(count * 12 * 7, 6);
+    expect(slice('week', null).rows).toHaveLength(count);
   });
 
   it('labels rows and colours from the series, not a fixed palette', () => {
     setUsageSource(new AppSource(3, 60));
     invalidate();
-    const rows = slice('week', null, [true, true, true]).rows;
+    const rows = slice('week', null).rows;
     expect(rows.map((r) => r.name).sort()).toEqual(['App 0', 'App 1', 'App 2']);
     expect(new Set(rows.map((r) => r.tone))).toEqual(new Set(['#123456']));
   });
 
   it('a year of 109 app series still aggregates', () => {
-    const all = Array.from({ length: 109 }, () => true);
-
     setUsageSource(new AppSource(109, 5));
     invalidate();
-    const single = slice('year', null, all);
+    const single = slice('year', null);
 
     // The year range is 12 *calendar months* ending with a partial current
     // month, not a flat 365 days, so assert proportionality rather than an
@@ -185,6 +184,6 @@ describe('the series count is not hardwired to eight', () => {
 
     setUsageSource(new AppSource(109, 10));
     invalidate();
-    expect(slice('year', null, all).total).toBeCloseTo(single.total * 2, 6);
+    expect(slice('year', null).total).toBeCloseTo(single.total * 2, 6);
   });
 });

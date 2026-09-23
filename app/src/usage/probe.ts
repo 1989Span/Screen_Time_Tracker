@@ -12,8 +12,10 @@
 // Dev-only: called behind __DEV__ from index.ts and logged, never shipped as UI.
 
 import { UsageStats } from '../../modules/usage-stats';
-import { coverage, readDay, recordDay, sumByPackage } from './rollupStore';
-import { androidSource } from './androidSource';
+import { coverage, forgetDay, readDay, recordDay, sumByPackage } from './rollupStore';
+import { dateAt, dayStamp } from '../clock';
+import { AndroidUsageStatsSource } from './androidSource';
+import { usageSource } from './source';
 
 const DAY_MS = 86_400_000;
 
@@ -134,10 +136,18 @@ export async function verifyRollupStore(): Promise<void> {
     console.log(`${tag} coverage days=${cov.days} oldest=${cov.oldest} newest=${cov.newest}`);
 
     // Clean up the synthetic rows so they never reach a real chart.
-    await recordDay({ day, totals: {} });
-    await recordDay({ day: other, totals: {} });
+    //
+    // Must be forgetDay, not recordDay with empty totals: an empty day is now
+    // deliberately a no-op on usage_day (that is what stopped a quiet day from
+    // wiping real history), and it still marks the day *observed*, which would
+    // leave 1970 in the coverage count and overstate how much history exists.
+    await forgetDay(day);
+    await forgetDay(other);
     const cleaned = await readDay(day);
-    console.log(`${tag} cleaned up: ${Object.keys(cleaned).length === 0}`);
+    const cov2 = await coverage();
+    console.log(
+      `${tag} cleaned up: ${Object.keys(cleaned).length === 0}, coverage back to days=${cov2.days} oldest=${cov2.oldest}`
+    );
     console.log(`${tag} OK`);
   } catch (e) {
     console.log(`${tag} FAILED: ${describe(e)}`);
@@ -152,6 +162,14 @@ export async function verifyRollupStore(): Promise<void> {
 export async function verifyAndroidSource(): Promise<void> {
   const tag = '[SRC]';
   try {
+    // A private instance, never the installed singleton.
+    //
+    // This used to drive `androidSource` directly, which the running app is also
+    // using: the probe's setTracked() replaced the user's selection mid-flight
+    // while both were loading, so arrays got mapped against the wrong series list
+    // and the live screens showed corrupted totals. The diagnostic was causing
+    // the symptom it was meant to explain.
+    const androidSource = new AndroidUsageStatsSource();
     const apps = await UsageStats.installedApps();
     // Pick something known to be heavy so zero is unambiguous evidence of a bug.
     const probe = ['com.instagram.android', 'com.alltrails.alltrails'].filter((p) =>
@@ -176,6 +194,44 @@ export async function verifyAndroidSource(): Promise<void> {
     const rawForProbe = probe.map((p) => [p, Math.round((raw[p] ?? 0) / 60_000)]);
     console.log(`${tag} raw native last 24h (minutes): ${JSON.stringify(rawForProbe)}`);
     console.log(`${tag} raw native package count: ${Object.keys(raw).length}`);
+  } catch (e) {
+    console.log(`${tag} FAILED: ${describe(e)}`);
+  }
+}
+
+/** What the rollup actually holds right now, per day. */
+export async function logRollupContents(): Promise<void> {
+  const tag = '[HIST]';
+  try {
+    const cov = await coverage();
+    console.log(`${tag} coverage days=${cov.days} oldest=${cov.oldest} newest=${cov.newest}`);
+    for (let idx = 0; idx < 4; idx++) {
+      const day = dayStamp(dateAt(idx));
+      const totals = await readDay(day);
+      const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+      const top = entries.slice(0, 4).map(([p, m]) => `${p.split('.').pop()}=${Math.round(m)}m`);
+      console.log(`${tag} ${day}: ${entries.length} apps ${JSON.stringify(top)}`);
+    }
+  } catch (e) {
+    console.log(`${tag} FAILED: ${describe(e)}`);
+  }
+}
+
+/** What the *installed* source - the one the screens read - actually reports. */
+export function logLiveSource(): void {
+  const tag = '[LIVE]';
+  try {
+    const src = usageSource();
+    const series = src.series();
+    const day0 = src.dayTotals(0);
+    const pairs = series.map((ser, i) => [ser.id, day0[i] ?? 0] as const).filter(([, v]) => v > 0);
+    pairs.sort((a, b) => b[1] - a[1]);
+    console.log(`${tag} source=${src.id} status=${src.status}`);
+    console.log(`${tag} series=${series.length} dayTotals(0).length=${day0.length}`);
+    console.log(`${tag} today sum=${Math.round(day0.reduce((s, v) => s + v, 0))}m over ${pairs.length} apps`);
+    console.log(`${tag} top: ${JSON.stringify(pairs.slice(0, 5).map(([p, v]) => [p, Math.round(v)]))}`);
+    const ig = series.findIndex((x) => x.id === 'com.instagram.android');
+    console.log(`${tag} instagram index=${ig} value=${ig >= 0 ? Math.round(day0[ig] ?? -1) : 'n/a'}`);
   } catch (e) {
     console.log(`${tag} FAILED: ${describe(e)}`);
   }

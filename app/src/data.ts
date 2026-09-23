@@ -176,9 +176,9 @@ export function buckets(range: RangeId): Bucket[] {
   return out;
 }
 
-export function prevTotal(range: RangeId, tr: boolean[]): number {
+export function prevTotal(range: RangeId): number {
   checkDayRollover();
-  const sum = (per: number[]) => per.reduce((s, v, i) => s + (tr[i] ? v : 0), 0);
+  const sum = (per: number[]) => per.reduce((s, v) => s + v, 0);
   let t = 0;
   if (range === 'day') {
     const cur = currentHour();
@@ -213,9 +213,14 @@ export interface Slice {
   rows: SliceRow[];
 }
 
-export function slice(range: RangeId, sel: number | null, tr: boolean[]): Slice {
+// Every series the source returns is, by definition, one the user selected:
+// androidSource.setTracked() decides what exists before any of this runs. There
+// is deliberately no "which of these count?" mask here - one used to exist, sized
+// to the eight legacy categories, and it silently dropped every app past index 7
+// once selection became per-app.
+export function slice(range: RangeId, sel: number | null): Slice {
   const bk = buckets(range); // checks rollover
-  const tot = (per: number[]) => per.reduce((s, v, i) => s + (tr[i] ? v : 0), 0);
+  const tot = (per: number[]) => per.reduce((s, v) => s + v, 0);
   const totals = bk.map((b) => tot(b.per));
   const max = Math.max(1, ...totals);
   const s = sel != null && sel < bk.length ? sel : null;
@@ -224,7 +229,7 @@ export function slice(range: RangeId, sel: number | null, tr: boolean[]): Slice 
   const ser = series();
   const order = ser
     .map((_, i) => i)
-    .filter((i) => tr[i] && scoped[i] > 0.4)
+    .filter((i) => scoped[i] > 0.4)
     .sort((x, y) => scoped[y] - scoped[x]);
   const topV = order.length ? scoped[order[0]] : 1;
   const rows: SliceRow[] = order.map((i) => ({
@@ -312,9 +317,9 @@ export function chargeFor(used: number, s: PenaltySetting): number {
   return Math.round(minutesOver(used, s.limit) * s.rate * 100) / 100;
 }
 
-export function trackedToday(tr: boolean[]): number {
+export function trackedToday(): number {
   checkDayRollover();
-  return dayByCat(0).reduce((s, v, i) => s + (tr[i] ? v : 0), 0);
+  return dayByCat(0).reduce((s, v) => s + v, 0);
 }
 
 export function daysUntilUnlock(start: Date): number {

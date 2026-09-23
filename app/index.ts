@@ -2,7 +2,13 @@ import { registerRootComponent } from 'expo';
 
 import App from './App';
 import { installDefaultUsageSource, installRealUsageSource } from './src/usage/bootstrap';
-import { logDeviceProbe, verifyAndroidSource, verifyRollupStore } from './src/usage/probe';
+import {
+  logDeviceProbe,
+  logLiveSource,
+  logRollupContents,
+  verifyAndroidSource,
+  verifyRollupStore,
+} from './src/usage/probe';
 
 // Install a source before anything renders: the data layer throws if it is asked
 // for numbers with no source installed. The demo generator goes in synchronously
@@ -31,5 +37,8 @@ if (__DEV__) {
     await logDeviceProbe();
     await verifyRollupStore();
     await verifyAndroidSource();
+    await logRollupContents();
+    // Let the app's own load finish, then report what it produced.
+    setTimeout(logLiveSource, 8000);
   })().catch((e: unknown) => console.log('[DIAG] failed: ' + String(e)));
 }

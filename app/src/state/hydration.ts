@@ -8,10 +8,9 @@ import { useSyncExternalStore } from 'react';
 import { useDetailStore } from './detailStore';
 import { useGroupsStore } from './groupsStore';
 import { usePenaltyStore } from './penaltyStore';
-import { usePrefsStore } from './prefsStore';
 import { useTimersStore } from './timersStore';
 
-const persisted = [usePrefsStore, useTimersStore, usePenaltyStore, useGroupsStore, useDetailStore];
+const persisted = [useTimersStore, usePenaltyStore, useGroupsStore, useDetailStore];
 
 // onFinishHydration fires whether the read succeeded or threw, so a storage
 // failure degrades to "no saved state" rather than hanging on a blank screen.
