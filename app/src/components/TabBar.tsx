@@ -4,6 +4,10 @@ import { alpha, color, font } from '../theme';
 import { ClockIcon, GroupIcon, HomeIcon, SettingsIcon } from './Icons';
 import { TABS, TAB_OF, Tab, useNavStore } from '../state/navStore';
 import { useDetailStore } from '../state/detailStore';
+import { DISABLED_VIEWS } from '../features';
+
+// A feature switched off by a flag takes its tab with it.
+const VISIBLE_TABS = TABS.filter((t) => !DISABLED_VIEWS.includes(t.root));
 
 const ICONS: Record<Tab, (p: { size: number; color: string }) => React.ReactElement> = {
   overview: HomeIcon,
@@ -17,11 +21,12 @@ export function TabBar() {
   const go = useNavStore((s) => s.go);
   const clearBucket = useDetailStore((s) => s.setRange);
   const range = useDetailStore((s) => s.range);
-  const active = TAB_OF[view];
+  // Mirror App's routing: a disabled view renders as Overview, so highlight that.
+  const active = DISABLED_VIEWS.includes(view) ? 'overview' : TAB_OF[view];
 
   return (
     <View style={styles.bar}>
-      {TABS.map((t) => {
+      {VISIBLE_TABS.map((t) => {
         const Icon = ICONS[t.id];
         const selected = t.id === active;
         const tint = selected ? color.accent700 : alpha(color.text, 45);
