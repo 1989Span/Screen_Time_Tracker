@@ -84,10 +84,19 @@ Android keeps app usage behind a permission called Usage access, which only you 
 | Health apps (if shown) | No health features | Screen time is not health data |
 
 **Permissions Play may ask about:** none need a declaration form.
-`QUERY_ALL_PACKAGES` was removed (a launcher `<queries>` block covers the picker) and
-`SYSTEM_ALERT_WINDOW` is blocked in `app.json`. `PACKAGE_USAGE_STATS` is granted by the
-user in Android settings and needs no form. No typed foreground services are declared,
-so the foreground-service declaration does not apply.
+`QUERY_ALL_PACKAGES` was removed (a launcher `<queries>` block covers the picker).
+`SYSTEM_ALERT_WINDOW` and the storage pair `READ_`/`WRITE_EXTERNAL_STORAGE` are blocked in
+`app.json`. The storage pair came from Expo's bundled file-system module, capped at
+Android 12. Gauge never touches shared storage, and leaving them in would contradict the
+privacy policy on older phones. `PACKAGE_USAGE_STATS` is granted by the user in Android
+settings and needs no form. No typed foreground services are declared, so the
+foreground-service declaration does not apply.
+
+Shipped permissions: `INTERNET`, `ACCESS_NETWORK_STATE`, `PACKAGE_USAGE_STATS`,
+`FOREGROUND_SERVICE`, `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `VIBRATE`, plus the app's
+own `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. Check any build with a parser that reads
+whole `<uses-permission>` elements. A line-based grep misses elements whose
+attributes wrap onto a second line.
 
 ## 4. First upload
 
