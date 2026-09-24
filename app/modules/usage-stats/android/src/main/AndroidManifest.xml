@@ -10,12 +10,16 @@
   <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
                    tools:ignore="ProtectedPermissions" />
 
-  <!-- Needed on Android 11+ to see the full installed-app list rather than only
-       packages that declare themselves visible to us. Without it the app picker
-       would silently show a fraction of what is installed. -->
-  <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
-                   tools:ignore="QueryAllPackagesPermission" />
+  <!-- Android 11+ hides other packages unless they match a declared query. This
+       one makes every app with a home-screen icon visible, which is exactly the
+       set the picker offers: offerableApps() drops anything without a launcher
+       icon before the user sees it.
 
+       QUERY_ALL_PACKAGES was declared here too and is deliberately gone. It only
+       added packages the picker filtered straight back out, and Play treats it as
+       a restricted permission: it needs a declaration form and is rejected when a
+       narrower <queries> block would do, as this one does. Do not add it back
+       without a feature that genuinely needs to see non-launchable packages. -->
   <queries>
     <intent>
       <action android:name="android.intent.action.MAIN" />
