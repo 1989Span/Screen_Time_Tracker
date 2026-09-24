@@ -46,3 +46,7 @@ yarn-error.*
 modules/*/android/build/
 modules/*/android/.cxx/
 modules/*/android/.gradle/
+
+# Store screenshots are real usage from the developer's phone. They are uploaded
+# to the Play listing by hand and are not repo content.
+store/screenshots/

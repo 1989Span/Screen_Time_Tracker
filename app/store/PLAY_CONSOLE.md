@@ -58,7 +58,7 @@ Android keeps app usage behind a permission called Usage access, which only you 
 |---|---|---|
 | App icon | 512 x 512 PNG | Scale down `app/assets/icon.png` (1024 x 1024) |
 | Feature graphic | 1024 x 500 PNG or JPEG | Still to be made |
-| Phone screenshots | 2 to 8. Long side no more than 2x the short side. | The phone's native 1080 x 2340 is 2.17:1, **over the limit**. Crop to 1080 x 2160 by trimming the status and navigation bars. |
+| Phone screenshots | 2 to 8. Long side no more than 2x the short side. | `app/store/screenshots/` (gitignored: real usage data). Already cropped to 1080 x 2079 (1.93:1). The phone's native 1080 x 2340 is 2.17:1, over the limit, so the status and navigation bars are trimmed. Use overview, detail and settings. Timers shows every app at "No limit" until some limits are set. |
 
 **Category and contact** (Store settings)
 
