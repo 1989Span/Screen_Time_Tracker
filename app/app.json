@@ -27,6 +27,12 @@
     "plugins": [
       "expo-sqlite",
       "expo-background-task"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5435e821-f330-417e-adb1-1e36f63619cd"
+      }
+    },
+    "owner": "ragecage169"
   }
 }
