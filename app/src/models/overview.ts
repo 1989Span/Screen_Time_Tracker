@@ -37,6 +37,36 @@ const PREV_NAME: Record<RangeId, string> = {
 };
 const AXIS_NOTE: Record<RangeId, string> = { day: 'By hour', week: 'By day', month: 'By day', year: 'By month' };
 
+export interface Change {
+  text: string;
+  positive: boolean;
+  neutral: boolean;
+}
+
+/**
+ * "--%", as shown when there is nothing to compare with. A hair space (U+200A)
+ * sits between the dashes because Barlow's hyphens have no side bearings: typed
+ * as "--" they touch and render as one long dash. A wider space reads as "- -%".
+ */
+export const NO_COMPARISON = '-\u200A-%';
+
+/**
+ * How `total` compares with the same span before it, as the breakdown's chip.
+ *
+ * Only calculated when the previous span has usage to compare against: at
+ * least a minute once rounded, the smallest amount the app displays. With
+ * nothing there a percentage means nothing. The old divisor floor of 1 minute
+ * turned an empty previous month into "↑ 252232% vs last month", so it now
+ * reads "--%" instead.
+ */
+export function changeVsPrevious(total: number, previous: number, prevName: string): Change {
+  if (Math.round(previous) < 1) return { text: NO_COMPARISON + ' vs ' + prevName, positive: false, neutral: true };
+  const diff = total - previous;
+  if (Math.abs(diff) < 1) return { text: 'Same as ' + prevName, positive: diff > 0, neutral: false };
+  const pct = Math.round((Math.abs(diff) / previous) * 100);
+  return { text: (diff > 0 ? '↑ ' : '↓ ') + pct + '% vs ' + prevName, positive: diff > 0, neutral: false };
+}
+
 export interface OverviewCard {
   id: RangeId;
   label: string;
@@ -147,9 +177,7 @@ export function useDetailModel(): DetailViewModel {
     const label = dates();
     const seriesList = series();
     const m = slice(range, selected);
-    const previous = prevTotal(range);
-    const diff = m.total - previous;
-    const pct = Math.round((Math.abs(diff) / Math.max(1, previous)) * 100);
+    const change = changeVsPrevious(m.total, prevTotal(range), PREV_NAME[range]);
     const todayPer = dayUsage();
 
     return {
@@ -165,14 +193,9 @@ export function useDetailModel(): DetailViewModel {
       total: fmt(m.total),
       avg: fmtShort(m.total / (m.sel != null ? 1 : N_DAYS[range])),
       avgLabel: m.sel != null ? 'in this slice' : 'daily average',
-      delta:
-        m.sel != null
-          ? 'Tap the bar again to clear'
-          : Math.abs(diff) < 1
-            ? 'Same as ' + PREV_NAME[range]
-            : (diff > 0 ? '↑ ' : '↓ ') + pct + '% vs ' + PREV_NAME[range],
-      deltaPositive: diff > 0,
-      deltaNeutral: m.sel != null,
+      delta: m.sel != null ? 'Tap the bar again to clear' : change.text,
+      deltaPositive: change.positive,
+      deltaNeutral: m.sel != null || change.neutral,
       comp: m.order.map((ci) => ({ w: (m.scoped[ci] / Math.max(1, m.total)) * 100, color: tone(seriesList, ci) })),
       stacks: m.bk.map((b, i) => {
         const segs = m.order
