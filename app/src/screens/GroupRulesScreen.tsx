@@ -77,7 +77,9 @@ export function GroupRulesScreen() {
           <Text style={g.meta}>Your most-used apps show up here once Gauge has recorded some usage.</Text>
         ) : (
           <>
-            <Text style={g.meta}>Your most-used apps this week.</Text>
+            <Text style={g.meta}>
+              Your most-used apps this week, visible only to you. Proposing one shares its name with the group.
+            </Text>
             <Rows rows={r.suggestions} />
           </>
         )}

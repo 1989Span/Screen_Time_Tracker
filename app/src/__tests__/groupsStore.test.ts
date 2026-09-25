@@ -195,10 +195,10 @@ describe('votes and leaving', () => {
     expect(g.members.find((m) => m.id === 'alex0001')?.excludes).toEqual({});
   });
 
-  it('leaving removes the group from this phone', () => {
-    store().askLeave();
+  it('leaving removes the group from this phone, and its notice', () => {
     store().leave();
     expect(store().groups).toEqual([]);
+    expect(store().notice).toBeNull();
     expect(view()).toBe('groups');
   });
 

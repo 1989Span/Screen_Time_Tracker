@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 
 import { ChevronRightIcon } from '../components/Icons';
 import { Avatar, BackChip, Card } from '../components/ui';
@@ -64,30 +64,23 @@ export function GroupSettingsScreen() {
       </Card>
 
       <Card style={g.card}>
-        {s.leaveConfirm ? (
-          <>
-            <Text style={g.body}>
-              Leave &ldquo;{s.name}&rdquo;? This removes the group from this phone. The others keep your past numbers,
-              and you can rejoin from any of their links.
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Pressable
-                onPress={s.leave}
-                accessibilityRole="button"
-                style={[g.primary, { flex: 1, backgroundColor: color.roseDark }]}
-              >
-                <Text style={g.primaryText}>Leave</Text>
-              </Pressable>
-              <Pressable onPress={s.cancelLeave} accessibilityRole="button" style={[g.secondary, { flex: 1 }]}>
-                <Text style={g.secondaryText}>Stay</Text>
-              </Pressable>
-            </View>
-          </>
-        ) : (
-          <Pressable onPress={s.askLeave} accessibilityRole="button">
-            <Text style={[g.name, { color: color.roseDark }]}>Leave group</Text>
-          </Pressable>
-        )}
+        {/* A system dialog rather than an inline confirmation: this is the last
+            card on the page, and an inline one opened below the visible area. */}
+        <Pressable
+          onPress={() =>
+            Alert.alert(
+              `Leave "${s.name}"?`,
+              'This removes the group from this phone. The others keep your past numbers, and you can rejoin from any of their links.',
+              [
+                { text: 'Stay', style: 'cancel' },
+                { text: 'Leave', style: 'destructive', onPress: s.leave },
+              ]
+            )
+          }
+          accessibilityRole="button"
+        >
+          <Text style={[g.name, { color: color.roseDark }]}>Leave group</Text>
+        </Pressable>
       </Card>
     </View>
   );

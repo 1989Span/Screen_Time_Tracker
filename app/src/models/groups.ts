@@ -205,7 +205,7 @@ export function useGroupsModel(): GroupsViewModel {
       share: () => void store.share('update'),
       lastShared:
         self && self.sharedAt > 0
-          ? 'You last shared ' + ago(self.sharedAt, now) + '.'
+          ? 'You last tapped Share ' + ago(self.sharedAt, now) + '.'
           : "You haven't shared yet. The others only see your numbers when you do.",
       yesterday: yesterdayLine,
       alone: n < MIN_GROUP_SIZE,
@@ -303,9 +303,6 @@ export interface GroupSettingsViewModel {
   openRules: () => void;
   selfName: string;
   setSelfName: (t: string) => void;
-  leaveConfirm: boolean;
-  askLeave: () => void;
-  cancelLeave: () => void;
   leave: () => void;
   back: () => void;
 }
@@ -328,10 +325,14 @@ export function useGroupSettingsModel(): GroupSettingsViewModel | null {
         'joined ' +
         shortDate(m.joined) +
         ' · ' +
-        (m.sharedAt > 0
-          ? 'shared ' + ago(m.sharedAt, now)
-          : m.id === s.selfId
-            ? "you haven't shared"
+        // For you, the app only knows you tapped Share. Android doesn't say
+        // whether the share sheet was sent or cancelled.
+        (m.id === s.selfId
+          ? m.sharedAt > 0
+            ? 'you tapped Share ' + ago(m.sharedAt, now)
+            : "you haven't shared"
+          : m.sharedAt > 0
+            ? 'shared ' + ago(m.sharedAt, now)
             : "hasn't shared"),
     })),
     invite: () => void s.share('invite'),
@@ -344,9 +345,6 @@ export function useGroupSettingsModel(): GroupSettingsViewModel | null {
     openRules: s.openRules,
     selfName: s.selfName,
     setSelfName: s.setSelfName,
-    leaveConfirm: s.leaveConfirm,
-    askLeave: s.askLeave,
-    cancelLeave: s.cancelLeave,
     leave: s.leave,
     back: s.backToGroups,
   };

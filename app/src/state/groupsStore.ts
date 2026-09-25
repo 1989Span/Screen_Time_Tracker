@@ -51,7 +51,6 @@ interface GroupsState {
   notice: string | null;
   /** Set when a pasted link couldn't be read. */
   linkError: string | null;
-  leaveConfirm: boolean;
   ngName: string;
   linkDraft: string;
 
@@ -80,8 +79,6 @@ interface GroupsState {
   withdrawVote: (app: string) => void;
   declineProposal: (app: string) => void;
 
-  askLeave: () => void;
-  cancelLeave: () => void;
   leave: () => void;
 }
 
@@ -127,20 +124,13 @@ export const useGroupsStore = create<GroupsState>()(
       incoming: null,
       notice: null,
       linkError: null,
-      leaveConfirm: false,
       ngName: '',
       linkDraft: '',
 
       select: (groupId) => set({ groupId }),
-      openSettings: () => {
-        set({ leaveConfirm: false });
-        goTo('groupSettings');
-      },
+      openSettings: () => goTo('groupSettings'),
       openRules: () => goTo('groupRules'),
-      backToGroups: () => {
-        set({ leaveConfirm: false });
-        goTo('groups');
-      },
+      backToGroups: () => goTo('groups'),
       backToSettings: () => goTo('groupSettings'),
       clearNotice: () => set({ notice: null }),
 
@@ -272,15 +262,14 @@ export const useGroupsStore = create<GroupsState>()(
       withdrawVote: (app) => set((s) => editGroup(s, (g) => withdrawExclude(g, s.selfId, app))),
       declineProposal: (app) => set((s) => editGroup(s, (g) => declineExclude(g, s.selfId, app))),
 
-      askLeave: () => set({ leaveConfirm: true }),
-      cancelLeave: () => set({ leaveConfirm: false }),
       leave: () =>
         set((s) => {
           const g = currentGroup(s);
           if (!g) return {};
           const groups = s.groups.filter((x) => x.id !== g.id);
           goTo('groups');
-          return { groups, groupId: groups[0]?.id ?? '', leaveConfirm: false };
+          // A notice about the group you just left would only confuse.
+          return { groups, groupId: groups[0]?.id ?? '', notice: null };
         }),
     }),
     {
