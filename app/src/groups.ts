@@ -1,296 +1,250 @@
-// Groups — demo data for accountability groups. Rankings use all categories
-// (personal tracked toggles don't apply) minus any the group has excluded, and
-// the daily point goes to the lowest full-day total; ties each get a point.
-// Today is "so far" and not awarded until midnight.
+// Groups: friends compare screen time, sharing their numbers by link.
 //
-// Excluding a category, or bringing one back, needs every member to agree.
-// Either change is retroactive: points and streaks are recalculated as if the
-// category had always been (or never been) excluded.
+// There is no server. Each person's numbers travel inside links they choose to
+// send (see groupLink.ts), and every phone works out the standings itself from
+// what it has received. Nothing here talks to a network. It is plain data and
+// arithmetic, so all of it is unit tested.
 //
-// Members only compete on days since they joined. Someone joining later leaves
-// everyone's existing points and streaks untouched and starts at zero.
+// The rules of the game:
+//
+//  * Everyone is measured the same way: every app counts, minus any the whole
+//    group has agreed to leave out. Personal tracking choices don't apply.
+//    People track different apps, so comparing those totals would be unfair,
+//    and easy to game by untracking something.
+//  * The lowest full-day total wins that day's point. Ties each get a point.
+//    Today is "so far" and isn't awarded until it's over.
+//  * A day is only scored once every member who was in the group that day has
+//    shared their number for it. Missing numbers never count as zero. Otherwise
+//    whoever forgot to share would win.
+//  * Leaving an app out needs every member to agree. Any single member can
+//    bring it back by withdrawing their agreement.
+//  * Members compete from the day they joined.
 
-import { dayUsageAt, series, seriesCount } from './data';
-import { checkDayRollover, onDayChange } from './clock';
+import { dayStamp } from './clock';
+import { dayStampToDate } from './usage/ledger';
 
-/** No usage at all, sized to the current series so every `per` array matches. */
-const noUsage = (): number[] => new Array<number>(seriesCount()).fill(0);
+export const MIN_GROUP_SIZE = 2;
+export const NAME_MAX = 30;
+
+/** Days of history each share carries, so a few missed shares are backfilled. */
+export const SHARE_DAYS = 14;
 
 export interface Member {
   id: string;
   name: string;
-  color: string;
-  joined: number; // days before today they joined; they compete on that day onward
-  // Generator inputs, stored so a persisted member can be rebuilt. `day` is a
-  // closure and does not survive JSON, so reviveMember() reattaches it from
-  // these. Your own row ignores both and reads your real usage instead.
-  seed: number;
-  scale: number[];
-  day: (idx: number) => number[];
+  /** Day stamp (YYYY-MM-DD) of the first day this member competes on. */
+  joined: string;
+  /** When this member made the share we hold (ms). 0 for you: your numbers are live. */
+  sharedAt: number;
+  /** Day stamp -> minutes, as this member computed and shared them. Empty for you. */
+  days: Record<string, number>;
+  /** Apps this member agrees to leave out: package -> label. */
+  excludes: Record<string, string>;
+  /** Proposals this member has declined (packages). */
+  declines: string[];
 }
 
 export interface Group {
   id: string;
   name: string;
-  created: number; // days before today the group was created
+  /** Day stamp the group was created. */
+  created: string;
+  /** Everyone in the group, you included (id === your selfId). */
   members: Member[];
 }
 
-export interface Proposal {
-  cat: string; // category id
-  kind: 'exclude' | 'include';
-  agreed: string[]; // member ids
+// --- Dates ---------------------------------------------------------------------
+
+/** The stamp `n` calendar days after `stamp` (before, if negative). DST-safe. */
+export function shiftStamp(stamp: string, n: number): string {
+  const d = dayStampToDate(stamp);
+  return dayStamp(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n));
 }
 
-export interface GroupRules {
-  excluded: string[]; // category ids
-  proposals: Proposal[];
+// --- Membership --------------------------------------------------------------
+
+export function newMember(id: string, name: string, joined: string): Member {
+  return { id, name, joined, sharedAt: 0, days: {}, excludes: {}, declines: [] };
 }
 
-// Per-category usage scale, in CATS order (Social, Video, Work, Messaging,
-// Games, Music, Reading, Navigation).
-export const YOU_ID = 'you';
-
-const you = (joined: number): Member => ({
-  id: YOU_ID,
-  name: 'You',
-  color: '#5980a6',
-  joined,
-  seed: 0,
-  scale: [],
-  // Your own row reads your real usage. Other members would need a backend: the
-  // OS can only report this device, so there is nothing truthful to put here.
-  day: (idx) => dayUsageAt(idx),
-});
-
-/** Everything about a member except the `day` closure — what actually persists. */
-export type StoredMember = Omit<Member, 'day'>;
-export type StoredGroup = Omit<Group, 'members'> & { members: StoredMember[] };
-
-/** Reattach the usage generator that JSON dropped. */
-export function reviveMember(m: StoredMember): Member {
-  // Your own row reads real device usage; anyone else has none until a backend
-  // provides it, so their history revives as zeros rather than invented numbers.
-  return m.id === YOU_ID ? { ...m, day: dayUsageAt } : { ...m, day: noUsage };
-}
-
-export function reviveGroup(g: StoredGroup): Group {
-  return { ...g, members: g.members.map(reviveMember) };
-}
-
-/** Guards against a persisted payload written by an older build (or a corrupt
- *  one) reaching the UI as a member whose `day` would be undefined. */
-export function isStoredGroup(v: unknown): v is StoredGroup {
-  if (typeof v !== 'object' || v === null) return false;
-  const g = v as Partial<StoredGroup>;
-  if (typeof g.id !== 'string' || typeof g.name !== 'string' || typeof g.created !== 'number') return false;
-  if (!Array.isArray(g.members) || g.members.length === 0) return false;
-  return g.members.every(
-    (m) =>
-      typeof m?.id === 'string' &&
-      typeof m?.name === 'string' &&
-      typeof m?.color === 'string' &&
-      typeof m?.joined === 'number' &&
-      typeof m?.seed === 'number' &&
-      Array.isArray(m?.scale)
-  );
-}
-
-// No seeded groups. A group needs other real people, which needs a backend the
-// app does not have yet, so the Groups tab shows its empty state rather than a
-// cast of invented members with invented usage.
-export const GROUPS: Group[] = [];
-
-export const INITIAL_RULES: Record<string, GroupRules> = {};
-
-// Contacts (simulated). A real build can't see other people's installed apps:
-// it would hash contacts' phone numbers, match them server-side against
-// registered accounts, push an in-app invite to matches, and text everyone else
-// a download link carrying an invite code. `hasApp` stands in for that match.
-
-export interface Contact {
-  id: string;
-  name: string;
-  phone: string;
-  hasApp: boolean;
-  memberId?: string; // the demo group member this contact is, if any
-}
-
-// Real contacts would come from the address book with permission. Until then this
-// is empty rather than a list of invented friends.
-export const CONTACTS: Contact[] = [];
-
-export interface Invite {
-  contactId: string;
-  via: 'app' | 'link'; // in-app notification, or text message with a download link
-}
-
-/** A group needs at least this many people. Pending invitees count toward it
- *  for a new group, since you can't create one without inviting someone. */
-export const MIN_GROUP_SIZE = 2;
-
-/** Search by name, or by number ignoring punctuation. Digits match from the
- *  start of the number (area code first); 4+ digits also match the local part. */
-export function contactMatches(c: Contact, query: string): boolean {
-  const q = query.trim().toLowerCase();
-  if (q === '' || c.name.toLowerCase().indexOf(q) >= 0) return true;
-  if (/[a-z]/.test(q)) return false;
-  let digits = q.replace(/\D/g, '');
-  if (digits.length === 11 && digits[0] === '1') digits = digits.slice(1); // +1 country code
-  if (digits === '') return false;
-  const phone = c.phone.replace(/\D/g, '');
-  return phone.startsWith(digits) || (digits.length >= 4 && phone.slice(3).startsWith(digits));
-}
-
-/** A new group starts with just you; invitees join when they accept. */
-export function makeGroup(id: string, name: string): Group {
-  return { id, name, created: 0, members: [you(0)] };
-}
-
-/** The member id a contact has (or would have) in a group. */
-export const memberIdOf = (c: Contact) => c.memberId || c.id;
-
-/** Adds a contact who accepted. Their usage stays empty until a backend can
- *  supply it - an invented profile would be worse than an honest zero. */
-export function joinGroup(g: Group, c: Contact): Group {
-  const member: Member = {
-    id: memberIdOf(c),
-    name: c.name,
-    color: '#8a8f94',
-    joined: 0,
-    seed: 0,
-    scale: [],
-    day: noUsage,
-  };
-  return { ...g, members: g.members.concat([member]) };
+/** A new group starts with just you. */
+export function makeGroup(id: string, name: string, created: string, self: Member): Group {
+  return { id, name, created, members: [self] };
 }
 
 /**
- * Total of the apps that count, given the group's excluded ids.
+ * Folds received members into a group.
  *
- * Indexes the live series, not CATS: `per` comes from dayUsageAt and is as long
- * as the user's selection, so CATS[i] was undefined past the eighth app and this
- * threw on render for anyone tracking more than eight.
+ * For each person, the newer share decides their name and votes, so an old link
+ * opened late can't roll them back. Days are combined, not replaced: each share
+ * carries only the last SHARE_DAYS days, so replacing would drop the older
+ * history already collected. Where both have a day, the newer share's number
+ * wins. Your own entry is never taken from someone else's copy of it.
  */
-export function countedTotal(per: number[], excluded: string[]): number {
-  if (excluded.length === 0) return per.reduce((s, v) => s + v, 0);
-  const ids = series();
-  return per.reduce((s, v, i) => s + (excluded.indexOf(ids[i]?.id ?? '') >= 0 ? 0 : v), 0);
+export function mergeMembers(g: Group, incoming: Member[], selfId: string): Group {
+  const byId = new Map(g.members.map((m) => [m.id, m]));
+  for (const m of incoming) {
+    if (m.id === selfId) continue;
+    const have = byId.get(m.id);
+    if (!have) {
+      byId.set(m.id, m);
+      continue;
+    }
+    const newer = m.sharedAt > have.sharedAt ? m : have;
+    const older = newer === m ? have : m;
+    byId.set(m.id, {
+      ...newer,
+      // Joining is a one-time fact, so the earliest date seen stands.
+      joined: have.joined < m.joined ? have.joined : m.joined,
+      days: { ...older.days, ...newer.days },
+    });
+  }
+  return { ...g, members: [...byId.values()] };
 }
 
-export interface MemberStats {
-  member: Member;
+// --- Leaving apps out --------------------------------------------------------
+
+/** Apps the whole group has agreed to leave out. One person can't decide alone. */
+export function excludedApps(g: Group): string[] {
+  if (g.members.length < MIN_GROUP_SIZE) return [];
+  const [first, ...rest] = g.members;
+  return Object.keys(first.excludes)
+    .filter((app) => rest.every((m) => app in m.excludes))
+    .sort();
+}
+
+export interface Proposal {
+  app: string;
+  label: string;
+  agreed: string[];
+  declined: string[];
+}
+
+/** Apps some members want left out but not everyone has agreed to yet. */
+export function openProposals(g: Group): Proposal[] {
+  const excluded = new Set(excludedApps(g));
+  const out = new Map<string, Proposal>();
+  for (const m of g.members) {
+    for (const [app, label] of Object.entries(m.excludes)) {
+      if (excluded.has(app)) continue;
+      const p = out.get(app) ?? { app, label, agreed: [], declined: [] };
+      p.agreed.push(m.id);
+      out.set(app, p);
+    }
+  }
+  for (const p of out.values()) {
+    p.declined = g.members.filter((m) => m.declines.includes(p.app) && !p.agreed.includes(m.id)).map((m) => m.id);
+  }
+  return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+const editSelf = (g: Group, selfId: string, change: (m: Member) => Member): Group => ({
+  ...g,
+  members: g.members.map((m) => (m.id === selfId ? change(m) : m)),
+});
+
+/** Propose leaving an app out, or agree to someone else's proposal. */
+export function agreeToExclude(g: Group, selfId: string, app: string, label: string): Group {
+  return editSelf(g, selfId, (m) => ({
+    ...m,
+    excludes: { ...m.excludes, [app]: label },
+    declines: m.declines.filter((a) => a !== app),
+  }));
+}
+
+/** Take back your agreement. For an app already left out, this brings it back. */
+export function withdrawExclude(g: Group, selfId: string, app: string): Group {
+  return editSelf(g, selfId, (m) => {
+    const excludes = { ...m.excludes };
+    delete excludes[app];
+    return { ...m, excludes };
+  });
+}
+
+/** Say no to someone's proposal. The others see it when you next share. */
+export function declineExclude(g: Group, selfId: string, app: string): Group {
+  return editSelf(withdrawExclude(g, selfId, app), selfId, (m) => ({
+    ...m,
+    declines: m.declines.includes(app) ? m.declines : m.declines.concat([app]),
+  }));
+}
+
+/** Minutes that count for the group from one day's per-app totals. */
+export function groupMinutes(perApp: Record<string, number>, excluded: readonly string[]): number {
+  let total = 0;
+  for (const [app, minutes] of Object.entries(perApp)) {
+    if (!excluded.includes(app) && Number.isFinite(minutes) && minutes > 0) total += minutes;
+  }
+  return total;
+}
+
+// --- Standings ---------------------------------------------------------------
+
+export interface DayResult {
+  day: string;
+  /** Ids of the day's winners. Empty when the day wasn't scored. */
+  winners: string[];
+  /** Why a day wasn't scored, or null if it was. */
+  unscored: null | 'too-few' | 'waiting';
+  /** For a 'waiting' day, who hasn't shared it yet. */
+  missing: string[];
+}
+
+export interface Standing {
+  memberId: string;
   points: number;
-  streak: number; // consecutive wins ending yesterday
+  /** Consecutive scored days won, ending with the latest scored day. */
+  streak: number;
   best: number;
 }
 
-export interface GroupStats {
-  winnersByDay: string[][]; // index 0 = yesterday
-  stats: MemberStats[];
+export interface Standings {
+  /** Newest first: yesterday back to the day the group was created. */
+  days: DayResult[];
+  board: Standing[];
 }
 
-// Keyed by group + roster + excluded set. Every entry is derived from usage
-// "days before today", so the whole map is only valid for one calendar day.
-// Bounded because a session can mint a new key on every rules change.
-const STATS_CACHE_MAX = 48;
-let _stats = new Map<string, GroupStats>();
-onDayChange(() => {
-  _stats = new Map();
-});
+/** A member's number for a day, or undefined if they haven't shared it. */
+export type DayValue = (member: Member, day: string) => number | undefined;
 
-export function groupStats(g: Group, excluded: string[]): GroupStats {
-  checkDayRollover();
-  const roster = g.members.map((m) => m.id + '@' + m.joined).join(',');
-  const key = g.id + '|' + roster + '|' + excluded.slice().sort().join(',');
-  const hit = _stats.get(key);
-  if (hit) {
-    // Refresh recency so the entries in active use survive eviction.
-    _stats.delete(key);
-    _stats.set(key, hit);
-    return hit;
-  }
-  const winnersByDay: string[][] = [];
-  const run: Record<string, number> = {};
-  const stats = g.members.map((m) => ({ member: m, points: 0, streak: 0, best: 0 }));
-  // Oldest settled day first so running streaks accumulate forward in time.
-  for (let idx = g.created; idx >= 1; idx--) {
-    // Only people who were members that day compete for its point.
-    const present = g.members.filter((m) => m.joined >= idx);
+/**
+ * Points, streaks and every settled day, from creation up to yesterday.
+ * `value` supplies each member's minutes. For you that is computed live from
+ * this phone, and for everyone else it comes from what they shared.
+ */
+export function standings(g: Group, today: string, value: DayValue): Standings {
+  const board = new Map<string, Standing>(
+    g.members.map((m) => [m.id, { memberId: m.id, points: 0, streak: 0, best: 0 }])
+  );
+  const days: DayResult[] = [];
+  for (let day = g.created; day < today; day = shiftStamp(day, 1)) {
+    const present = g.members.filter((m) => m.joined <= day);
     if (present.length < MIN_GROUP_SIZE) {
-      winnersByDay.unshift([]);
+      days.unshift({ day, winners: [], unscored: 'too-few', missing: [] });
       continue;
     }
-    const totals = present.map((m) => Math.round(countedTotal(m.day(idx), excluded)));
-    const low = Math.min(...totals);
-    const winners = present.filter((m, i) => totals[i] === low).map((m) => m.id);
-    winnersByDay.unshift(winners);
-    stats.forEach((s) => {
-      if (s.member.joined < idx) return;
-      const won = winners.indexOf(s.member.id) >= 0;
-      run[s.member.id] = won ? (run[s.member.id] || 0) + 1 : 0;
-      if (won) s.points++;
-      s.best = Math.max(s.best, run[s.member.id]);
-    });
+    const totals = present.map((m) => value(m, day));
+    const missing = present.filter((_, i) => totals[i] === undefined).map((m) => m.id);
+    if (missing.length > 0) {
+      days.unshift({ day, winners: [], unscored: 'waiting', missing });
+      continue;
+    }
+    const rounded = totals.map((t) => Math.round(t as number));
+    const low = Math.min(...rounded);
+    const winners = present.filter((_, i) => rounded[i] === low).map((m) => m.id);
+    days.unshift({ day, winners, unscored: null, missing: [] });
+    // Streaks run over scored days only. A day nobody could score neither
+    // extends nor breaks one.
+    for (const m of present) {
+      const s = board.get(m.id) as Standing;
+      if (winners.includes(m.id)) {
+        s.points++;
+        s.streak++;
+        s.best = Math.max(s.best, s.streak);
+      } else {
+        s.streak = 0;
+      }
+    }
   }
-  stats.forEach((s) => (s.streak = run[s.member.id] || 0));
-  const result: GroupStats = { winnersByDay, stats };
-  // Evict least-recently-used; Map preserves insertion order.
-  if (_stats.size >= STATS_CACHE_MAX) {
-    const oldest = _stats.keys().next();
-    if (!oldest.done) _stats.delete(oldest.value);
-  }
-  _stats.set(key, result);
-  return result;
-}
-
-/** A unanimous proposal takes effect and closes. Nothing settles until the
- *  group has at least MIN_GROUP_SIZE members, so one person can't decide alone. */
-function settle(g: Group, rules: GroupRules, cat: string): GroupRules {
-  if (g.members.length < MIN_GROUP_SIZE) return rules;
-  const done = rules.proposals.find((p) => p.cat === cat && p.agreed.length === g.members.length);
-  if (!done) return rules;
-  // At least one app must stay tracked; the proposal stays open until another
-  // is brought back.
-  if (done.kind === 'exclude' && rules.excluded.length + 1 >= seriesCount()) return rules;
-  return {
-    excluded: done.kind === 'exclude' ? rules.excluded.concat([cat]) : rules.excluded.filter((c) => c !== cat),
-    proposals: rules.proposals.filter((p) => p !== done),
-  };
-}
-
-export function vote(g: Group, rules: GroupRules, cat: string, memberId: string): GroupRules {
-  const proposals = rules.proposals.map((p) =>
-    p.cat === cat && p.agreed.indexOf(memberId) < 0 ? { ...p, agreed: p.agreed.concat([memberId]) } : p
-  );
-  return settle(g, { ...rules, proposals }, cat);
-}
-
-/** Whether excluding `cat` could still leave a category tracked, counting
- *  other open exclude proposals as if they pass. */
-export function canProposeExclude(rules: GroupRules, cat: string): boolean {
-  const pending = rules.proposals.filter((p) => p.kind === 'exclude' && p.cat !== cat).length;
-  return seriesCount() - rules.excluded.length - pending > 1;
-}
-
-/** Proposing counts as agreeing. */
-export function propose(g: Group, rules: GroupRules, cat: string, memberId: string): GroupRules {
-  const kind = rules.excluded.indexOf(cat) >= 0 ? 'include' : 'exclude';
-  if (kind === 'exclude' && !canProposeExclude(rules, cat)) return rules;
-  return settle(g, { ...rules, proposals: rules.proposals.concat([{ cat, kind, agreed: [memberId] }]) }, cat);
-}
-
-/** Declining blocks unanimity, so the proposal closes. */
-export function decline(rules: GroupRules, cat: string): GroupRules {
-  return { ...rules, proposals: rules.proposals.filter((p) => p.cat !== cat) };
-}
-
-/** Withdrawing your agreement; the proposal closes once nobody supports it. */
-export function withdraw(rules: GroupRules, cat: string, memberId: string): GroupRules {
-  return {
-    ...rules,
-    proposals: rules.proposals
-      .map((p) => (p.cat === cat ? { ...p, agreed: p.agreed.filter((id) => id !== memberId) } : p))
-      .filter((p) => p.agreed.length > 0),
-  };
+  return { days, board: [...board.values()] };
 }

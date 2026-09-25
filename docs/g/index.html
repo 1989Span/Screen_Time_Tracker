@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Gauge group link</title>
+  <meta name="description" content="Open a Gauge group invite or update on your phone.">
+  <!--
+    Landing page for Gauge group links: https://…/g/#<payload>
+
+    The group's numbers are in the part after '#'. Browsers never send that to
+    the server, so GitHub, which hosts this page, never receives them. Nothing
+    here loads anything from elsewhere or reports anywhere. The script below
+    only passes the payload to the Gauge app on this phone.
+  -->
+  <style>
+    :root {
+      --bg: #f2f2f3;
+      --card: #ffffff;
+      --text: #1d1f20;
+      --muted: #5c6166;
+      --accent: #5980a6;
+      --accent-dark: #416180;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #141617;
+        --card: #1d2022;
+        --text: #eceef0;
+        --muted: #a4aab0;
+        --accent: #6f95bb;
+        --accent-dark: #8db4d9;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    main { max-width: 480px; margin: 0 auto; padding: 48px 16px; }
+    .card { background: var(--card); border-radius: 20px; padding: 28px 22px; }
+    h1 { font-size: 24px; line-height: 1.25; margin: 0 0 8px; }
+    p { margin: 0 0 14px; color: var(--muted); }
+    .btn {
+      display: block;
+      width: 100%;
+      text-align: center;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 17px;
+      padding: 15px 16px;
+      border-radius: 999px;
+      border: 0;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .primary { background: var(--accent); color: #fff; }
+    .secondary { background: transparent; color: var(--accent-dark); box-shadow: inset 0 0 0 1.5px var(--accent); }
+    .hidden { display: none; }
+    .small { font-size: 13px; margin-top: 18px; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <div id="ok" class="hidden">
+      <h1>Open in Gauge</h1>
+      <p>This link adds you to a Gauge group, or updates one you're already in. Gauge will show what it contains
+        before anything changes.</p>
+      <a id="open" class="btn primary" href="#">Open in Gauge</a>
+      <button id="copy" class="btn secondary" type="button">Copy link</button>
+      <p class="small">Didn't open? Install Gauge from Google Play, then tap the link in your message again. Or copy
+        it and paste it into Gauge's Groups tab.</p>
+    </div>
+
+    <div id="installed-missing" class="hidden">
+      <h1>Get Gauge first</h1>
+      <p>Gauge isn't installed on this phone. Install it from Google Play, set it up, then tap the link in your
+        message again.</p>
+      <a class="btn primary" href="https://play.google.com/store/apps/details?id=com.span1989.gauge">Get Gauge on Google Play</a>
+    </div>
+
+    <div id="bad" class="hidden">
+      <h1>This link is incomplete</h1>
+      <p>Part of it went missing on the way. Ask whoever sent it to share it again from Gauge.</p>
+    </div>
+
+    <div id="not-android" class="hidden">
+      <h1>Open this on your Android phone</h1>
+      <p>Gauge group links open in the Gauge app, which is on Android. Send this link to the phone that has
+        Gauge and tap it there.</p>
+    </div>
+  </div>
+  <p class="small">Your numbers travel inside the link itself. This page never receives them.</p>
+</main>
+<script>
+  (function () {
+    var show = function (id) { document.getElementById(id).classList.remove('hidden'); };
+    var payload = location.hash.slice(1);
+    // Only the characters a Gauge payload can contain, so nothing else ever
+    // ends up inside the intent below.
+    if (!/^[A-Za-z0-9_-]{8,16000}$/.test(payload)) { show('bad'); return; }
+    if (new URLSearchParams(location.search).get('install') === '1') { show('installed-missing'); return; }
+    if (!/Android/i.test(navigator.userAgent)) { show('not-android'); return; }
+
+    // If Gauge isn't installed, Chrome goes to the fallback: this page again,
+    // flagged, with the payload kept after '#' so it still never reaches a server.
+    var fallback = location.origin + location.pathname + '?install=1#' + payload;
+    document.getElementById('open').href =
+      'intent://g/' + payload +
+      '#Intent;scheme=gauge;package=com.span1989.gauge;S.browser_fallback_url=' +
+      encodeURIComponent(fallback) + ';end';
+
+    document.getElementById('copy').addEventListener('click', function () {
+      var done = function () { document.getElementById('copy').textContent = 'Copied'; };
+      if (navigator.clipboard) navigator.clipboard.writeText(location.href).then(done, function () {});
+    });
+    show('ok');
+  })();
+</script>
+</body>
+</html>

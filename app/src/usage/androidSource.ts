@@ -49,6 +49,13 @@ export class AndroidUsageStatsSource implements UsageSource {
   private dayCache = new Map<number, number[]>();
   /** `${dayIndex}:${hour}` -> minutes per series. */
   private hourCache = new Map<string, number[]>();
+  /**
+   * day stamp -> package -> minutes, for every recorded app. Keyed by stamp, not
+   * by "days before today", so unlike the caches above it keeps its meaning at
+   * midnight and isn't cleared by invalidate(). It doesn't depend on the
+   * selection either.
+   */
+  private allDays: Record<string, Record<string, number>> = {};
 
   /** True when hourly figures were spread from a daily total rather than derived
    *  from real events, so the UI can say so instead of implying precision. */
@@ -73,6 +80,10 @@ export class AndroidUsageStatsSource implements UsageSource {
   invalidate(): void {
     this.dayCache.clear();
     this.hourCache.clear();
+  }
+
+  allAppsDay(stamp: string): Record<string, number> {
+    return { ...(this.allDays[stamp] ?? {}) };
   }
 
   private toSeriesArray(totals: Record<string, number>): number[] {
@@ -103,6 +114,7 @@ export class AndroidUsageStatsSource implements UsageSource {
       // means one code path serves both recent and old days, so there is no seam
       // where the two could disagree.
       const stored = await readRange(dayStamp(dateAt(days - 1)), dayStamp(dateAt(0)));
+      this.allDays = stored;
       for (let idx = 0; idx < days; idx++) {
         const totals = stored[dayStamp(dateAt(idx))];
         if (totals) this.dayCache.set(idx, this.toSeriesArray(totals));

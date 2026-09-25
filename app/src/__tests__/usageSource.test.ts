@@ -20,6 +20,9 @@ class FlatSource implements UsageSource {
     this.loadedDays = days;
     this.status = 'ready';
   }
+  allAppsDay(): Record<string, number> {
+    return {};
+  }
   invalidate() {
     this.invalidated++;
   }
@@ -139,6 +142,9 @@ describe('the series count is not hardwired to eight', () => {
     }
     async load() {
       this.status = 'ready';
+    }
+    allAppsDay(): Record<string, number> {
+      return {};
     }
     invalidate() {}
     dayTotals(): number[] {

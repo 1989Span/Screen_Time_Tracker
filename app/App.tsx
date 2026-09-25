@@ -18,14 +18,14 @@ import { PenaltyHistoryScreen } from './src/screens/PenaltyHistoryScreen';
 import { GroupsScreen } from './src/screens/GroupsScreen';
 import { GroupRulesScreen } from './src/screens/GroupRulesScreen';
 import { GroupSettingsScreen } from './src/screens/GroupSettingsScreen';
-import { GroupInviteScreen } from './src/screens/GroupInviteScreen';
+import { JoinGroupScreen } from './src/screens/JoinGroupScreen';
 import { NewGroupScreen } from './src/screens/NewGroupScreen';
 import { TabBar } from './src/components/TabBar';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { AppPickerScreen } from './src/screens/AppPickerScreen';
 import { PermissionScreen } from './src/screens/PermissionScreen';
 import { useSetupGate } from './src/state/useSetupGate';
-import { useWidgetLinks } from './src/state/widgetLinks';
+import { useIncomingLinks } from './src/state/incomingLinks';
 import { useNudgePrompt } from './src/state/nudges';
 import { DISABLED_VIEWS } from './src/features';
 
@@ -45,7 +45,7 @@ const SCREENS = {
   groups: GroupsScreen,
   groupSettings: GroupSettingsScreen,
   groupRules: GroupRulesScreen,
-  groupInvite: GroupInviteScreen,
+  groupJoin: JoinGroupScreen,
   newGroup: NewGroupScreen,
   limits: LimitsScreen,
   limit: LimitEditorScreen,
@@ -64,8 +64,8 @@ function Tracker() {
   const view = useNavStore((s) => s.view);
   const hydrated = useStoresHydrated();
   const gate = useSetupGate();
-  // A tap on the home-screen widget opens that range's breakdown.
-  useWidgetLinks(hydrated);
+  // Widget taps open a range's breakdown; group links join or update a group.
+  useIncomingLinks(hydrated);
   // Hourly nudges are on by default. Ask for notification permission once,
   // after setup, when there is finally something to nudge about.
   useNudgePrompt(hydrated && gate === null);

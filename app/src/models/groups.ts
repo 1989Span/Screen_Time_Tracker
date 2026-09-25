@@ -1,114 +1,69 @@
-// Groups: the group page, tracking rules, settings, inviting and new groups.
+// Groups screens: the group page, New group, Join, Settings and Rules.
+//
+// Your own numbers are computed live from this phone. Everyone else's are
+// whatever they last shared. The screens say which is which, and how fresh each
+// number is, so a stale share is never mistaken for a live one.
 
 import { useMemo } from 'react';
-import { CATS, CCOL, dateAt, fmtDate, fmtShort, series } from '../data';
-import {
-  CONTACTS,
-  Contact,
-  GroupRules,
-  MIN_GROUP_SIZE,
-  canProposeExclude,
-  contactMatches,
-  countedTotal,
-  groupStats,
-  memberIdOf,
-} from '../groups';
-import { GROUP_NAME_MAX, currentGroup, invitesFor, rulesFor, useGroupsStore } from '../state/groupsStore';
-import { ordinal, ranks } from './shared';
 
-export interface PickerContact {
-  id: string;
-  name: string;
-  initial: string;
-  hasApp: boolean;
-  via: string;
-  on: boolean;
-  disabled: boolean;
-  onPress: (() => void) | undefined;
-}
+import { dayStamp } from '../clock';
+import { fmtShort } from '../data';
+import { Group, Member, MIN_GROUP_SIZE, excludedApps, openProposals, shiftStamp, standings } from '../groups';
+import { useAppsStore } from '../state/appsStore';
+import { currentGroup, selfDays, useGroupsStore } from '../state/groupsStore';
+import { useNow } from '../state/useNow';
+import { colorForId } from '../usage/series';
+import { usageSource } from '../usage/source';
+import { dayStampToDate } from '../usage/ledger';
+import { color } from '../theme';
 
-export interface ContactPickerViewModel {
-  query: string;
-  setQuery: (text: string) => void;
-  contacts: PickerContact[];
-  summary: string;
-  chosen: Contact[];
-}
-
-/** Contact list with search and multi-select. `blocked` returns a reason a
- *  contact can't be picked (e.g. already a member), or '' if they can. */
-function contactPicker(
-  selected: string[],
-  query: string,
-  set: (ids: string[], query: string) => void,
-  blocked: (c: Contact) => string
-): ContactPickerViewModel {
-  const chosen = CONTACTS.filter((c) => selected.indexOf(c.id) >= 0);
-  const nOnApp = chosen.filter((c) => c.hasApp).length;
-  const nLink = chosen.length - nOnApp;
-  return {
-    query,
-    setQuery: (t) => set(selected, t),
-    contacts: CONTACTS.filter((c) => contactMatches(c, query)).map((c) => {
-      const on = selected.indexOf(c.id) >= 0;
-      const reason = blocked(c);
-      return {
-        id: c.id,
-        name: c.name,
-        initial: c.name[0],
-        hasApp: c.hasApp,
-        via:
-          reason || (c.hasApp ? 'On the app · gets an in-app invite' : 'Not on the app · gets a download link by text'),
-        on,
-        disabled: reason !== '',
-        onPress: reason
-          ? undefined
-          : () => set(on ? selected.filter((x) => x !== c.id) : selected.concat([c.id]), query),
-      };
-    }),
-    summary:
-      chosen.length === 0
-        ? 'Nobody selected yet'
-        : [
-            nOnApp ? nOnApp + ' in-app invite' + (nOnApp > 1 ? 's' : '') : '',
-            nLink ? nLink + ' download link' + (nLink > 1 ? 's' : '') : '',
-          ]
-            .filter(Boolean)
-            .join(' · '),
-    chosen,
-  };
-}
-
-const catNames = (ids: string[]) =>
-  CATS.filter((c) => ids.indexOf(c.id) >= 0)
-    .map((c) => c.name)
-    .join(', ');
-
-const rulesLineFor = (excluded: string[]) =>
-  excluded.length ? 'Not tracked: ' + catNames(excluded) : 'All categories tracked';
-
-const rulesNoteFor = (rules: GroupRules) => {
-  const needsYou = rules.proposals.filter((p) => p.agreed.indexOf('you') < 0).length;
-  return needsYou ? needsYou + (needsYou === 1 ? ' proposal needs' : ' proposals need') + ' your vote' : '';
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const shortDate = (stamp: string) => {
+  const d = dayStampToDate(stamp);
+  return d.getDate() + ' ' + MON[d.getMonth()];
 };
+const clockTime = (ms: number) => {
+  const d = new Date(ms);
+  const h = d.getHours() % 12 || 12;
+  return h + ':' + String(d.getMinutes()).padStart(2, '0') + (d.getHours() < 12 ? ' am' : ' pm');
+};
+/** "just now", "12m ago", "3h ago", "yesterday", "4 days ago". */
+export const ago = (ms: number, now: number) => {
+  const m = Math.max(0, Math.round((now - ms) / 60_000));
+  if (m < 2) return 'just now';
+  if (m < 60) return m + 'm ago';
+  if (m < 24 * 60) return Math.round(m / 60) + 'h ago';
+  const days = Math.round(m / (24 * 60));
+  return days === 1 ? 'yesterday' : days + ' days ago';
+};
+const firstName = (m: Member) => m.name.split(' ')[0];
+const listNames = (names: string[]) =>
+  names.length <= 1 ? names.join('') : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+const memberColor = (m: Member, selfId: string) => (m.id === selfId ? color.accent : colorForId(m.id));
 
-export interface GroupTab {
-  id: string;
-  label: string;
-  active: boolean;
-  onPress: () => void;
+/** Competition-style ranks: equal values share a rank, the next rank skips. */
+function ranks(values: number[]): number[] {
+  return values.map((v) => values.filter((x) => x < v).length + 1);
 }
 
-export interface RankRow {
+/** Every member's number for a day: yours live, everyone else's as shared. */
+function valueFor(g: Group, selfId: string, today: string) {
+  const mine = selfDays(g, selfId, today);
+  return (m: Member, day: string) => (m.id === selfId ? mine[day] : m.days[day]);
+}
+
+// --- Group page --------------------------------------------------------------
+
+export interface TodayRow {
   id: string;
-  rank: number;
+  rank: number | null;
   name: string;
   initial: string;
   color: string;
   you: boolean;
   total: string;
+  note: string;
   pct: number;
-  top: { name: string; time: string; color: string }[];
 }
 
 export interface BoardRow {
@@ -119,415 +74,370 @@ export interface BoardRow {
   color: string;
   you: boolean;
   points: string;
-  streak: string;
-  best: string;
-}
-
-export interface PendingInvite {
-  id: string;
-  name: string;
-  initial: string;
-  status: string;
-  cancel: (() => void) | undefined;
-  accept: () => void;
+  detail: string;
 }
 
 export interface GroupsViewModel {
   empty: boolean;
+  notice: string | null;
+  clearNotice: () => void;
   openNewGroup: () => void;
-  tabs: GroupTab[];
-  name: string;
-  summary: string;
+  link: { value: string; onChange: (t: string) => void; open: () => void; error: string | null };
+  tabs: { id: string; label: string; active: boolean; onPress: () => void }[];
   since: string;
-  today: RankRow[];
+  today: TodayRow[];
+  share: () => void;
+  lastShared: string;
   yesterday: string;
+  alone: boolean;
   board: BoardRow[];
-  boardNote: string;
-  settingsNote: string;
   openSettings: () => void;
-  pending: PendingInvite[];
-  pendingNote: string;
+  settingsNote: string;
 }
-
-const EMPTY_PAGE = {
-  name: '',
-  summary: '',
-  since: '',
-  today: [] as RankRow[],
-  yesterday: '',
-  board: [] as BoardRow[],
-  boardNote: '',
-  settingsNote: '',
-  pending: [] as PendingInvite[],
-  pendingNote: '',
-};
 
 export function useGroupsModel(): GroupsViewModel {
   const store = useGroupsStore();
+  const now = useNow();
+  const dataVersion = useAppsStore((s) => s.dataVersion);
 
   return useMemo(() => {
-    const group = currentGroup(store);
-    const tabs = store.groups.map((g) => ({
-      id: g.id,
-      label: g.name + ' · ' + g.members.length,
-      active: group != null && g.id === group.id,
-      onPress: () => store.select(g.id),
-    }));
-
-    if (!group) {
-      return { empty: true, openNewGroup: store.openNewGroup, tabs, ...EMPTY_PAGE, openSettings: store.openSettings };
+    const link = {
+      value: store.linkDraft,
+      onChange: store.setLinkDraft,
+      open: store.openLinkDraft,
+      error: store.linkError,
+    };
+    const base = {
+      notice: store.notice,
+      clearNotice: store.clearNotice,
+      openNewGroup: store.openNewGroup,
+      link,
+    };
+    const g = currentGroup(store);
+    if (!g) {
+      return {
+        ...base,
+        empty: true,
+        tabs: [],
+        since: '',
+        today: [],
+        share: () => {},
+        lastShared: '',
+        yesterday: '',
+        alone: true,
+        board: [],
+        openSettings: () => {},
+        settingsNote: '',
+      };
     }
 
-    const rules = rulesFor(store, group.id);
-    const excluded = rules.excluded;
-    const invites = invitesFor(store, group.id);
-    const stats = groupStats(group, excluded);
-    const seriesList = series();
-    const n = group.members.length;
+    const today = dayStamp();
+    const selfId = store.selfId;
+    const value = valueFor(g, selfId, today);
+    const n = g.members.length;
 
-    const todayRows = group.members
-      .map((mem) => ({ mem, per: mem.day(0), total: Math.round(countedTotal(mem.day(0), excluded)) }))
-      .sort((a, b) => a.total - b.total || a.mem.name.localeCompare(b.mem.name));
-    const todayRanks = ranks(todayRows.map((r) => r.total));
-    const todayMax = Math.max(1, ...todayRows.map((r) => r.total));
-    const yourRank = todayRanks[todayRows.findIndex((r) => r.mem.id === 'you')];
+    // Today so far. Anyone who hasn't shared today is listed, but not ranked.
+    const withToday = g.members.map((m) => ({ m, v: value(m, today) }));
+    const known = withToday.filter((x) => x.v !== undefined).sort((a, b) => (a.v as number) - (b.v as number));
+    const unknown = withToday.filter((x) => x.v === undefined);
+    const knownRanks = ranks(known.map((x) => Math.round(x.v as number)));
+    const most = Math.max(1, ...known.map((x) => x.v as number));
+    const todayRows: TodayRow[] = [...known, ...unknown].map(({ m, v }, i) => ({
+      id: m.id,
+      rank: v === undefined ? null : knownRanks[i],
+      name: m.id === selfId ? 'You' : m.name,
+      initial: m.name[0]?.toUpperCase() ?? '?',
+      color: memberColor(m, selfId),
+      you: m.id === selfId,
+      total: v === undefined ? '—' : fmtShort(v),
+      note:
+        m.id === selfId
+          ? 'live on this phone'
+          : v === undefined
+            ? m.sharedAt > 0
+              ? 'last shared ' + ago(m.sharedAt, now)
+              : "hasn't shared yet"
+            : 'as of ' + clockTime(m.sharedAt),
+      pct: v === undefined ? 0 : Math.max(2, (v / most) * 100),
+    }));
 
-    const winners = stats.winnersByDay[0] || [];
-    const nameOf = (id: string) => group.members.find((mem) => mem.id === id)!.name;
-    const winnerTotal = winners.length
-      ? Math.round(countedTotal(group.members.find((mem) => mem.id === winners[0])!.day(1), excluded))
-      : 0;
+    const st = standings(g, today, value);
+    const yesterday = st.days[0]?.day === shiftStamp(today, -1) ? st.days[0] : undefined;
+    const nameOf = (id: string) => {
+      const m = g.members.find((x) => x.id === id);
+      return !m ? 'someone' : m.id === selfId ? 'you' : firstName(m);
+    };
+    let yesterdayLine = '';
+    if (yesterday?.unscored === null) {
+      const low = value(g.members.find((m) => m.id === yesterday.winners[0]) as Member, yesterday.day) ?? 0;
+      const sentence =
+        listNames(yesterday.winners.map(nameOf)) +
+        (yesterday.winners.length > 1 ? ' tied for' : ' won') +
+        " yesterday's point with " +
+        fmtShort(low) +
+        '.';
+      yesterdayLine = sentence[0].toUpperCase() + sentence.slice(1);
+    } else if (yesterday?.unscored === 'waiting') {
+      yesterdayLine = "Yesterday's point is waiting for " + listNames(yesterday.missing.map(nameOf)) + ' to share.';
+    }
 
-    const board = stats.stats.slice().sort((a, b) => b.points - a.points || a.member.name.localeCompare(b.member.name));
-    const boardRanks = ranks(board.map((s) => s.points));
+    const board = [...st.board].sort(
+      (a, b) => b.points - a.points || b.streak - a.streak || nameOf(a.memberId).localeCompare(nameOf(b.memberId))
+    );
+    const boardRanks = ranks(board.map((b) => -b.points));
+    const self = g.members.find((m) => m.id === selfId);
+    const needsVote = openProposals(g).filter((p) => !p.agreed.includes(selfId) && !p.declined.includes(selfId)).length;
 
     return {
+      ...base,
       empty: false,
-      openNewGroup: store.openNewGroup,
-      tabs,
-      name: group.name,
-      summary: 'You’re ' + ordinal(yourRank) + ' of ' + n + ' today',
-      since: n + (n === 1 ? ' member' : ' members') + ' · since ' + fmtDate(dateAt(group.created)),
-      today: todayRows.map((r, i) => ({
-        id: r.mem.id,
-        rank: todayRanks[i],
-        name: r.mem.name,
-        initial: r.mem.name[0],
-        color: r.mem.color,
-        you: r.mem.id === 'you',
-        total: fmtShort(r.total),
-        pct: Math.max(2, (r.total / todayMax) * 100),
-        // Over the member's own usage array, which is one entry per tracked
-        // app. Mapping over CATS instead showed only the first eight and
-        // labelled them with category names.
-        top: r.per
-          .map((_, ci) => ci)
-          .filter((ci) => r.per[ci] > 0.4 && excluded.indexOf(seriesList[ci]?.id ?? '') < 0)
-          .sort((a, b) => r.per[b] - r.per[a])
-          .slice(0, 3)
-          .map((ci) => ({
-            name: seriesList[ci]?.name ?? '',
-            time: fmtShort(r.per[ci]),
-            color: seriesList[ci]?.color ?? '#8a8f94',
-          })),
-      })),
-      yesterday: winners.length
-        ? winners.map(nameOf).join(' & ') +
-          (winners.length > 1 ? ' tied for' : ' won') +
-          ' yesterday’s point with ' +
-          fmtShort(winnerTotal)
-        : '',
-      board: board.map((s, i) => ({
-        id: s.member.id,
-        rank: boardRanks[i],
-        name: s.member.name,
-        initial: s.member.name[0],
-        color: s.member.color,
-        you: s.member.id === 'you',
-        points: s.points + (s.points === 1 ? ' pt' : ' pts'),
-        streak: s.streak > 0 ? s.streak + '-day streak' : '',
-        best:
-          s.member.joined === 0 && group.created > 0 ? 'Joined today · first point at midnight' : 'Best run ' + s.best,
-      })),
-      boardNote: stats.winnersByDay.length
-        ? stats.winnersByDay.length + ' days played'
-        : 'First point awarded at midnight',
-      settingsNote: rulesNoteFor(rules),
-      openSettings: store.openSettings,
-      pending: invites.map((inv) => {
-        const c = CONTACTS.find((x) => x.id === inv.contactId)!;
+      tabs:
+        store.groups.length < 2
+          ? []
+          : store.groups.map((x) => ({
+              id: x.id,
+              label: x.name,
+              active: x.id === g.id,
+              onPress: () => store.select(x.id),
+            })),
+      since: n + (n === 1 ? ' member' : ' members') + ' · since ' + shortDate(g.created),
+      today: todayRows,
+      share: () => void store.share('update'),
+      lastShared:
+        self && self.sharedAt > 0
+          ? 'You last shared ' + ago(self.sharedAt, now) + '.'
+          : "You haven't shared yet. The others only see your numbers when you do.",
+      yesterday: yesterdayLine,
+      alone: n < MIN_GROUP_SIZE,
+      board: board.map((b, i) => {
+        const m = g.members.find((x) => x.id === b.memberId) as Member;
         return {
-          id: c.id,
-          name: c.name,
-          initial: c.name[0],
-          status: inv.via === 'app' ? 'In-app invite sent' : 'Download link texted to ' + c.phone,
-          cancel: n + invites.length > MIN_GROUP_SIZE ? () => store.cancelInvite(c.id) : undefined,
-          accept: () => store.acceptInvite(c.id),
+          id: m.id,
+          rank: boardRanks[i],
+          name: m.id === selfId ? 'You' : m.name,
+          initial: m.name[0]?.toUpperCase() ?? '?',
+          color: memberColor(m, selfId),
+          you: m.id === selfId,
+          points: String(b.points),
+          detail: (b.streak > 1 ? b.streak + '-day streak · ' : '') + (b.best > 0 ? 'best ' + b.best : 'no wins yet'),
         };
       }),
-      pendingNote:
-        n + invites.length > MIN_GROUP_SIZE
-          ? 'They join when they accept'
-          : 'A group needs at least ' + MIN_GROUP_SIZE + ' people',
+      openSettings: store.openSettings,
+      settingsNote:
+        needsVote > 0 ? needsVote + (needsVote === 1 ? ' proposal needs' : ' proposals need') + ' your vote' : '',
     };
-  }, [store]);
+    // dataVersion: your live numbers change when usage reloads.
+  }, [store, dataVersion, now]);
 }
 
-export interface Vote {
+// --- New group ---------------------------------------------------------------
+
+export interface NewGroupViewModel {
+  name: string;
+  setName: (t: string) => void;
+  selfName: string;
+  setSelfName: (t: string) => void;
+  canCreate: boolean;
+  create: () => void;
+  back: () => void;
+}
+
+export function useNewGroupModel(): NewGroupViewModel {
+  const s = useGroupsStore();
+  return {
+    name: s.ngName,
+    setName: s.setNgName,
+    selfName: s.selfName,
+    setSelfName: s.setSelfName,
+    canCreate: s.ngName.trim() !== '' && s.selfName.trim() !== '',
+    create: () => void s.createGroup(),
+    back: s.backToGroups,
+  };
+}
+
+// --- Join ----------------------------------------------------------------------
+
+export interface JoinViewModel {
+  name: string;
+  from: string;
+  members: string;
+  selfName: string;
+  setSelfName: (t: string) => void;
+  canJoin: boolean;
+  join: () => void;
+  notNow: () => void;
+}
+
+export function useJoinModel(): JoinViewModel | null {
+  const s = useGroupsStore();
+  const r = s.incoming;
+  if (!r) return null;
+  const sender = r.members.find((m) => m.id === r.senderId);
+  return {
+    name: r.name,
+    from: (sender ? sender.name : 'Someone') + ' invited you to compete for the lowest screen time.',
+    members: listNames(r.members.map((m) => m.name)),
+    selfName: s.selfName,
+    setSelfName: s.setSelfName,
+    canJoin: s.selfName.trim() !== '',
+    join: s.joinIncoming,
+    notNow: s.dismissIncoming,
+  };
+}
+
+// --- Settings ------------------------------------------------------------------
+
+export interface SettingsMember {
   id: string;
+  name: string;
   initial: string;
   color: string;
-  agreed: boolean;
-}
-
-export interface ProposalRow {
-  id: string;
-  title: string;
-  color: string;
-  progress: string;
-  waiting: string;
-  votes: Vote[];
-  youAgreed: boolean;
-  agree: () => void;
-  decline: () => void;
-  withdraw: () => void;
-}
-
-export interface RuleCategoryRow {
-  id: string;
-  name: string;
-  color: string;
-  off: boolean;
-  open: boolean;
-  action: string;
-  onPress: (() => void) | undefined;
-}
-
-export interface GroupRulesViewModel {
-  name: string;
-  excluded: { id: string; name: string; color: string }[];
-  proposals: ProposalRow[];
-  categories: RuleCategoryRow[];
-  backToSettings: () => void;
-}
-
-export function useGroupRulesModel(): GroupRulesViewModel | null {
-  const store = useGroupsStore();
-
-  return useMemo(() => {
-    const group = currentGroup(store);
-    if (!group) return null;
-
-    const rules = rulesFor(store, group.id);
-    const excluded = rules.excluded;
-    const n = group.members.length;
-    const votesFor = (agreed: string[]): Vote[] =>
-      group.members.map((mem) => ({
-        id: mem.id,
-        initial: mem.name[0],
-        color: mem.color,
-        agreed: agreed.indexOf(mem.id) >= 0,
-      }));
-
-    return {
-      name: group.name,
-      excluded: CATS.map((c, ci) => ({ c, ci }))
-        .filter(({ c }) => excluded.indexOf(c.id) >= 0)
-        .map(({ c, ci }) => ({ id: c.id, name: c.name, color: CCOL[ci] })),
-      proposals: rules.proposals.map((p) => {
-        const ci = CATS.findIndex((c) => c.id === p.cat);
-        const waiting = group.members.filter((mem) => p.agreed.indexOf(mem.id) < 0).map((mem) => mem.name);
-        return {
-          id: p.cat,
-          title: (p.kind === 'exclude' ? 'Stop tracking ' : 'Track again: ') + CATS[ci].name,
-          color: CCOL[ci],
-          progress: p.agreed.length + ' of ' + n + ' agreed',
-          waiting:
-            n < MIN_GROUP_SIZE ? 'Takes effect once invitees join and agree' : 'Waiting on ' + waiting.join(', '),
-          votes: votesFor(p.agreed),
-          youAgreed: p.agreed.indexOf('you') >= 0,
-          agree: () => store.agree(p.cat),
-          decline: () => store.declineProposal(p.cat),
-          withdraw: () => store.withdrawVote(p.cat),
-        };
-      }),
-      categories: CATS.map((c, ci) => {
-        const open = rules.proposals.some((p) => p.cat === c.id);
-        const off = excluded.indexOf(c.id) >= 0;
-        const lastTracked = !off && !open && !canProposeExclude(rules, c.id);
-        return {
-          id: c.id,
-          name: c.name,
-          color: CCOL[ci],
-          off,
-          open,
-          action: open
-            ? 'Vote open'
-            : off
-              ? 'Propose tracking'
-              : lastTracked
-                ? 'Must track at least one'
-                : 'Propose not tracking',
-          onPress: open || lastTracked ? undefined : () => store.proposeChange(c.id),
-        };
-      }),
-      backToSettings: store.backToSettings,
-    };
-  }, [store]);
+  detail: string;
 }
 
 export interface GroupSettingsViewModel {
   name: string;
-  members: { id: string; name: string; initial: string; color: string }[];
-  memberLine: string;
-  inviteNote: string;
-  rulesLine: string;
+  members: SettingsMember[];
+  invite: () => void;
   rulesNote: string;
-  openInvite: () => void;
   openRules: () => void;
+  selfName: string;
+  setSelfName: (t: string) => void;
   leaveConfirm: boolean;
-  leaveText: string;
   askLeave: () => void;
   cancelLeave: () => void;
   leave: () => void;
-  backToGroups: () => void;
+  back: () => void;
 }
 
 export function useGroupSettingsModel(): GroupSettingsViewModel | null {
-  const store = useGroupsStore();
+  const s = useGroupsStore();
+  const now = useNow();
+  const g = currentGroup(s);
+  if (!g) return null;
+  const excluded = excludedApps(g).length;
+  const open = openProposals(g).length;
+  return {
+    name: g.name,
+    members: g.members.map((m) => ({
+      id: m.id,
+      name: m.id === s.selfId ? m.name + ' (you)' : m.name,
+      initial: m.name[0]?.toUpperCase() ?? '?',
+      color: memberColor(m, s.selfId),
+      detail:
+        'joined ' +
+        shortDate(m.joined) +
+        ' · ' +
+        (m.sharedAt > 0
+          ? 'shared ' + ago(m.sharedAt, now)
+          : m.id === s.selfId
+            ? "you haven't shared"
+            : "hasn't shared"),
+    })),
+    invite: () => void s.share('invite'),
+    rulesNote: [
+      excluded === 0 ? 'Every app counts' : excluded + (excluded === 1 ? ' app' : ' apps') + ' left out',
+      open > 0 ? open + (open === 1 ? ' proposal' : ' proposals') : '',
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    openRules: s.openRules,
+    selfName: s.selfName,
+    setSelfName: s.setSelfName,
+    leaveConfirm: s.leaveConfirm,
+    askLeave: s.askLeave,
+    cancelLeave: s.cancelLeave,
+    leave: s.leave,
+    back: s.backToGroups,
+  };
+}
+
+// --- Rules ---------------------------------------------------------------------
+
+export interface RuleRow {
+  app: string;
+  label: string;
+  detail: string;
+  primary?: { label: string; onPress: () => void };
+  secondary?: { label: string; onPress: () => void };
+}
+
+export interface GroupRulesViewModel {
+  excluded: RuleRow[];
+  proposals: RuleRow[];
+  suggestions: RuleRow[];
+  alone: boolean;
+  back: () => void;
+}
+
+export function useGroupRulesModel(): GroupRulesViewModel | null {
+  const s = useGroupsStore();
+  const installed = useAppsStore((a) => a.installed);
+  const dataVersion = useAppsStore((a) => a.dataVersion);
 
   return useMemo(() => {
-    const group = currentGroup(store);
-    if (!group) return null;
-
-    const rules = rulesFor(store, group.id);
-    const invites = invitesFor(store, group.id);
-    const n = group.members.length;
-    const others = group.members
-      .filter((mem) => mem.id !== 'you')
-      .map((mem) => mem.name)
-      .join(', ');
-
-    return {
-      name: group.name,
-      members: group.members.map((mem) => ({ id: mem.id, name: mem.name, initial: mem.name[0], color: mem.color })),
-      memberLine:
-        n +
-        (n === 1 ? ' member' : ' members') +
-        (invites.length ? ' · ' + invites.length + ' invite' + (invites.length > 1 ? 's' : '') + ' pending' : ''),
-      inviteNote: 'Any member can invite people',
-      rulesLine: rulesLineFor(rules.excluded),
-      rulesNote: rulesNoteFor(rules),
-      openInvite: store.openInvite,
-      openRules: store.openRules,
-      leaveConfirm: store.leaveConfirm,
-      leaveText:
-        n === 1
-          ? 'You’re the only member, so leaving deletes ' + group.name + ' and cancels its pending invites.'
-          : n - 1 < MIN_GROUP_SIZE
-            ? 'A group needs at least ' +
-              MIN_GROUP_SIZE +
-              ' people, so leaving ends ' +
-              group.name +
-              ' for ' +
-              others +
-              ' too.'
-            : 'You’ll drop out of ' +
-              group.name +
-              '’s rankings and points. The other ' +
-              (n - 1) +
-              ' stay in the group.',
-      askLeave: store.askLeave,
-      cancelLeave: store.cancelLeave,
-      leave: store.leave,
-      backToGroups: store.backToGroups,
+    const g = currentGroup(s);
+    if (!g) return null;
+    const me = s.selfId;
+    const labels = new Map(installed.map((a) => [a.packageName, a.label]));
+    const nameOf = (id: string) => {
+      const m = g.members.find((x) => x.id === id);
+      return !m ? 'someone' : m.id === me ? 'you' : firstName(m);
     };
-  }, [store]);
-}
+    // Any member's vote carries the app's label, so an app you don't have still has a name.
+    const labelOf = (app: string) => labels.get(app) ?? g.members.map((m) => m.excludes[app]).find(Boolean) ?? app;
 
-export interface GroupInviteViewModel {
-  name: string;
-  picker: ContactPickerViewModel;
-  canSend: boolean;
-  send: () => void;
-  backToSettings: () => void;
-}
+    const excludedList = excludedApps(g);
+    const proposals = openProposals(g);
+    const taken = new Set([...excludedList, ...proposals.map((p) => p.app)]);
 
-export function useGroupInviteModel(): GroupInviteViewModel | null {
-  const store = useGroupsStore();
-
-  return useMemo(() => {
-    const group = currentGroup(store);
-    if (!group) return null;
-
-    const invites = invitesFor(store, group.id);
-    const memberIds = group.members.map((mem) => mem.id);
-    const picker = contactPicker(store.ivInvited, store.ivQuery, store.setIvPicked, (c) =>
-      memberIds.indexOf(memberIdOf(c)) >= 0
-        ? 'Already in ' + group.name
-        : invites.some((x) => x.contactId === c.id)
-          ? 'Invite already pending'
-          : ''
-    );
+    // Suggest the apps you use most, since those are the ones worth debating.
+    const today = dayStamp();
+    const week: Record<string, number> = {};
+    for (let k = 0; k < 7; k++) {
+      for (const [app, min] of Object.entries(usageSource().allAppsDay(shiftStamp(today, -k)))) {
+        week[app] = (week[app] ?? 0) + min;
+      }
+    }
+    const suggestions = Object.entries(week)
+      .filter(([app, min]) => !taken.has(app) && min >= 1)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12);
 
     return {
-      name: group.name,
-      picker,
-      canSend: picker.chosen.length > 0,
-      send: store.sendInvites,
-      backToSettings: store.backToSettings,
-    };
-  }, [store]);
-}
-
-export interface NewGroupViewModel {
-  name: string;
-  nameMax: number;
-  setName: (text: string) => void;
-  categories: { id: string; name: string; color: string; on: boolean; onPress: () => void }[];
-  trackedLabel: string;
-  picker: ContactPickerViewModel;
-  error: string;
-  canCreate: boolean;
-  create: () => void;
-  backToGroups: () => void;
-}
-
-export function useNewGroupModel(): NewGroupViewModel {
-  const store = useGroupsStore();
-
-  return useMemo(() => {
-    const name = store.ngName.trim();
-    const nameTaken = store.groups.some((g) => g.name.toLowerCase() === name.toLowerCase());
-    const invited = CONTACTS.filter((c) => store.ngInvited.indexOf(c.id) >= 0);
-    const error =
-      name === ''
-        ? 'Give the group a name'
-        : nameTaken
-          ? 'You already have a group with that name'
-          : store.ngTracked.length === 0
-            ? 'Track at least one category'
-            : invited.length + 1 < MIN_GROUP_SIZE
-              ? 'A group needs at least ' + MIN_GROUP_SIZE + ' people, so invite at least one'
-              : '';
-
-    return {
-      name: store.ngName,
-      nameMax: GROUP_NAME_MAX,
-      setName: store.setNgName,
-      categories: CATS.map((c, ci) => ({
-        id: c.id,
-        name: c.name,
-        color: CCOL[ci],
-        on: store.ngTracked.indexOf(c.id) >= 0,
-        onPress: () => store.toggleNgCategory(c.id),
+      alone: g.members.length < MIN_GROUP_SIZE,
+      back: s.backToSettings,
+      excluded: excludedList.map((app) => ({
+        app,
+        label: labelOf(app),
+        detail: 'Left out for everyone. Anyone can bring it back.',
+        primary: { label: 'Bring back', onPress: () => s.withdrawVote(app) },
       })),
-      trackedLabel: store.ngTracked.length + ' of ' + CATS.length + ' tracked',
-      picker: contactPicker(store.ngInvited, store.ngQuery, store.setNgPicked, () => ''),
-      error,
-      canCreate: error === '',
-      create: store.createGroup,
-      backToGroups: store.backToGroups,
+      proposals: proposals.map((p) => {
+        const youAgreed = p.agreed.includes(me);
+        const waiting = g.members.filter((m) => !p.agreed.includes(m.id) && !p.declined.includes(m.id));
+        return {
+          app: p.app,
+          label: p.label,
+          detail:
+            'Agreed: ' +
+            listNames(p.agreed.map(nameOf)) +
+            (p.declined.length ? ' · declined: ' + listNames(p.declined.map(nameOf)) : '') +
+            (waiting.length ? ' · waiting on ' + listNames(waiting.map((m) => nameOf(m.id))) : ''),
+          primary: youAgreed ? undefined : { label: 'Agree', onPress: () => s.proposeExclude(p.app, p.label) },
+          secondary: youAgreed
+            ? { label: 'Withdraw', onPress: () => s.withdrawVote(p.app) }
+            : p.declined.includes(me)
+              ? undefined
+              : { label: 'Decline', onPress: () => s.declineProposal(p.app) },
+        };
+      }),
+      suggestions: suggestions.map(([app, min]) => ({
+        app,
+        label: labelOf(app),
+        detail: fmtShort(min) + ' in the last 7 days',
+        primary: { label: 'Propose', onPress: () => s.proposeExclude(app, labelOf(app)) },
+      })),
     };
-  }, [store]);
+  }, [s, installed, dataVersion]);
 }

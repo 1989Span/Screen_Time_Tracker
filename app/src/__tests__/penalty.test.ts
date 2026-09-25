@@ -30,6 +30,9 @@ class FixedSource implements UsageSource {
     return [{ id: 'com.example.app', name: 'Example', color: '#000000' }];
   }
   async load() {}
+  allAppsDay(): Record<string, number> {
+    return {};
+  }
   invalidate() {}
   dayTotals(): number[] {
     return [this.minutesPerDay];

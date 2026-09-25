@@ -13,6 +13,9 @@ class WeekdaySource implements UsageSource {
     return [{ id: 's', name: 'S', color: '#000' }];
   }
   async load() {}
+  allAppsDay(): Record<string, number> {
+    return {};
+  }
   invalidate() {}
   dayTotals(idx: number): number[] {
     return [dateAt(idx).getDay() + 1];

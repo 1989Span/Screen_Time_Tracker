@@ -21,16 +21,14 @@ export const PENALTY_LIMIT_ENABLED = false;
 /**
  * Groups: compare screen time with friends and vote on what counts.
  *
- * Off for the first store release. It cannot work on one device: there is no
- * address book source to invite from and no server to fetch other members'
- * usage, so every group would be you alone with an empty invite list. A feature
- * that visibly does nothing invites a Play review flag and poor early reviews.
- * The scoring, voting and invite logic stay under test, ready for a backend.
+ * Works without a server. Members swap links (groupLink.ts) that carry their
+ * daily numbers, sent through whatever messaging app they like. It was hidden
+ * while it depended on a contacts source and a backend it never had.
  */
-export const GROUPS_ENABLED = false;
+export const GROUPS_ENABLED = true;
 
 const PENALTY_VIEWS = ['penalty', 'history'];
-const GROUP_VIEWS = ['groups', 'groupSettings', 'groupRules', 'groupInvite', 'newGroup'];
+const GROUP_VIEWS = ['groups', 'groupSettings', 'groupRules', 'groupJoin', 'newGroup'];
 
 /** Views that only exist when a flag is on. Routing falls back to Overview for
  *  these while the flag is off, so nothing can strand the user on an orphan

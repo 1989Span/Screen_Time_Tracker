@@ -50,6 +50,17 @@ export interface UsageSource {
    *  Hours later than the current hour of today must read zero. */
   hourTotals(idx: number, h: number): number[];
 
+  /**
+   * Minutes per package for one day, keyed by day stamp (YYYY-MM-DD), covering
+   * every countable app, not just the tracked ones. Empty if the day is not
+   * recorded.
+   *
+   * Groups compare people with this rather than dayTotals(). Each person tracks
+   * different apps, so comparing tracked totals would be unfair, and gameable by
+   * untracking an app.
+   */
+  allAppsDay(stamp: string): Record<string, number>;
+
   /** Drop cached data. Called when the calendar day rolls over, since every
    *  index above is relative to "today" and so changes meaning at midnight. */
   invalidate(): void;

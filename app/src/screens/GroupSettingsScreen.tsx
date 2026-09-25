@@ -1,126 +1,94 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { alpha, color, font } from '../theme';
-import { Avatar, BackChip, Card } from '../components/ui';
-import { ChevronRightIcon } from '../components/Icons';
-import { useGroupSettingsModel } from '../models/groups';
+import { Pressable, Text, TextInput, View } from 'react-native';
 
-function Row({
-  title,
-  sub,
-  note,
-  onPress,
-  last,
-}: {
-  title: string;
-  sub: string;
-  note?: string;
-  onPress: () => void;
-  last?: boolean;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.row, last && { borderBottomWidth: 0 }, pressed && { opacity: 0.7 }]}
-    >
-      <View style={{ flex: 1, gap: 1 }}>
-        <Text style={styles.rowTitle}>{title}</Text>
-        <Text style={styles.meta}>{sub}</Text>
-        {note ? <Text style={styles.note}>{note}</Text> : null}
-      </View>
-      <ChevronRightIcon size={15} color={alpha(color.text, 45)} />
-    </Pressable>
-  );
-}
+import { ChevronRightIcon } from '../components/Icons';
+import { Avatar, BackChip, Card } from '../components/ui';
+import { useGroupSettingsModel } from '../models/groups';
+import { GROUP_NAME_MAX } from '../state/groupsStore';
+import { alpha, color } from '../theme';
+import { g } from './groupStyles';
 
 export function GroupSettingsScreen() {
   const s = useGroupSettingsModel();
-  if (!s) return null;
+  if (s === null) return null;
+
   return (
-    <View style={styles.wrap}>
-      <View style={styles.topRow}>
-        <BackChip label="Groups" onPress={s.backToGroups} />
-        <Text style={styles.title} numberOfLines={1}>
-          {s.name} settings
+    <View style={g.wrap}>
+      <View style={g.topRow}>
+        <BackChip label="Group" onPress={s.back} />
+        <Text style={[g.screenTitle, { flex: 1 }]} numberOfLines={1}>
+          {s.name}
         </Text>
       </View>
 
-      <Card style={styles.card}>
-        <Text style={styles.meta}>{s.memberLine}</Text>
-        <View style={styles.members}>
-          {s.members.map((m) => (
-            <View key={m.id} style={styles.member}>
-              <Avatar initial={m.initial} tone={m.color} size={32} />
-              <Text style={styles.memberName} numberOfLines={1}>
-                {m.name}
-              </Text>
+      <Card style={g.card}>
+        <Text style={g.cardTitle}>Members</Text>
+        {s.members.map((m, i) => (
+          <View key={m.id} style={[g.row, i === s.members.length - 1 && g.lastRow]}>
+            <Avatar initial={m.initial} tone={m.color} size={28} />
+            <View style={{ flex: 1, gap: 1 }}>
+              <Text style={g.name}>{m.name}</Text>
+              <Text style={g.meta}>{m.detail}</Text>
             </View>
-          ))}
-        </View>
+          </View>
+        ))}
+        <Pressable onPress={s.invite} accessibilityRole="button" style={g.secondary}>
+          <Text style={g.secondaryText}>Invite someone</Text>
+        </Pressable>
       </Card>
 
-      <Card style={styles.listCard}>
-        <Row title="Invite people" sub={s.inviteNote} onPress={s.openInvite} />
-        <Row title="Tracking rules" sub={s.rulesLine} note={s.rulesNote} onPress={s.openRules} last />
+      <Pressable onPress={s.openRules} accessibilityRole="button">
+        {({ pressed }) => (
+          <Card
+            style={[g.card, { flexDirection: 'row', alignItems: 'center' }, pressed && { backgroundColor: '#fbfbfc' }]}
+          >
+            <View style={{ flex: 1, gap: 1 }}>
+              <Text style={g.name}>Apps that count</Text>
+              <Text style={g.meta}>{s.rulesNote}</Text>
+            </View>
+            <ChevronRightIcon size={15} color={alpha(color.text, 45)} />
+          </Card>
+        )}
+      </Pressable>
+
+      <Card style={g.card}>
+        <Text style={g.label}>Your name in groups</Text>
+        <TextInput
+          value={s.selfName}
+          onChangeText={s.setSelfName}
+          maxLength={GROUP_NAME_MAX}
+          accessibilityLabel="Your name in groups"
+          style={g.input}
+        />
+        <Text style={g.meta}>The others see a change the next time you share.</Text>
       </Card>
 
-      <Card style={styles.card}>
+      <Card style={g.card}>
         {s.leaveConfirm ? (
           <>
-            <Text style={styles.rowTitle}>Leave {s.name}?</Text>
-            <Text style={styles.meta}>{s.leaveText}</Text>
-            <View style={styles.actions}>
-              <Pressable onPress={s.cancelLeave} style={[styles.btn, styles.btnGhost]}>
-                <Text style={styles.btnGhostText}>Cancel</Text>
+            <Text style={g.body}>
+              Leave &ldquo;{s.name}&rdquo;? This removes the group from this phone. The others keep your past numbers,
+              and you can rejoin from any of their links.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Pressable
+                onPress={s.leave}
+                accessibilityRole="button"
+                style={[g.primary, { flex: 1, backgroundColor: color.roseDark }]}
+              >
+                <Text style={g.primaryText}>Leave</Text>
               </Pressable>
-              <Pressable onPress={s.leave} style={[styles.btn, styles.btnDanger]}>
-                <Text style={styles.btnDangerText}>Leave group</Text>
+              <Pressable onPress={s.cancelLeave} accessibilityRole="button" style={[g.secondary, { flex: 1 }]}>
+                <Text style={g.secondaryText}>Stay</Text>
               </Pressable>
             </View>
           </>
         ) : (
-          <Pressable onPress={s.askLeave} style={styles.leaveRow}>
-            <Text style={styles.leaveText}>Leave group</Text>
+          <Pressable onPress={s.askLeave} accessibilityRole="button">
+            <Text style={[g.name, { color: color.roseDark }]}>Leave group</Text>
           </Pressable>
         )}
       </Card>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { gap: 12 },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  title: {
-    flex: 1,
-    fontFamily: font.headingBold,
-    fontWeight: '700',
-    fontSize: 22,
-    letterSpacing: -0.2,
-    color: color.text,
-  },
-  card: { padding: 14, gap: 10 },
-  meta: { fontSize: 11.5, color: alpha(color.text, 48) },
-  note: { fontSize: 11.5, fontFamily: font.bodySemiBold, color: color.roseDark },
-  members: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  member: { width: 56, alignItems: 'center', gap: 4 },
-  memberName: { fontSize: 11.5, fontFamily: font.bodySemiBold, color: color.text },
-  listCard: { paddingHorizontal: 14, paddingVertical: 2 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: alpha(color.text, 7),
-  },
-  rowTitle: { fontSize: 14.5, fontFamily: font.bodySemiBold, color: color.text },
-  leaveRow: { alignItems: 'center', paddingVertical: 2 },
-  leaveText: { fontSize: 14, fontFamily: font.bodySemiBold, color: color.roseDark },
-  actions: { flexDirection: 'row', gap: 8 },
-  btn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
-  btnGhost: { borderWidth: 1, borderColor: alpha(color.text, 14) },
-  btnGhostText: { fontFamily: font.bodySemiBold, fontSize: 13, color: color.text },
-  btnDanger: { backgroundColor: color.rose },
-  btnDangerText: { fontFamily: font.bodySemiBold, fontSize: 13, color: '#ffffff' },
-});

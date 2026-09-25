@@ -39,6 +39,10 @@ export class EmptyUsageSource implements UsageSource {
   hourTotals(): number[] {
     return [];
   }
+
+  allAppsDay(): Record<string, number> {
+    return {};
+  }
 }
 
 export const emptySource = new EmptyUsageSource();

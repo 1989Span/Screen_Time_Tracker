@@ -1,119 +1,135 @@
-// Groups: membership, per-group tracking rules, pending invites, and the
-// drafts behind the New group and Invite screens.
+// Groups: which groups you're in, who you are in them, and the actions that
+// move numbers between phones.
 //
-// Persisted: groups, the selected group, rules and pending invites. The New
-// group / Invite drafts are not - a half-filled form should not come back.
+// Persisted: your group identity (a random id plus the name you chose), your
+// groups and the one selected. Not persisted: a link waiting for you to join,
+// the notice shown after a link is applied, and form drafts.
 //
-// Member.day is a closure over the usage generator, and closures do not survive
-// JSON. Persisting a group naively drops it, and the next render throws on
-// `mem.day is not a function`. reviveGroup() reattaches it from the seed/scale
-// now stored on each member, and isStoredGroup() rejects any payload that
-// wouldn't survive that, so a stale or corrupt write falls back to the demo
-// groups rather than crashing the Groups tab.
+// Nothing is sent anywhere by this store. share() hands a link to the phone's
+// own share sheet, and the user picks who gets it.
 
+import { Share } from 'react-native';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { CATS } from '../data';
+
+import { dayStamp } from '../clock';
+import { ReceivedGroup, groupLink, readGroupLink } from '../groupLink';
 import {
-  CONTACTS,
-  Contact,
-  GROUPS,
   Group,
-  GroupRules,
-  INITIAL_RULES,
-  Invite,
-  MIN_GROUP_SIZE,
-  StoredGroup,
-  decline,
-  isStoredGroup,
-  joinGroup,
+  Member,
+  NAME_MAX,
+  SHARE_DAYS,
+  agreeToExclude,
+  declineExclude,
+  excludedApps,
+  groupMinutes,
   makeGroup,
-  propose,
-  reviveGroup,
-  vote,
-  withdraw,
+  mergeMembers,
+  newMember,
+  shiftStamp,
+  withdrawExclude,
 } from '../groups';
+import { reloadUsage } from '../usage/bootstrap';
+import { usageSource } from '../usage/source';
 import { goTo } from './navStore';
 import { STORAGE_VERSION, deviceStorage, storageKey } from './storage';
 
-export const GROUP_NAME_MAX = 30;
+export const GROUP_NAME_MAX = NAME_MAX;
 
-export const toInvite = (c: Contact): Invite => ({ contactId: c.id, via: c.hasApp ? 'app' : 'link' });
+/** Random id for you or a new group. Unique enough between friends. Not a secret. */
+export const randomId = (length = 12): string =>
+  Array.from({ length }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
 
 interface GroupsState {
+  selfId: string;
+  selfName: string;
   groups: Group[];
   groupId: string;
-  rules: Record<string, GroupRules>;
-  invites: Record<string, Invite[]>;
+  /** A received link for a group you're not in, waiting for Join. */
+  incoming: ReceivedGroup | null;
+  /** One line shown after a link was applied or a group created. */
+  notice: string | null;
+  /** Set when a pasted link couldn't be read. */
+  linkError: string | null;
   leaveConfirm: boolean;
-  // New group draft
   ngName: string;
-  ngTracked: string[];
-  ngInvited: string[];
-  ngQuery: string;
-  // Invite-to-existing-group draft
-  ivInvited: string[];
-  ivQuery: string;
+  linkDraft: string;
 
   select: (groupId: string) => void;
   openSettings: () => void;
   openRules: () => void;
   backToGroups: () => void;
   backToSettings: () => void;
+  clearNotice: () => void;
 
-  agree: (cat: string) => void;
-  declineProposal: (cat: string) => void;
-  withdrawVote: (cat: string) => void;
-  proposeChange: (cat: string) => void;
+  setSelfName: (name: string) => void;
+  openNewGroup: () => void;
+  setNgName: (name: string) => void;
+  createGroup: () => Promise<void>;
 
-  cancelInvite: (contactId: string) => void;
-  acceptInvite: (contactId: string) => void;
+  /** Opens the share sheet with a link carrying your latest numbers. */
+  share: (purpose: 'update' | 'invite') => Promise<void>;
+  /** Applies a group link, or a message containing one. False if it isn't one. */
+  receive: (text: string) => boolean;
+  setLinkDraft: (text: string) => void;
+  openLinkDraft: () => void;
+  joinIncoming: () => void;
+  dismissIncoming: () => void;
+
+  proposeExclude: (app: string, label: string) => void;
+  withdrawVote: (app: string) => void;
+  declineProposal: (app: string) => void;
+
   askLeave: () => void;
   cancelLeave: () => void;
   leave: () => void;
-
-  openNewGroup: () => void;
-  setNgName: (name: string) => void;
-  toggleNgCategory: (catId: string) => void;
-  setNgPicked: (ids: string[], query: string) => void;
-  createGroup: () => void;
-
-  openInvite: () => void;
-  setIvPicked: (ids: string[], query: string) => void;
-  sendInvites: () => void;
 }
-
-const emptyRules: GroupRules = { excluded: [], proposals: [] };
 
 export const currentGroup = (s: Pick<GroupsState, 'groups' | 'groupId'>): Group | null =>
   s.groups.find((g) => g.id === s.groupId) || s.groups[0] || null;
 
-export const rulesFor = (s: Pick<GroupsState, 'rules'>, groupId: string): GroupRules => s.rules[groupId] || emptyRules;
+/**
+ * Your numbers for a group, computed from this phone for the last SHARE_DAYS
+ * days you've been in it. Every app counts except the ones the group left out.
+ */
+export function selfDays(g: Group, selfId: string, today: string): Record<string, number> {
+  const self = g.members.find((m) => m.id === selfId);
+  if (!self) return {};
+  const excluded = excludedApps(g);
+  const start = self.joined > g.created ? self.joined : g.created;
+  const days: Record<string, number> = {};
+  for (let k = 0; k < SHARE_DAYS; k++) {
+    const day = shiftStamp(today, -k);
+    if (day < start) break;
+    days[day] = groupMinutes(usageSource().allAppsDay(day), excluded);
+  }
+  return days;
+}
 
-export const invitesFor = (s: Pick<GroupsState, 'invites'>, groupId: string): Invite[] => s.invites[groupId] || [];
+const firstName = (m: Member) => m.name.split(' ')[0];
+const listNames = (names: string[]) =>
+  names.length <= 1 ? names.join('') : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
 
-/** Applies `change` to the current group's rules. */
-const editRules = (change: (g: Group, r: GroupRules) => GroupRules) => (s: GroupsState) => {
-  const group = currentGroup(s);
-  if (!group) return {};
-  return { rules: { ...s.rules, [group.id]: change(group, rulesFor(s, group.id)) } };
+/** Replaces the current group with `change(group)`. */
+const editGroup = (s: GroupsState, change: (g: Group) => Group): Partial<GroupsState> => {
+  const g = currentGroup(s);
+  if (!g) return {};
+  return { groups: s.groups.map((x) => (x.id === g.id ? change(x) : x)) };
 };
 
 export const useGroupsStore = create<GroupsState>()(
   persist(
     (set, get) => ({
-      groups: GROUPS,
-      // No seeded groups any more, so there may be nothing to select.
-      groupId: GROUPS[0]?.id ?? '',
-      rules: INITIAL_RULES,
-      invites: {},
+      selfId: randomId(),
+      selfName: '',
+      groups: [],
+      groupId: '',
+      incoming: null,
+      notice: null,
+      linkError: null,
       leaveConfirm: false,
       ngName: '',
-      ngTracked: CATS.map((c) => c.id),
-      ngInvited: [],
-      ngQuery: '',
-      ivInvited: [],
-      ivQuery: '',
+      linkDraft: '',
 
       select: (groupId) => set({ groupId }),
       openSettings: () => {
@@ -126,123 +142,200 @@ export const useGroupsStore = create<GroupsState>()(
         goTo('groups');
       },
       backToSettings: () => goTo('groupSettings'),
+      clearNotice: () => set({ notice: null }),
 
-      agree: (cat) => set(editRules((g, r) => vote(g, r, cat, 'you'))),
-      declineProposal: (cat) => set(editRules((g, r) => decline(r, cat))),
-      withdrawVote: (cat) => set(editRules((g, r) => withdraw(r, cat, 'you'))),
-      proposeChange: (cat) => set(editRules((g, r) => propose(g, r, cat, 'you'))),
-
-      cancelInvite: (contactId) =>
+      setSelfName: (name) =>
         set((s) => {
-          const group = currentGroup(s);
-          if (!group) return {};
-          const invites = invitesFor(s, group.id);
-          // Cancelling can't take the group below the minimum size.
-          if (group.members.length + invites.length <= MIN_GROUP_SIZE) return {};
-          return { invites: { ...s.invites, [group.id]: invites.filter((i) => i.contactId !== contactId) } };
+          const selfName = name.slice(0, NAME_MAX);
+          // Your name inside each group follows, so the next share carries it.
+          const groups = s.groups.map((g) => ({
+            ...g,
+            members: g.members.map((m) => (m.id === s.selfId ? { ...m, name: selfName.trim() || m.name } : m)),
+          }));
+          return { selfName, groups };
         }),
 
-      // Demo only: stands in for the invitee accepting on their own phone.
-      acceptInvite: (contactId) =>
-        set((s) => {
-          const group = currentGroup(s);
-          const contact = CONTACTS.find((c) => c.id === contactId);
-          if (!group || !contact) return {};
-          return {
-            groups: s.groups.map((g) => (g.id === group.id ? joinGroup(g, contact) : g)),
-            invites: { ...s.invites, [group.id]: invitesFor(s, group.id).filter((i) => i.contactId !== contactId) },
-          };
-        }),
+      openNewGroup: () => {
+        set({ ngName: '' });
+        goTo('newGroup');
+      },
+      setNgName: (name) => set({ ngName: name.slice(0, NAME_MAX) }),
+
+      createGroup: async () => {
+        const s = get();
+        const name = s.ngName.trim();
+        const selfName = s.selfName.trim();
+        if (!name || !selfName) return;
+        const today = dayStamp();
+        const g = makeGroup(randomId(10), name, today, newMember(s.selfId, selfName, today));
+        set({ groups: s.groups.concat([g]), groupId: g.id, notice: null });
+        goTo('groups');
+        await get().share('invite');
+      },
+
+      share: async (purpose) => {
+        const g = currentGroup(get());
+        if (!g) return;
+        // Refresh first, so today's number is as of now rather than as of the
+        // last time the app loaded.
+        await reloadUsage().catch(() => {});
+        const s = get();
+        const self = g.members.find((m) => m.id === s.selfId);
+        if (!self) return;
+        const now = Date.now();
+        const fresh: Member = {
+          ...self,
+          name: s.selfName.trim() || self.name,
+          sharedAt: now,
+          days: selfDays(g, s.selfId, dayStamp()),
+        };
+        const link = groupLink(g, fresh);
+        const message =
+          purpose === 'invite'
+            ? `Join my group "${g.name}" on Gauge. Lowest screen time each day wins the point.\n` +
+              `Install Gauge, then open this link:\n${link}`
+            : `My screen time for "${g.name}" on Gauge. Open to update the group:\n${link}`;
+        await Share.share({ message });
+        // Remember when you last shared, for the "last shared" line.
+        set((st) =>
+          editGroup(st, (x) => ({
+            ...x,
+            members: x.members.map((m) => (m.id === st.selfId ? { ...m, sharedAt: now } : m)),
+          }))
+        );
+      },
+
+      receive: (text) => {
+        const r = readGroupLink(text);
+        if (!r) return false;
+        const s = get();
+        const existing = s.groups.find((g) => g.id === r.id);
+        const stillMember = existing?.members.some((m) => m.id === s.selfId);
+        if (!existing || !stillMember) {
+          set({ incoming: r, linkError: null, linkDraft: '' });
+          goTo('groupJoin');
+          return true;
+        }
+        const merged = mergeMembers(existing, r.members, s.selfId);
+        const updated = r.members
+          .filter((m) => m.id !== s.selfId)
+          .filter((m) => {
+            const before = existing.members.find((x) => x.id === m.id);
+            return !before || m.sharedAt > before.sharedAt;
+          });
+        set({
+          groups: s.groups.map((g) => (g.id === r.id ? merged : g)),
+          groupId: r.id,
+          linkError: null,
+          linkDraft: '',
+          notice:
+            updated.length === 0
+              ? `"${existing.name}" is already up to date.`
+              : `Updated ${listNames(updated.map(firstName))} in "${existing.name}".`,
+        });
+        goTo('groups');
+        return true;
+      },
+
+      setLinkDraft: (text) => set({ linkDraft: text, linkError: null }),
+      openLinkDraft: () => {
+        const s = get();
+        if (!s.receive(s.linkDraft)) {
+          set({ linkError: "That isn't a Gauge group link. Paste the whole message you were sent." });
+        }
+      },
+
+      joinIncoming: () => {
+        const s = get();
+        const r = s.incoming;
+        const selfName = s.selfName.trim();
+        if (!r || !selfName) return;
+        const today = dayStamp();
+        const base = makeGroup(r.id, r.name, r.created, newMember(s.selfId, selfName, today));
+        const joined = mergeMembers(base, r.members, s.selfId);
+        const sender = r.members.find((m) => m.id === r.senderId);
+        set({
+          groups: s.groups.filter((g) => g.id !== r.id).concat([joined]),
+          groupId: r.id,
+          incoming: null,
+          notice: `You joined "${r.name}". Tap Share my day so ${sender ? firstName(sender) : 'the others'} can see you.`,
+        });
+        goTo('groups');
+      },
+
+      dismissIncoming: () => {
+        set({ incoming: null });
+        goTo('groups');
+      },
+
+      proposeExclude: (app, label) => set((s) => editGroup(s, (g) => agreeToExclude(g, s.selfId, app, label))),
+      withdrawVote: (app) => set((s) => editGroup(s, (g) => withdrawExclude(g, s.selfId, app))),
+      declineProposal: (app) => set((s) => editGroup(s, (g) => declineExclude(g, s.selfId, app))),
 
       askLeave: () => set({ leaveConfirm: true }),
       cancelLeave: () => set({ leaveConfirm: false }),
       leave: () =>
         set((s) => {
-          const group = currentGroup(s);
-          if (!group) return {};
-          const groups = s.groups.filter((g) => g.id !== group.id);
-          const invites = { ...s.invites };
-          delete invites[group.id];
+          const g = currentGroup(s);
+          if (!g) return {};
+          const groups = s.groups.filter((x) => x.id !== g.id);
           goTo('groups');
-          return { groups, invites, groupId: groups.length ? groups[0].id : '', leaveConfirm: false };
+          return { groups, groupId: groups[0]?.id ?? '', leaveConfirm: false };
         }),
-
-      openNewGroup: () => {
-        set({ ngName: '', ngTracked: CATS.map((c) => c.id), ngInvited: [], ngQuery: '' });
-        goTo('newGroup');
-      },
-      setNgName: (name) => set({ ngName: name.slice(0, GROUP_NAME_MAX) }),
-      toggleNgCategory: (catId) =>
-        set((s) => ({
-          ngTracked:
-            s.ngTracked.indexOf(catId) >= 0 ? s.ngTracked.filter((x) => x !== catId) : s.ngTracked.concat([catId]),
-        })),
-      setNgPicked: (ids, query) => set({ ngInvited: ids, ngQuery: query }),
-      createGroup: () => {
-        const s = get();
-        const name = s.ngName.trim();
-        const id = 'g-' + Date.now();
-        const invited = CONTACTS.filter((c) => s.ngInvited.indexOf(c.id) >= 0);
-        set({
-          groups: s.groups.concat([makeGroup(id, name)]),
-          rules: {
-            ...s.rules,
-            [id]: { excluded: CATS.filter((c) => s.ngTracked.indexOf(c.id) < 0).map((c) => c.id), proposals: [] },
-          },
-          invites: { ...s.invites, [id]: invited.map(toInvite) },
-          groupId: id,
-        });
-        goTo('groups');
-      },
-
-      openInvite: () => {
-        set({ ivInvited: [], ivQuery: '' });
-        goTo('groupInvite');
-      },
-      setIvPicked: (ids, query) => set({ ivInvited: ids, ivQuery: query }),
-      sendInvites: () => {
-        const s = get();
-        const group = currentGroup(s);
-        if (!group) return;
-        const chosen = CONTACTS.filter((c) => s.ivInvited.indexOf(c.id) >= 0);
-        set({
-          invites: { ...s.invites, [group.id]: invitesFor(s, group.id).concat(chosen.map(toInvite)) },
-          ivInvited: [],
-          ivQuery: '',
-        });
-        goTo('groupSettings');
-      },
     }),
     {
       name: storageKey('groups'),
       version: STORAGE_VERSION,
       storage: deviceStorage,
-      partialize: (s) => ({
-        groups: s.groups.map((g) => ({ ...g, members: g.members.map(({ day: _day, ...m }) => m) })),
-        groupId: s.groupId,
-        rules: s.rules,
-        invites: s.invites,
-      }),
+      partialize: (s) => ({ selfId: s.selfId, selfName: s.selfName, groups: s.groups, groupId: s.groupId }),
       merge: (persisted, current) => {
-        const p = persisted as { groups?: unknown; groupId?: unknown; rules?: unknown; invites?: unknown } | undefined;
+        const p = persisted as Partial<GroupsState> | undefined;
         if (!p) return current;
-        const raw = Array.isArray(p.groups) ? p.groups : [];
-        // Anything that fails validation is dropped rather than revived blind.
-        const groups = raw.filter(isStoredGroup).map((g) => reviveGroup(g as StoredGroup));
-        if (groups.length === 0) return current;
+        // Groups saved by the old, contact-based design have a different shape.
+        // Anything that doesn't validate is dropped rather than half-loaded.
+        const groups = Array.isArray(p.groups) ? p.groups.filter(isGroup) : [];
         const ids = new Set(groups.map((g) => g.id));
         return {
           ...current,
+          selfId: typeof p.selfId === 'string' && /^[a-z0-9]{6,32}$/.test(p.selfId) ? p.selfId : current.selfId,
+          selfName: typeof p.selfName === 'string' ? p.selfName.slice(0, NAME_MAX) : current.selfName,
           groups,
-          // A selected group that no longer exists would render an empty tab.
-          groupId: typeof p.groupId === 'string' && ids.has(p.groupId) ? p.groupId : groups[0].id,
-          rules: typeof p.rules === 'object' && p.rules !== null ? (p.rules as GroupsState['rules']) : current.rules,
-          invites:
-            typeof p.invites === 'object' && p.invites !== null
-              ? (p.invites as GroupsState['invites'])
-              : current.invites,
+          groupId: typeof p.groupId === 'string' && ids.has(p.groupId) ? p.groupId : (groups[0]?.id ?? ''),
         };
       },
     }
   )
 );
+
+const isStampish = (v: unknown) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+
+function isMember(v: unknown): v is Member {
+  const m = v as Partial<Member>;
+  return (
+    typeof m === 'object' &&
+    m !== null &&
+    typeof m.id === 'string' &&
+    typeof m.name === 'string' &&
+    isStampish(m.joined) &&
+    typeof m.sharedAt === 'number' &&
+    typeof m.days === 'object' &&
+    m.days !== null &&
+    typeof m.excludes === 'object' &&
+    m.excludes !== null &&
+    Array.isArray(m.declines)
+  );
+}
+
+function isGroup(v: unknown): v is Group {
+  const g = v as Partial<Group>;
+  return (
+    typeof g === 'object' &&
+    g !== null &&
+    typeof g.id === 'string' &&
+    typeof g.name === 'string' &&
+    isStampish(g.created) &&
+    Array.isArray(g.members) &&
+    g.members.length > 0 &&
+    g.members.every(isMember)
+  );
+}

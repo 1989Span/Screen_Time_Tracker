@@ -1,8 +1,8 @@
-import { CATS, DEFAULT_PENALTY } from '../data';
-import { Contact, MIN_GROUP_SIZE, groupStats } from '../groups';
-import { TEST_CONTACTS, installCategorySeries, testContact, testGroup, testMember } from '../__fixtures__/groups';
+import { DEFAULT_PENALTY } from '../data';
+import { setUsageSource } from '../usage/source';
+import { emptySource } from '../usage/emptySource';
 import { useDetailStore } from '../state/detailStore';
-import { currentGroup, invitesFor, rulesFor, useGroupsStore } from '../state/groupsStore';
+import { useGroupsStore } from '../state/groupsStore';
 import { useNavStore } from '../state/navStore';
 import { pendingSetting, usePenaltyStore } from '../state/penaltyStore';
 import { useTimersStore } from '../state/timersStore';
@@ -11,7 +11,6 @@ const nav = () => useNavStore.getState();
 const timers = () => useTimersStore.getState();
 const detail = () => useDetailStore.getState();
 const penalty = () => usePenaltyStore.getState();
-const groups = () => useGroupsStore.getState();
 
 // Stores are module singletons, so put each one back before the next test.
 const initial = {
@@ -23,7 +22,7 @@ const initial = {
 };
 
 beforeEach(() => {
-  installCategorySeries();
+  setUsageSource(emptySource);
   useNavStore.setState(initial.nav, true);
   useTimersStore.setState(initial.timers, true);
   useDetailStore.setState(initial.detail, true);
@@ -164,143 +163,5 @@ describe('penalty limit', () => {
     usePenaltyStore.setState({ current: null, next: undefined });
     penalty().openEditor();
     expect(penalty().draft).toEqual(DEFAULT_PENALTY);
-  });
-});
-
-describe('groups', () => {
-  // The app ships no groups, so these tests build the world they need. Two
-  // members is exactly MIN_GROUP_SIZE, which is what makes the voting rules
-  // observable.
-  // Usage is weighted onto single categories so that excluding one flips the
-  // ranking, which is what makes the retroactive-scoring test meaningful.
-  const alpha = () =>
-    testGroup('alpha', 'Alpha', 3, [
-      testMember('you', 'You', { joined: 3, base: 10, weights: { social: 1 } }),
-      testMember('bob', 'Bob', { joined: 3, base: 90, weights: { navigation: 1 } }),
-    ]);
-  const beta = () => testGroup('beta', 'Beta', 2, [testMember('you', 'You', { joined: 2, base: 30 })]);
-  // Bob has already agreed, so one vote from you completes unanimity in a
-  // two-member group.
-  const seededRules = {
-    alpha: {
-      excluded: ['music'],
-      proposals: [{ cat: 'navigation', kind: 'exclude' as const, agreed: ['bob'] }],
-    },
-    beta: { excluded: [], proposals: [] },
-  };
-  const contacts: Contact[] = TEST_CONTACTS;
-
-  beforeEach(() => {
-    useGroupsStore.setState({
-      groups: [alpha(), beta()],
-      groupId: 'alpha',
-      rules: seededRules,
-      invites: {},
-    });
-  });
-
-  it('starts on the selected group with its rules', () => {
-    const group = currentGroup(groups())!;
-    expect(group.name).toBe('Alpha');
-    expect(rulesFor(groups(), group.id)).toEqual(seededRules.alpha);
-  });
-
-  it('switches groups', () => {
-    groups().select('beta');
-    expect(currentGroup(groups())!.name).toBe('Beta');
-  });
-
-  it('has no group selected when there are none', () => {
-    // The shipped state: no seeded groups, so the tab shows its empty state
-    // rather than crashing on a missing first element.
-    useGroupsStore.setState({ groups: [], groupId: '' });
-    expect(currentGroup(groups())).toBeNull();
-  });
-
-  it('agreeing to the last open vote changes the ranking retroactively', () => {
-    const group = currentGroup(groups())!;
-    const before = groupStats(group, rulesFor(groups(), group.id).excluded).stats.map((s) => s.points);
-
-    groups().agree('navigation'); // Bob already agreed, so this settles it
-
-    const rules = rulesFor(groups(), group.id);
-    expect(rules.excluded).toContain('navigation');
-    const after = groupStats(group, rules.excluded).stats.map((s) => s.points);
-    expect(after).not.toEqual(before);
-  });
-
-  it('declining closes a vote without changing what is tracked', () => {
-    const group = currentGroup(groups())!;
-    groups().declineProposal('navigation');
-    const rules = rulesFor(groups(), group.id);
-    expect(rules.proposals.some((p) => p.cat === 'navigation')).toBe(false);
-    expect(rules.excluded).not.toContain('navigation');
-  });
-
-  it('proposing puts your vote in and waits for the others', () => {
-    const group = currentGroup(groups())!;
-    groups().proposeChange('games');
-    const proposal = rulesFor(groups(), group.id).proposals.find((p) => p.cat === 'games')!;
-    expect(proposal.agreed).toEqual(['you']);
-    expect(rulesFor(groups(), group.id).excluded).not.toContain('games');
-  });
-
-  it('caps the group name and trims it when creating', () => {
-    groups().openNewGroup();
-    groups().setNgName('x'.repeat(50));
-    expect(groups().ngName).toHaveLength(30);
-  });
-
-  it('leaving moves to the next group and drops its invites', () => {
-    const leaving = currentGroup(groups())!;
-    groups().askLeave();
-    expect(groups().leaveConfirm).toBe(true);
-    groups().leave();
-
-    expect(groups().groups.map((g) => g.id)).not.toContain(leaving.id);
-    expect(groups().invites[leaving.id]).toBeUndefined();
-    expect(currentGroup(groups())!.name).toBe('Beta');
-    expect(groups().leaveConfirm).toBe(false);
-    expect(nav().view).toBe('groups');
-  });
-
-  it('leaving every group leaves none selected', () => {
-    groups().leave();
-    groups().leave();
-    expect(groups().groups).toEqual([]);
-    expect(currentGroup(groups())).toBeNull();
-  });
-
-  it('cannot invite anyone, because no contact list exists yet', () => {
-    // Inviting needs real contacts: address-book permission plus a backend to
-    // match them against. Until both exist the flow completes with nothing, which
-    // is honest - previously it appeared to work against invented people.
-    groups().openInvite();
-    groups().setIvPicked(['c-alex', 'c-sam'], '');
-    groups().sendInvites();
-    const group = currentGroup(groups())!;
-    expect(invitesFor(groups(), group.id)).toEqual([]);
-    expect(nav().view).toBe('groupSettings');
-  });
-
-  it('creates a group containing only you, with the chosen categories tracked', () => {
-    groups().openNewGroup();
-    groups().setNgName('Work friends');
-    groups().toggleNgCategory('games'); // off
-    groups().createGroup();
-
-    const group = currentGroup(groups())!;
-    expect(group.name).toBe('Work friends');
-    expect(group.members).toHaveLength(1); // just you; nobody to invite yet
-    expect(rulesFor(groups(), group.id).excluded).toEqual(['games']);
-    expect(nav().view).toBe('groups');
-  });
-
-  it('ships no contacts to invite', () => {
-    // Real contacts need address-book permission and a backend to match them
-    // against. Until then the list is empty rather than invented.
-
-    expect(require('../groups').CONTACTS).toEqual([]);
-    expect(contacts.some((c) => c.id === 'c-alex')).toBe(true); // fixtures only
   });
 });

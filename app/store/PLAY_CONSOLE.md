@@ -45,6 +45,9 @@ Give any app a daily time budget and see at a glance how much is left, or when y
 HOME SCREEN WIDGET
 Keep your total for today, the week, the month or the year on your home screen. Choose the range when you place the widget, and tap it to open the full breakdown.
 
+GROUPS
+Compete with friends or family for the lowest screen time. Everyone taps Share my day to send their daily total to the group by text or any messaging app, and the lowest total each day wins the point. No accounts, and never a list of which apps anyone used.
+
 HOURLY NUDGES
 Each time today's screen time passes another hour, Gauge sends a short, slightly cheeky reminder to look up. Turn them off any time in Settings.
 
@@ -52,7 +55,7 @@ KEEPS COUNTING WHEN YOU DON'T LOOK
 Android only keeps a short window of detailed usage history. Gauge saves it as it goes, including in the background, so your history keeps building for up to a year even if you don't open the app for weeks.
 
 PRIVATE BY DESIGN
-Everything stays on your phone. There's no account, no server, no ads and no analytics. Gauge never sends your usage anywhere.
+Everything stays on your phone. There's no account, no server, no ads and no analytics. Your numbers only leave your phone when you share them with a group yourself.
 
 HOW IT WORKS
 Android keeps app usage behind a permission called Usage access, which only you can switch on. Gauge walks you through it on first launch. It reads which app was open and for how long, never what you do inside other apps.
@@ -80,10 +83,10 @@ Android keeps app usage behind a permission called Usage access, which only you 
 | Privacy policy | URL above | Required, because the app reads usage data |
 | Ads | **No**, the app does not contain ads | No ad SDKs in `package.json` |
 | App access | **All functionality is available without special access** | No login. Usage access is an Android setting the app walks reviewers through on first launch. |
-| Content rating | Category: *All other app types*. Answer **No** to every content question, including "Can users interact or exchange content?" | Groups is hidden (`GROUPS_ENABLED = false`), so there is no user-to-user interaction. Expected result: Everyone / PEGI 3. |
+| Content rating | Category: *All other app types*. Answer **No** to the content questions (violence, language, gambling, etc.) but **Yes** to "Does the app allow users to interact or exchange content with other users?" | Groups show each member's chosen display name and the group name, both typed by users, to other people. Expected result: Everyone / PEGI 3 with a *Users Interact* notice. The app has no chat, and names are capped at 30 characters with control characters stripped. |
 | Target audience | **18 and over** only | Selecting any age under 13 brings in the Families policy and its extra requirements. You can widen this later. |
 | News app | No | |
-| Data safety | **No**, the app does not collect or share any of the required user data types | Play counts data as "collected" only when it leaves the device. Gauge reads and stores usage on the phone and makes no network requests (no `fetch`, no sockets, no analytics or crash SDKs). |
+| Data safety | **No**, the app does not collect or share any of the required user data types | Play counts data as "collected" when the app sends it off the device, and Gauge makes no network requests at all (no `fetch`, no sockets, no analytics or crash SDKs). Group sharing doesn't change that. The user taps Share, picks a recipient and an app in Android's share sheet, and that app sends the message. Play exempts transfers made by a specific user action where the user expects the data to be shared. The privacy policy says exactly what a group link contains. |
 | Advertising ID | **No** | No `AD_ID` permission in the shipped manifest |
 | Government app | No | |
 | Financial features | My app doesn't provide any financial features | The penalty limit, which mentions charges, is hidden and moves no money |
