@@ -31,6 +31,7 @@ jest.mock('./modules/usage-stats', () => ({
     queryTotals: async () => ({}),
     queryEvents: async () => [],
     probeRetention: async () => ({}),
+    syncWidgets: () => {},
   },
 }));
 

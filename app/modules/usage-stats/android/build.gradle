@@ -16,3 +16,9 @@ android {
     abortOnError false
   }
 }
+
+dependencies {
+  // JVM unit tests for the widget's arithmetic (widget/WidgetMath.kt), which has
+  // no Android dependencies so it can be checked without a device.
+  testImplementation 'junit:junit:4.13.2'
+}

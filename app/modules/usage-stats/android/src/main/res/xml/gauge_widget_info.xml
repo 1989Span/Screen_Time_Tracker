@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 2 cells wide, 1 tall. minWidth/minHeight use the classic 70n-30dp cell formula
+     for launchers before Android 12. targetCell* is the Android 12+ equivalent.
+     30 minutes is the shortest update period Android honours. The app also
+     redraws the widget whenever it loads usage. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:configure="com.span1989.gauge.usagestats.widget.GaugeWidgetConfigureActivity"
+    android:description="@string/gauge_widget_description"
+    android:initialLayout="@layout/gauge_widget"
+    android:minWidth="110dp"
+    android:minHeight="40dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="40dp"
+    android:previewLayout="@layout/gauge_widget"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="2"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable" />

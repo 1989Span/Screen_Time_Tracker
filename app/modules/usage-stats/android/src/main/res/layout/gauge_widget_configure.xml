@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#FFFFFF"
+    android:orientation="vertical"
+    android:paddingTop="20dp"
+    android:paddingBottom="12dp">
+
+  <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginBottom="8dp"
+      android:fontFamily="sans-serif-medium"
+      android:paddingStart="24dp"
+      android:paddingEnd="24dp"
+      android:text="@string/gauge_widget_configure_title"
+      android:textColor="#1D1F20"
+      android:textSize="20sp" />
+
+  <!-- One row per range, added by GaugeWidgetConfigureActivity. -->
+  <LinearLayout
+      android:id="@+id/gauge_widget_configure_rows"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical" />
+</LinearLayout>

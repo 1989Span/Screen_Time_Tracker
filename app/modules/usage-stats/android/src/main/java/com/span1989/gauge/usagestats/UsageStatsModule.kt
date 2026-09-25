@@ -1,6 +1,5 @@
 package com.span1989.gauge.usagestats
 
-import android.app.AppOpsManager
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
@@ -8,8 +7,9 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.Process
 import android.provider.Settings
+import com.span1989.gauge.usagestats.widget.GaugeWidgets
+import com.span1989.gauge.usagestats.widget.WidgetPrefs
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
@@ -34,32 +34,7 @@ class UsageStatsModule : Module() {
   private val usage: UsageStatsManager
     get() = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
-  private fun permissionGranted(): Boolean {
-    val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
-    val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      appOps.unsafeCheckOpNoThrow(
-        AppOpsManager.OPSTR_GET_USAGE_STATS,
-        Process.myUid(),
-        context.packageName
-      )
-    } else {
-      @Suppress("DEPRECATION")
-      appOps.checkOpNoThrow(
-        AppOpsManager.OPSTR_GET_USAGE_STATS,
-        Process.myUid(),
-        context.packageName
-      )
-    }
-    // MODE_DEFAULT means defer to the manifest permission, which for a normal
-    // app is only granted if the platform says so explicitly.
-    return when (mode) {
-      AppOpsManager.MODE_ALLOWED -> true
-      AppOpsManager.MODE_DEFAULT ->
-        context.checkCallingOrSelfPermission(android.Manifest.permission.PACKAGE_USAGE_STATS) ==
-          PackageManager.PERMISSION_GRANTED
-      else -> false
-    }
-  }
+  private fun permissionGranted(): Boolean = UsageAccess.isGranted(context)
 
   override fun definition() = ModuleDefinition {
     Name("UsageStats")
@@ -148,6 +123,18 @@ class UsageStatsModule : Module() {
         )
       }
       out
+    }
+
+    /**
+     * Hands the widget the tracked-app selection and redraws every placed widget.
+     *
+     * The widget runs without JS and can't read AsyncStorage, so the app
+     * mirrors the selection here each time it loads usage. Opening the app also
+     * refreshes the widget, instead of waiting up to 30 minutes for Android.
+     */
+    Function("syncWidgets") { tracked: List<String> ->
+      WidgetPrefs.setTracked(context, tracked)
+      GaugeWidgets.updateAll(context)
     }
 
     /**

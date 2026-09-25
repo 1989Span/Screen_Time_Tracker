@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- Shown in the launcher's widget picker. -->
+  <string name="gauge_widget_name">Screen time</string>
+  <string name="gauge_widget_description">Your total screen time for today, the week, the month or the year.</string>
+
+  <!-- Range names, matching the app's Day / Week / Month / Year tabs. -->
+  <string name="gauge_widget_label_day">Today</string>
+  <string name="gauge_widget_label_week">Week</string>
+  <string name="gauge_widget_label_month">Month</string>
+  <string name="gauge_widget_label_year">Year</string>
+
+  <!-- What each range covers. Must match buckets() in src/data.ts. -->
+  <string name="gauge_widget_detail_day">So far today</string>
+  <string name="gauge_widget_detail_week">The last 7 days</string>
+  <string name="gauge_widget_detail_month">The last 30 days</string>
+  <string name="gauge_widget_detail_year">The last 12 months</string>
+
+  <string name="gauge_widget_configure_title">Show on this widget</string>
+
+  <!-- Shown until the widget can report a number. Tapping opens the app, which walks through the fix. -->
+  <string name="gauge_widget_hint_access">Allow usage access in Gauge</string>
+  <string name="gauge_widget_hint_setup">Open Gauge to set up</string>
+  <string name="gauge_widget_hint_apps">Choose apps in Gauge</string>
+
+  <!-- Before the first update. Never a made-up number. -->
+  <string name="gauge_widget_placeholder">—</string>
+  <string name="gauge_widget_value_description">%1$s screen time: %2$s</string>
+</resources>

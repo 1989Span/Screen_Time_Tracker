@@ -9,6 +9,7 @@
 
 import { Platform } from 'react-native';
 
+import { UsageStats } from '../../modules/usage-stats';
 import { useAppsStore, isConfigured } from '../state/appsStore';
 import { androidSource } from './androidSource';
 import { registerBackgroundSync } from './backgroundSync';
@@ -17,6 +18,21 @@ import { setUsageSource } from './source';
 
 /** Longest span any screen asks for (the year card). */
 export const MAX_DAYS_NEEDED = 366;
+
+/**
+ * Hands the home-screen widget the current selection and redraws it.
+ *
+ * Runs after every load, including ones that load nothing because access is off
+ * or nothing is tracked, so the widget can show the right prompt. A widget
+ * problem must never break the app's own load, so failures are only logged.
+ */
+function syncWidgets(tracked: string[]): void {
+  try {
+    UsageStats.syncWidgets(tracked);
+  } catch (e) {
+    console.log('[WIDGET] sync failed: ' + String(e));
+  }
+}
 
 /**
  * Installs the empty source.
@@ -56,6 +72,7 @@ export async function installRealUsageSource(): Promise<SourceKind> {
     // Tell the view models the cache is warm; they cannot see it otherwise.
     useAppsStore.getState().markDataLoaded();
   }
+  syncWidgets(state.tracked);
 
   // Keep history accumulating while the app is closed. Registration needs
   // permission to be worth anything, but not a selection: recording covers every
@@ -77,4 +94,6 @@ export async function reloadUsage(): Promise<void> {
     await androidSource.load(MAX_DAYS_NEEDED);
     useAppsStore.getState().markDataLoaded();
   }
+  // After the load, so the widget reads the history this load just recorded.
+  syncWidgets(state.tracked);
 }

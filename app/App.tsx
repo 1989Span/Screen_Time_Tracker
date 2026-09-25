@@ -25,6 +25,7 @@ import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { AppPickerScreen } from './src/screens/AppPickerScreen';
 import { PermissionScreen } from './src/screens/PermissionScreen';
 import { useSetupGate } from './src/state/useSetupGate';
+import { useWidgetLinks } from './src/state/widgetLinks';
 import { DISABLED_VIEWS } from './src/features';
 
 export default function App() {
@@ -62,6 +63,8 @@ function Tracker() {
   const view = useNavStore((s) => s.view);
   const hydrated = useStoresHydrated();
   const gate = useSetupGate();
+  // A tap on the home-screen widget opens that range's breakdown.
+  useWidgetLinks(hydrated);
 
   // Hold the first paint until fonts and saved state are both ready, so the app
   // never flashes default settings over the user's own.

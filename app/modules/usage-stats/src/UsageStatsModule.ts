@@ -15,6 +15,9 @@ declare class UsageStatsModule extends NativeModule<Record<string, never>> {
   queryEvents(startMs: number, endMs: number): Promise<UsageEvent[]>;
   /** What this device actually retains, measured rather than assumed. */
   probeRetention(): Promise<RetentionProbe>;
+  /** Mirrors the tracked selection to the home-screen widget and redraws it.
+   *  The widget runs without JS, so this is the only way it learns the selection. */
+  syncWidgets(tracked: string[]): void;
 }
 
 export default requireNativeModule<UsageStatsModule>('UsageStats');

@@ -42,6 +42,9 @@ See today hour by hour, and your totals for the week, month and year so far. Tap
 DAILY LIMITS
 Give any app a daily time budget and see at a glance how much is left, or when you've gone over. Budgets start fresh at midnight.
 
+HOME SCREEN WIDGET
+Keep your total for today, the week, the month or the year on your home screen. Choose the range when you place the widget, and tap it to open the full breakdown.
+
 KEEPS COUNTING WHEN YOU DON'T LOOK
 Android only keeps a short window of detailed usage history. Gauge saves it as it goes, including in the background, so your history keeps building for up to a year even if you don't open the app for weeks.
 

@@ -26,4 +26,36 @@
       <category android:name="android.intent.category.LAUNCHER" />
     </intent>
   </queries>
+
+  <application>
+    <!-- Home-screen widget. Exported because the system widget host has to
+         deliver APPWIDGET_UPDATE to it. A stray update from another app only
+         causes a harmless redraw. -->
+    <receiver
+        android:name="com.span1989.gauge.usagestats.widget.GaugeWidgetProvider"
+        android:exported="true"
+        android:label="@string/gauge_widget_name">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+          android:name="android.appwidget.provider"
+          android:resource="@xml/gauge_widget_info" />
+    </receiver>
+
+    <!-- Range chooser shown when the widget is placed or reconfigured. Exported
+         because the launcher starts it. The activity checks that the widget id
+         belongs to Gauge before acting on it. Its own empty task affinity keeps
+         it from pulling the app's task forward. -->
+    <activity
+        android:name="com.span1989.gauge.usagestats.widget.GaugeWidgetConfigureActivity"
+        android:excludeFromRecents="true"
+        android:exported="true"
+        android:taskAffinity=""
+        android:theme="@android:style/Theme.Material.Light.Dialog.NoActionBar">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+      </intent-filter>
+    </activity>
+  </application>
 </manifest>
