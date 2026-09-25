@@ -45,6 +45,9 @@ Give any app a daily time budget and see at a glance how much is left, or when y
 HOME SCREEN WIDGET
 Keep your total for today, the week, the month or the year on your home screen. Choose the range when you place the widget, and tap it to open the full breakdown.
 
+HOURLY NUDGES
+Each time today's screen time passes another hour, Gauge sends a short, slightly cheeky reminder to look up. Turn them off any time in Settings.
+
 KEEPS COUNTING WHEN YOU DON'T LOOK
 Android only keeps a short window of detailed usage history. Gauge saves it as it goes, including in the background, so your history keeps building for up to a year even if you don't open the app for weeks.
 
@@ -96,8 +99,11 @@ settings and needs no form. No typed foreground services are declared, so the
 foreground-service declaration does not apply.
 
 Shipped permissions: `INTERNET`, `ACCESS_NETWORK_STATE`, `PACKAGE_USAGE_STATS`,
-`FOREGROUND_SERVICE`, `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `VIBRATE`, plus the app's
-own `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. Check any build with a parser that reads
+`POST_NOTIFICATIONS`, `FOREGROUND_SERVICE`, `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `VIBRATE`,
+plus the app's own `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. `POST_NOTIFICATIONS` is for
+the hourly nudges. It is a normal runtime permission with no Play form. The nudges use
+inexact, non-wakeup alarms, so there is no `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM` (both
+restricted by Play) and no foreground service. Check any build with a parser that reads
 whole `<uses-permission>` elements. A line-based grep misses elements whose
 attributes wrap onto a second line.
 

@@ -33,9 +33,19 @@ class UsageStatsModule extends NativeModule<Record<string, never>> {
   async queryEvents(): Promise<UsageEvent[]> {
     return [];
   }
-  syncWidgets(): void {
-    // No home-screen widgets on the web.
+  // No widgets or notifications on the web.
+  syncTracked(): void {}
+  nudgesEnabled(): boolean {
+    return false;
   }
+  setNudgesEnabled(): void {}
+  notificationsAllowed(): boolean {
+    return false;
+  }
+  nudgesPrompted(): boolean {
+    return true;
+  }
+  markNudgesPrompted(): void {}
   async probeRetention(): Promise<RetentionProbe> {
     return {
       daily: { ...EMPTY_RETENTION },

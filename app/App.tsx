@@ -26,6 +26,7 @@ import { AppPickerScreen } from './src/screens/AppPickerScreen';
 import { PermissionScreen } from './src/screens/PermissionScreen';
 import { useSetupGate } from './src/state/useSetupGate';
 import { useWidgetLinks } from './src/state/widgetLinks';
+import { useNudgePrompt } from './src/state/nudges';
 import { DISABLED_VIEWS } from './src/features';
 
 export default function App() {
@@ -65,6 +66,9 @@ function Tracker() {
   const gate = useSetupGate();
   // A tap on the home-screen widget opens that range's breakdown.
   useWidgetLinks(hydrated);
+  // Hourly nudges are on by default. Ask for notification permission once,
+  // after setup, when there is finally something to nudge about.
+  useNudgePrompt(hydrated && gate === null);
 
   // Hold the first paint until fonts and saved state are both ready, so the app
   // never flashes default settings over the user's own.

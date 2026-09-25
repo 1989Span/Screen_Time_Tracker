@@ -8,8 +8,8 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
+import com.span1989.gauge.usagestats.nudge.HourlyNudge
 import com.span1989.gauge.usagestats.widget.GaugeWidgets
-import com.span1989.gauge.usagestats.widget.WidgetPrefs
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
@@ -126,16 +126,38 @@ class UsageStatsModule : Module() {
     }
 
     /**
-     * Hands the widget the tracked-app selection and redraws every placed widget.
+     * Hands the tracked-app selection to the parts that run without JS, the
+     * home-screen widget and the hourly nudges, then refreshes both.
      *
-     * The widget runs without JS and can't read AsyncStorage, so the app
-     * mirrors the selection here each time it loads usage. Opening the app also
-     * refreshes the widget, instead of waiting up to 30 minutes for Android.
+     * Neither can read AsyncStorage, so the app mirrors the selection here each
+     * time it loads usage. That also redraws the widget right away instead of
+     * after Android's 30-minute cycle, and re-arms the nudge check, whose alarm a
+     * reboot or update may have cleared. The nudge check counts as "in app": the
+     * user is looking at their total, so a mark passed just now is noted, not
+     * announced.
      */
-    Function("syncWidgets") { tracked: List<String> ->
-      WidgetPrefs.setTracked(context, tracked)
+    Function("syncTracked") { tracked: List<String> ->
+      TrackedSelection.set(context, tracked)
       GaugeWidgets.updateAll(context)
+      HourlyNudge.check(context, inApp = true, pending = null)
     }
+
+    /** Whether hourly nudges are switched on in Settings. On by default. */
+    Function("nudgesEnabled") { HourlyNudge.isEnabled(context) }
+
+    /** Switches hourly nudges on or off, arming or cancelling the check. */
+    Function("setNudgesEnabled") { on: Boolean -> HourlyNudge.setEnabled(context, on) }
+
+    /**
+     * Whether Android will show Gauge's notifications. Covers both the Android
+     * 13+ permission and the user switching them off in system settings.
+     */
+    Function("notificationsAllowed") { HourlyNudge.notificationsAllowed(context) }
+
+    /** Whether the app has already asked for notification permission once. */
+    Function("nudgesPrompted") { HourlyNudge.wasPrompted(context) }
+
+    Function("markNudgesPrompted") { HourlyNudge.markPrompted(context) }
 
     /**
      * How far back this device actually holds data, per interval.

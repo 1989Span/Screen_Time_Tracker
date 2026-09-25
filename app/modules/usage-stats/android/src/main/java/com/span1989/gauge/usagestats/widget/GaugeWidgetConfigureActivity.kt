@@ -10,7 +10,7 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.span1989.gauge.usagestats.R
-import com.span1989.gauge.usagestats.widget.WidgetMath.Range
+import com.span1989.gauge.usagestats.UsageMath.Range
 
 /**
  * The chooser shown when a Gauge widget is placed, and again when it is

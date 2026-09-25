@@ -1,4 +1,4 @@
-package com.span1989.gauge.usagestats.widget
+package com.span1989.gauge.usagestats
 
 import java.util.Calendar
 import java.util.Locale
@@ -6,15 +6,16 @@ import java.util.TimeZone
 import kotlin.math.roundToLong
 
 /**
- * The widget's arithmetic, kept free of Android APIs so it can be unit tested.
+ * Usage arithmetic for the parts of the app that run without JS: the
+ * home-screen widget and the hourly nudges. Kept free of Android APIs so it can
+ * be unit tested.
  *
- * The widget runs without the JS side of the app, so it cannot call the code
- * that produces the app's numbers. Every function here is a port of a specific
+ * Neither can call the code that produces the app's numbers. Every function here is a port of a specific
  * TypeScript function, named in its doc comment. They must agree to the minute,
- * or the widget and the app will show different totals for the same range.
+ * or the widget, the nudges and the app will disagree about the same range.
  * Change them together.
  */
-internal object WidgetMath {
+internal object UsageMath {
 
   /** The four ranges, in the order the app's tabs show them. `id` matches RangeId in src/data.ts. */
   enum class Range(val id: String) {

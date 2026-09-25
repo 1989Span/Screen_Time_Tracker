@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { NudgeCard } from '../components/NudgeCard';
 import { Card, Dot } from '../components/ui';
 import { useAppPickerModel } from '../models/setup';
 import { alpha, color, font } from '../theme';
@@ -20,6 +21,10 @@ export function AppPickerScreen() {
 
   return (
     <View style={styles.wrap}>
+      {/* This screen is also the first-run app picker. Nudges only make sense
+          once something is tracked, so the switch waits until then. */}
+      {m.canContinue && <NudgeCard />}
+
       <View style={{ gap: 4 }}>
         <View style={styles.headRow}>
           <Text style={styles.title}>Choose apps</Text>

@@ -15,9 +15,19 @@ declare class UsageStatsModule extends NativeModule<Record<string, never>> {
   queryEvents(startMs: number, endMs: number): Promise<UsageEvent[]>;
   /** What this device actually retains, measured rather than assumed. */
   probeRetention(): Promise<RetentionProbe>;
-  /** Mirrors the tracked selection to the home-screen widget and redraws it.
-   *  The widget runs without JS, so this is the only way it learns the selection. */
-  syncWidgets(tracked: string[]): void;
+  /** Mirrors the tracked selection to the parts that run without JS, the
+   *  home-screen widget and the hourly nudges, and refreshes both. */
+  syncTracked(tracked: string[]): void;
+  /** Whether hourly nudges are switched on in Settings. On by default. */
+  nudgesEnabled(): boolean;
+  /** Switches hourly nudges on or off. */
+  setNudgesEnabled(on: boolean): void;
+  /** Whether Android will show Gauge's notifications (Android 13+ permission
+   *  granted, and not turned off in system settings). */
+  notificationsAllowed(): boolean;
+  /** Whether the app has already asked for notification permission once. */
+  nudgesPrompted(): boolean;
+  markNudgesPrompted(): void;
 }
 
 export default requireNativeModule<UsageStatsModule>('UsageStats');

@@ -20,17 +20,18 @@ import { setUsageSource } from './source';
 export const MAX_DAYS_NEEDED = 366;
 
 /**
- * Hands the home-screen widget the current selection and redraws it.
+ * Hands the current selection to the home-screen widget and the hourly nudges,
+ * which run without JS, and refreshes both.
  *
  * Runs after every load, including ones that load nothing because access is off
- * or nothing is tracked, so the widget can show the right prompt. A widget
- * problem must never break the app's own load, so failures are only logged.
+ * or nothing is tracked, so the widget can show the right prompt. A problem
+ * there must never break the app's own load, so failures are only logged.
  */
-function syncWidgets(tracked: string[]): void {
+function syncTracked(tracked: string[]): void {
   try {
-    UsageStats.syncWidgets(tracked);
+    UsageStats.syncTracked(tracked);
   } catch (e) {
-    console.log('[WIDGET] sync failed: ' + String(e));
+    console.log('[NATIVE] sync failed: ' + String(e));
   }
 }
 
@@ -72,7 +73,7 @@ export async function installRealUsageSource(): Promise<SourceKind> {
     // Tell the view models the cache is warm; they cannot see it otherwise.
     useAppsStore.getState().markDataLoaded();
   }
-  syncWidgets(state.tracked);
+  syncTracked(state.tracked);
 
   // Keep history accumulating while the app is closed. Registration needs
   // permission to be worth anything, but not a selection: recording covers every
@@ -94,6 +95,6 @@ export async function reloadUsage(): Promise<void> {
     await androidSource.load(MAX_DAYS_NEEDED);
     useAppsStore.getState().markDataLoaded();
   }
-  // After the load, so the widget reads the history this load just recorded.
-  syncWidgets(state.tracked);
+  // After the load, so the widget and nudges read the history this load just recorded.
+  syncTracked(state.tracked);
 }

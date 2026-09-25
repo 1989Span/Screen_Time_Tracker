@@ -20,6 +20,12 @@
        a restricted permission: it needs a declaration form and is rejected when a
        narrower <queries> block would do, as this one does. Do not add it back
        without a feature that genuinely needs to see non-launchable packages. -->
+  <!-- Hourly screen-time nudges. POST_NOTIFICATIONS is a runtime permission on
+       Android 13 and later, requested once from the app. RECEIVE_BOOT_COMPLETED
+       re-arms the check after a reboot, which clears pending alarms. -->
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
   <queries>
     <intent>
       <action android:name="android.intent.action.MAIN" />
@@ -57,5 +63,17 @@
         <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
       </intent-filter>
     </activity>
+
+    <!-- Hourly nudge checks: its own alarm (an explicit intent), plus reboot and
+         app update, which both clear pending alarms. Not exported: the system
+         still delivers those broadcasts, and no other app can trigger a check. -->
+    <receiver
+        android:name="com.span1989.gauge.usagestats.nudge.NudgeReceiver"
+        android:exported="false">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+      </intent-filter>
+    </receiver>
   </application>
 </manifest>
