@@ -25,7 +25,7 @@ Privacy policy URL: https://1989span.github.io/Screen_Time_Tracker/privacy/
 **Short description** (80 max)
 
 ```
-See where your screen time goes, app by app. Private: nothing leaves your phone.
+See where your screen time goes, app by app, and compete with friends to cut it.
 ```
 
 **Full description** (4000 max)
@@ -46,7 +46,7 @@ HOME SCREEN WIDGET
 Keep your total for today, the week, the month or the year on your home screen. Choose the range when you place the widget, and tap it to open the full breakdown.
 
 GROUPS
-Compete with friends or family for the lowest screen time. Everyone taps Share my day to send their daily total to the group by text or any messaging app, and the lowest total each day wins the point. No accounts, and never a list of which apps anyone used.
+Compete with friends or family for the lowest screen time. Invite people with a link. Once they join, everyone's daily totals sync automatically, so nobody has to remember to share, and the lowest total each day wins the point. No sign-up, and never a list of which apps anyone used.
 
 HOURLY NUDGES
 Each time today's screen time passes another hour, Gauge sends a short, slightly cheeky reminder to look up. Turn them off any time in Settings.
@@ -55,7 +55,7 @@ KEEPS COUNTING WHEN YOU DON'T LOOK
 Android only keeps a short window of detailed usage history. Gauge saves it as it goes, including in the background, so your history keeps building for up to a year even if you don't open the app for weeks.
 
 PRIVATE BY DESIGN
-Everything stays on your phone. There's no account, no server, no ads and no analytics. Your numbers only leave your phone when you share them with a group yourself.
+Your usage stays on your phone. There are no ads, no analytics and no sign-up. Groups are the one exception: they share your display name and daily totals with the members of groups you choose to join, and never which apps you used.
 
 HOW IT WORKS
 Android keeps app usage behind a permission called Usage access, which only you can switch on. Gauge walks you through it on first launch. It reads which app was open and for how long, never what you do inside other apps.
@@ -86,11 +86,42 @@ Android keeps app usage behind a permission called Usage access, which only you 
 | Content rating | Category: *All other app types*. Answer **No** to the content questions (violence, language, gambling, etc.) but **Yes** to "Does the app allow users to interact or exchange content with other users?" | Groups show each member's chosen display name and the group name, both typed by users, to other people. Expected result: Everyone / PEGI 3 with a *Users Interact* notice. The app has no chat, and names are capped at 30 characters with control characters stripped. |
 | Target audience | **18 and over** only | Selecting any age under 13 brings in the Families policy and its extra requirements. You can widen this later. |
 | News app | No | |
-| Data safety | **No**, the app does not collect or share any of the required user data types | Play counts data as "collected" when the app sends it off the device, and Gauge makes no network requests at all (no `fetch`, no sockets, no analytics or crash SDKs). Group sharing doesn't change that. The user taps Share, picks a recipient and an app in Android's share sheet, and that app sends the message. Play exempts transfers made by a specific user action where the user expects the data to be shared. The privacy policy says exactly what a group link contains. |
+| Data safety | **Yes**, the app collects user data. Full answers in the next section. | Groups sync to a Supabase database. Everything else stays on the phone: no analytics, ads or crash SDKs. |
 | Advertising ID | **No** | No `AD_ID` permission in the shipped manifest |
 | Government app | No | |
 | Financial features | My app doesn't provide any financial features | The penalty limit, which mentions charges, is hidden and moves no money |
 | Health apps (if shown) | No health features | Screen time is not health data |
+
+### Data safety answers
+
+Play counts data as collected when it leaves the device, which Groups now does
+(`app/src/sync/`, schema in `app/supabase/migrations/0001_groups.sql`).
+
+| Question | Answer | Why it's true |
+|---|---|---|
+| Collects or shares required data types? | **Yes** | Groups upload to Supabase |
+| Encrypted in transit? | **Yes** | supabase-js talks to the project over HTTPS only |
+| Account creation | **My app does not allow users to create an account** | No sign-up, email or password. The anonymous Supabase user is invisible to the person. Deletion is still offered (below). |
+| Users can request deletion? | **Yes**. Data deletion URL: `https://1989span.github.io/Screen_Time_Tracker/privacy/#choices` | In app: Leave group, and Delete my group data (deletes memberships, totals and the anonymous user). By email after uninstalling. The server also deletes anything unsynced for 400 days. |
+
+Declare these data types. For each: **Collected** yes, **Shared** no, **Processed
+ephemerally** no, **Optional** (users choose, since only people who join a group
+send anything), purpose **App functionality** only.
+
+| Data type | What Gauge sends |
+|---|---|
+| Personal info > Name | The display name chosen for groups |
+| Personal info > User IDs | The random anonymous ID Supabase issues |
+| App activity > App interactions | Total screen time per day. It's about app usage and is the closest fit Play offers. |
+| App activity > Installed apps | Package names of apps someone votes to leave out of a group's totals |
+
+**Shared: no.** Supabase stores the data on Gauge's behalf as a service provider,
+which Play doesn't count as sharing. Other members see your totals only after you
+join their group on a screen that says exactly what they'll see. That is a
+transfer the user starts and expects, which Play also exempts.
+
+If Groups ever uploads anything else (more fields, per-app numbers, an analytics
+or crash SDK), redo this section and the privacy policy first.
 
 **Permissions Play may ask about:** none need a declaration form.
 `QUERY_ALL_PACKAGES` was removed (a launcher `<queries>` block covers the picker).
@@ -103,7 +134,8 @@ foreground-service declaration does not apply.
 
 Shipped permissions: `INTERNET`, `ACCESS_NETWORK_STATE`, `PACKAGE_USAGE_STATS`,
 `POST_NOTIFICATIONS`, `FOREGROUND_SERVICE`, `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `VIBRATE`,
-plus the app's own `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. `POST_NOTIFICATIONS` is for
+plus the app's own `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. `INTERNET` and
+`ACCESS_NETWORK_STATE` are used by Groups sync. `POST_NOTIFICATIONS` is for
 the hourly nudges. It is a normal runtime permission with no Play form. The nudges use
 inexact, non-wakeup alarms, so there is no `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM` (both
 restricted by Play) and no foreground service. Check any build with a parser that reads

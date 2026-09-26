@@ -60,17 +60,17 @@ export function GroupSettingsScreen() {
           accessibilityLabel="Your name in groups"
           style={g.input}
         />
-        <Text style={g.meta}>The others see a change the next time you share.</Text>
+        <Text style={g.meta}>The others see a change after the next sync.</Text>
       </Card>
 
       <Card style={g.card}>
-        {/* A system dialog rather than an inline confirmation: this is the last
-            card on the page, and an inline one opened below the visible area. */}
+        {/* System dialogs rather than inline confirmations: these are the last
+            cards on the page, and an inline one opened below the visible area. */}
         <Pressable
           onPress={() =>
             Alert.alert(
               `Leave "${s.name}"?`,
-              'This removes the group from this phone. The others keep your past numbers, and you can rejoin from any of their links.',
+              'Your numbers stop syncing to this group, and your past numbers are removed from it. You can rejoin from an invite, starting again from zero.',
               [
                 { text: 'Stay', style: 'cancel' },
                 { text: 'Leave', style: 'destructive', onPress: s.leave },
@@ -78,8 +78,28 @@ export function GroupSettingsScreen() {
             )
           }
           accessibilityRole="button"
+          style={[g.row]}
         >
           <Text style={[g.name, { color: color.roseDark }]}>Leave group</Text>
+        </Pressable>
+        <Pressable
+          onPress={() =>
+            Alert.alert(
+              'Delete all your group data?',
+              'This removes you from every group and deletes your name and daily totals from the group server. It can’t be undone. Your usage history on this phone is not affected.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: s.deleteMyData },
+              ]
+            )
+          }
+          accessibilityRole="button"
+          style={[g.row, g.lastRow]}
+        >
+          <View style={{ flex: 1, gap: 1 }}>
+            <Text style={[g.name, { color: color.roseDark }]}>Delete my group data</Text>
+            <Text style={g.meta}>Every group, from the server</Text>
+          </View>
         </Pressable>
       </Card>
     </View>

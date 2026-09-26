@@ -19,6 +19,28 @@ import { setUsageSource } from './source';
 /** Longest span any screen asks for (the year card). */
 export const MAX_DAYS_NEEDED = 366;
 
+const loadedListeners = new Set<() => void>();
+
+/**
+ * Runs `listener` after every usage load, when fresh numbers are available.
+ * How group sync follows each load without this module depending on groups.
+ * Returns an unsubscribe function.
+ */
+export function onUsageLoaded(listener: () => void): () => void {
+  loadedListeners.add(listener);
+  return () => loadedListeners.delete(listener);
+}
+
+function notifyLoaded(): void {
+  for (const l of loadedListeners) {
+    try {
+      l();
+    } catch (e) {
+      console.log('[LOAD] listener failed: ' + String(e));
+    }
+  }
+}
+
 /**
  * Hands the current selection to the home-screen widget and the hourly nudges,
  * which run without JS, and refreshes both.
@@ -74,6 +96,7 @@ export async function installRealUsageSource(): Promise<SourceKind> {
     useAppsStore.getState().markDataLoaded();
   }
   syncTracked(state.tracked);
+  notifyLoaded();
 
   // Keep history accumulating while the app is closed. Registration needs
   // permission to be worth anything, but not a selection: recording covers every
@@ -97,4 +120,5 @@ export async function reloadUsage(): Promise<void> {
   }
   // After the load, so the widget and nudges read the history this load just recorded.
   syncTracked(state.tracked);
+  notifyLoaded();
 }

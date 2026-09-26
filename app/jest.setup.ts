@@ -40,6 +40,18 @@ jest.mock('./modules/usage-stats', () => ({
   },
 }));
 
+// Tests never reach the group server. The client module is replaced, so the
+// Supabase client (and the native storage it installs) never loads. Tests that
+// exercise groups stub the methods of groupsApi they need.
+jest.mock('./src/sync/supabase', () => ({
+  groupsServerConfigured: () => true,
+  supabase: () => {
+    throw new Error('No group server in tests: stub groupsApi instead.');
+  },
+  ensureSession: async () => 'test-user',
+  signOutLocally: async () => {},
+}));
+
 // expo-sqlite is native and does not resolve under jest. Stubbed so modules that
 // import it can be unit-tested; the SQL itself is verified on a device, not
 // against a hand-written fake SQL engine that would prove nothing about SQLite.

@@ -2,7 +2,7 @@
 //
 //   gauge://range/<id>  from the home-screen widget: opens that range's breakdown
 //                       (see GaugeWidgets.openBreakdown in the usage-stats module).
-//   gauge://g/<payload> from a group link: joins or updates a group (groupLink.ts).
+//   gauge://g/<payload> from a group invite link: offers to join (groupLink.ts).
 //                       The https form reaches the app as this, via the landing
 //                       page in docs/g/.
 //
@@ -38,7 +38,7 @@ export function openLink(url: string | null): void {
     // A link cut short in transit (some apps truncate long messages) lands here too.
     if (!useGroupsStore.getState().receive(url)) {
       useGroupsStore.setState({
-        notice: 'That group link was incomplete. Ask for it again, or paste the whole message below.',
+        notice: 'That invite link was incomplete. Ask for it again, or paste the whole message below.',
       });
       goTo('groups');
     }

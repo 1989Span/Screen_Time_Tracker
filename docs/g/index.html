@@ -4,15 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <title>Gauge group link</title>
-  <meta name="description" content="Open a Gauge group invite or update on your phone.">
+  <title>Gauge group invite</title>
+  <meta name="description" content="Open a Gauge group invite on your phone.">
   <!--
-    Landing page for Gauge group links: https://…/g/#<payload>
+    Landing page for Gauge group invites: https://…/g/#<payload>
 
-    The group's numbers are in the part after '#'. Browsers never send that to
-    the server, so GitHub, which hosts this page, never receives them. Nothing
-    here loads anything from elsewhere or reports anywhere. The script below
-    only passes the payload to the Gauge app on this phone.
+    The invite (group name, inviter's name, invite code) is in the part after
+    '#'. Browsers never send that to the server, so GitHub, which hosts this
+    page, never receives it. Nothing here loads anything from elsewhere or
+    reports anywhere. The script below only passes the payload to the Gauge app
+    on this phone.
   -->
   <style>
     :root {
@@ -68,8 +69,7 @@
   <div class="card">
     <div id="ok" class="hidden">
       <h1>Open in Gauge</h1>
-      <p>This link invites you to a Gauge group, or brings one you're already in up to date. Gauge asks before
-        you join anything.</p>
+      <p>This link invites you to a Gauge group. Gauge shows you what joining shares, and asks before you join.</p>
       <a id="open" class="btn primary" href="#">Open in Gauge</a>
       <button id="copy" class="btn secondary" type="button">Copy link</button>
       <p class="small">Didn't open? Install Gauge from Google Play, then tap the link in your message again. Or copy
@@ -90,11 +90,11 @@
 
     <div id="not-android" class="hidden">
       <h1>Open this on your Android phone</h1>
-      <p>Gauge group links open in the Gauge app, which is on Android. Send this link to the phone that has
+      <p>Gauge group invites open in the Gauge app, which is on Android. Send this link to the phone that has
         Gauge and tap it there.</p>
     </div>
   </div>
-  <p class="small">Your numbers travel inside the link itself. This page never receives them.</p>
+  <p class="small">The invite is inside the link itself. This page never receives it.</p>
 </main>
 <script>
   (function () {
@@ -102,7 +102,7 @@
     var payload = location.hash.slice(1);
     // Only the characters a Gauge payload can contain, so nothing else ever
     // ends up inside the intent below.
-    if (!/^[A-Za-z0-9_-]{8,16000}$/.test(payload)) { show('bad'); return; }
+    if (!/^[A-Za-z0-9_-]{8,2000}$/.test(payload)) { show('bad'); return; }
     if (new URLSearchParams(location.search).get('install') === '1') { show('installed-missing'); return; }
     if (!/Android/i.test(navigator.userAgent)) { show('not-android'); return; }
 

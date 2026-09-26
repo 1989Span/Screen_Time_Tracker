@@ -1,17 +1,18 @@
 // Groups screens: the group page, New group, Join, Settings and Rules.
 //
-// Your own numbers are computed live from this phone. Everyone else's are
-// whatever they last shared. The screens say which is which, and how fresh each
-// number is, so a stale share is never mistaken for a live one.
+// Your own numbers are computed live from this phone. Everyone else's are what
+// their phones last synced. The screens say which is which, and how fresh each
+// number is, so an old sync is never mistaken for a live number.
 
 import { useMemo } from 'react';
 
 import { dayStamp } from '../clock';
 import { fmtShort } from '../data';
-import { Group, Member, MIN_GROUP_SIZE, excludedApps, openProposals, shiftStamp, standings } from '../groups';
+import { Group, Member, MIN_GROUP_SIZE, excludedApps, openProposals, selfDays, shiftStamp, standings } from '../groups';
 import { useAppsStore } from '../state/appsStore';
-import { currentGroup, selfDays, useGroupsStore } from '../state/groupsStore';
+import { currentGroup, useGroupsStore } from '../state/groupsStore';
 import { useNow } from '../state/useNow';
+import { syncNow } from '../sync/groupSync';
 import { colorForId } from '../usage/series';
 import { usageSource } from '../usage/source';
 import { dayStampToDate } from '../usage/ledger';
@@ -40,15 +41,18 @@ const firstName = (m: Member) => m.name.split(' ')[0];
 const listNames = (names: string[]) =>
   names.length <= 1 ? names.join('') : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
 const memberColor = (m: Member, selfId: string) => (m.id === selfId ? color.accent : colorForId(m.id));
+const capitalise = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
 /** Competition-style ranks: equal values share a rank, the next rank skips. */
 function ranks(values: number[]): number[] {
   return values.map((v) => values.filter((x) => x < v).length + 1);
 }
 
-/** Every member's number for a day: yours live, everyone else's as shared. */
+/** Every member's number for a day: yours live from this phone, everyone else's as synced. */
 function valueFor(g: Group, selfId: string, today: string) {
-  const mine = selfDays(g, selfId, today);
+  const mine = selfDays(g, selfId, today, (stamp) =>
+    usageSource().status === 'ready' ? usageSource().allAppsDay(stamp) : {}
+  );
   return (m: Member, day: string) => (m.id === selfId ? mine[day] : m.days[day]);
 }
 
@@ -86,13 +90,24 @@ export interface GroupsViewModel {
   tabs: { id: string; label: string; active: boolean; onPress: () => void }[];
   since: string;
   today: TodayRow[];
-  share: () => void;
-  lastShared: string;
+  /** "Synced 3m ago", "Syncing…", "Offline. Numbers as of 2h ago." */
+  syncLine: string;
+  syncing: boolean;
+  syncNow: () => void;
+  invite: () => void;
   yesterday: string;
   alone: boolean;
   board: BoardRow[];
   openSettings: () => void;
   settingsNote: string;
+}
+
+function syncLineFor(status: string, lastSynced: number, now: number): string {
+  if (status === 'syncing') return 'Syncing…';
+  if (status === 'unconfigured') return 'Group sync isn’t set up in this build.';
+  const when = lastSynced > 0 ? ago(lastSynced, now) : 'never';
+  if (status === 'offline') return 'Offline. Numbers as of ' + when + '.';
+  return 'Synced ' + when + '. Updates automatically.';
 }
 
 export function useGroupsModel(): GroupsViewModel {
@@ -101,17 +116,15 @@ export function useGroupsModel(): GroupsViewModel {
   const dataVersion = useAppsStore((s) => s.dataVersion);
 
   return useMemo(() => {
-    const link = {
-      value: store.linkDraft,
-      onChange: store.setLinkDraft,
-      open: store.openLinkDraft,
-      error: store.linkError,
-    };
     const base = {
       notice: store.notice,
       clearNotice: store.clearNotice,
       openNewGroup: store.openNewGroup,
-      link,
+      link: { value: store.linkDraft, onChange: store.setLinkDraft, open: store.openLinkDraft, error: store.error },
+      syncLine: syncLineFor(store.syncStatus, store.lastSynced, now),
+      syncing: store.syncStatus === 'syncing',
+      syncNow: () => void syncNow(),
+      invite: () => void store.invite(),
     };
     const g = currentGroup(store);
     if (!g) {
@@ -121,8 +134,6 @@ export function useGroupsModel(): GroupsViewModel {
         tabs: [],
         since: '',
         today: [],
-        share: () => {},
-        lastShared: '',
         yesterday: '',
         alone: true,
         board: [],
@@ -136,7 +147,7 @@ export function useGroupsModel(): GroupsViewModel {
     const value = valueFor(g, selfId, today);
     const n = g.members.length;
 
-    // Today so far. Anyone who hasn't shared today is listed, but not ranked.
+    // Today so far. Anyone with nothing synced today is listed, but not ranked.
     const withToday = g.members.map((m) => ({ m, v: value(m, today) }));
     const known = withToday.filter((x) => x.v !== undefined).sort((a, b) => (a.v as number) - (b.v as number));
     const unknown = withToday.filter((x) => x.v === undefined);
@@ -154,9 +165,7 @@ export function useGroupsModel(): GroupsViewModel {
         m.id === selfId
           ? 'live on this phone'
           : v === undefined
-            ? m.sharedAt > 0
-              ? 'last shared ' + ago(m.sharedAt, now)
-              : "hasn't shared yet"
+            ? 'nothing synced today · last synced ' + ago(m.sharedAt, now)
             : 'as of ' + clockTime(m.sharedAt),
       pct: v === undefined ? 0 : Math.max(2, (v / most) * 100),
     }));
@@ -170,22 +179,27 @@ export function useGroupsModel(): GroupsViewModel {
     let yesterdayLine = '';
     if (yesterday?.unscored === null) {
       const low = value(g.members.find((m) => m.id === yesterday.winners[0]) as Member, yesterday.day) ?? 0;
-      const sentence =
+      yesterdayLine = capitalise(
         listNames(yesterday.winners.map(nameOf)) +
-        (yesterday.winners.length > 1 ? ' tied for' : ' won') +
-        " yesterday's point with " +
-        fmtShort(low) +
-        '.';
-      yesterdayLine = sentence[0].toUpperCase() + sentence.slice(1);
+          (yesterday.winners.length > 1 ? ' tied for' : ' won') +
+          " yesterday's point with " +
+          fmtShort(low) +
+          '.' +
+          (yesterday.missing.length ? ' ' + capitalise(listNames(yesterday.missing.map(nameOf))) + ' sat it out.' : '')
+      );
     } else if (yesterday?.unscored === 'waiting') {
-      yesterdayLine = "Yesterday's point is waiting for " + listNames(yesterday.missing.map(nameOf)) + ' to share.';
+      const who = yesterday.missing.map(nameOf);
+      yesterdayLine =
+        "Yesterday's point is waiting for " +
+        listNames(who) +
+        (who.length === 1 && who[0] !== 'you' ? "'s phone" : '') +
+        ' to sync. Anyone who hasn’t within 2 days sits it out.';
     }
 
     const board = [...st.board].sort(
       (a, b) => b.points - a.points || b.streak - a.streak || nameOf(a.memberId).localeCompare(nameOf(b.memberId))
     );
     const boardRanks = ranks(board.map((b) => -b.points));
-    const self = g.members.find((m) => m.id === selfId);
     const needsVote = openProposals(g).filter((p) => !p.agreed.includes(selfId) && !p.declined.includes(selfId)).length;
 
     return {
@@ -202,11 +216,6 @@ export function useGroupsModel(): GroupsViewModel {
             })),
       since: n + (n === 1 ? ' member' : ' members') + ' · since ' + shortDate(g.created),
       today: todayRows,
-      share: () => void store.share('update'),
-      lastShared:
-        self && self.sharedAt > 0
-          ? 'You last tapped Share ' + ago(self.sharedAt, now) + '.'
-          : "You haven't shared yet. The others only see your numbers when you do.",
       yesterday: yesterdayLine,
       alone: n < MIN_GROUP_SIZE,
       board: board.map((b, i) => {
@@ -238,6 +247,8 @@ export interface NewGroupViewModel {
   selfName: string;
   setSelfName: (t: string) => void;
   canCreate: boolean;
+  busy: boolean;
+  error: string | null;
   create: () => void;
   back: () => void;
 }
@@ -249,7 +260,9 @@ export function useNewGroupModel(): NewGroupViewModel {
     setName: s.setNgName,
     selfName: s.selfName,
     setSelfName: s.setSelfName,
-    canCreate: s.ngName.trim() !== '' && s.selfName.trim() !== '',
+    canCreate: s.ngName.trim() !== '' && s.selfName.trim() !== '' && !s.busy,
+    busy: s.busy,
+    error: s.error,
     create: () => void s.createGroup(),
     back: s.backToGroups,
   };
@@ -260,27 +273,28 @@ export function useNewGroupModel(): NewGroupViewModel {
 export interface JoinViewModel {
   name: string;
   from: string;
-  members: string;
   selfName: string;
   setSelfName: (t: string) => void;
   canJoin: boolean;
+  busy: boolean;
+  error: string | null;
   join: () => void;
   notNow: () => void;
 }
 
 export function useJoinModel(): JoinViewModel | null {
   const s = useGroupsStore();
-  const r = s.incoming;
-  if (!r) return null;
-  const sender = r.members.find((m) => m.id === r.senderId);
+  const invite = s.incoming;
+  if (!invite) return null;
   return {
-    name: r.name,
-    from: (sender ? sender.name : 'Someone') + ' invited you to compete for the lowest screen time.',
-    members: listNames(r.members.map((m) => m.name)),
+    name: invite.groupName,
+    from: invite.inviter + ' invited you to compete for the lowest screen time.',
     selfName: s.selfName,
     setSelfName: s.setSelfName,
-    canJoin: s.selfName.trim() !== '',
-    join: s.joinIncoming,
+    canJoin: s.selfName.trim() !== '' && !s.busy,
+    busy: s.busy,
+    error: s.error,
+    join: () => void s.joinIncoming(),
     notNow: s.dismissIncoming,
   };
 }
@@ -304,6 +318,7 @@ export interface GroupSettingsViewModel {
   selfName: string;
   setSelfName: (t: string) => void;
   leave: () => void;
+  deleteMyData: () => void;
   back: () => void;
 }
 
@@ -325,17 +340,9 @@ export function useGroupSettingsModel(): GroupSettingsViewModel | null {
         'joined ' +
         shortDate(m.joined) +
         ' · ' +
-        // For you, the app only knows you tapped Share. Android doesn't say
-        // whether the share sheet was sent or cancelled.
-        (m.id === s.selfId
-          ? m.sharedAt > 0
-            ? 'you tapped Share ' + ago(m.sharedAt, now)
-            : "you haven't shared"
-          : m.sharedAt > 0
-            ? 'shared ' + ago(m.sharedAt, now)
-            : "hasn't shared"),
+        (m.id === s.selfId ? 'syncs from this phone' : 'last synced ' + ago(m.sharedAt, now)),
     })),
-    invite: () => void s.share('invite'),
+    invite: () => void s.invite(),
     rulesNote: [
       excluded === 0 ? 'Every app counts' : excluded + (excluded === 1 ? ' app' : ' apps') + ' left out',
       open > 0 ? open + (open === 1 ? ' proposal' : ' proposals') : '',
@@ -345,7 +352,8 @@ export function useGroupSettingsModel(): GroupSettingsViewModel | null {
     openRules: s.openRules,
     selfName: s.selfName,
     setSelfName: s.setSelfName,
-    leave: s.leave,
+    leave: () => void s.leave(),
+    deleteMyData: () => void s.deleteMyData(),
     back: s.backToGroups,
   };
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 
 import { BackChip, Card } from '../components/ui';
 import { useNewGroupModel } from '../models/groups';
@@ -53,9 +53,13 @@ export function NewGroupScreen() {
           whole group agrees to leave one out.
         </Text>
         <Text style={g.body}>
-          It only goes out in links you send yourself, from the share sheet, to whoever you choose.
+          Creating the group turns on automatic sharing with it: a few times a day, Gauge sends your daily totals so the
+          points stay accurate. Only members see them. You can leave, or delete your group data, at any time in Group
+          settings.
         </Text>
       </Card>
+
+      {n.error !== null && <Text style={g.error}>{n.error}</Text>}
 
       <Pressable
         onPress={n.create}
@@ -63,7 +67,7 @@ export function NewGroupScreen() {
         accessibilityRole="button"
         style={[g.primary, !n.canCreate && g.disabled]}
       >
-        <Text style={g.primaryText}>Create and invite</Text>
+        {n.busy ? <ActivityIndicator color="#ffffff" /> : <Text style={g.primaryText}>Create and invite</Text>}
       </Pressable>
     </View>
   );

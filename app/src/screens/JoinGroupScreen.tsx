@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 
 import { Card } from '../components/ui';
 import { useJoinModel } from '../models/groups';
@@ -7,7 +7,10 @@ import { GROUP_NAME_MAX } from '../state/groupsStore';
 import { alpha, color } from '../theme';
 import { g } from './groupStyles';
 
-/** Shown when a group link arrives for a group you're not in yet. */
+/**
+ * Shown when an invite link arrives. This is where someone agrees to automatic
+ * sharing, once, so it says exactly what is shared, with whom, and how to stop.
+ */
 export function JoinGroupScreen() {
   const j = useJoinModel();
 
@@ -28,10 +31,7 @@ export function JoinGroupScreen() {
       </View>
 
       <Card style={g.card}>
-        <Text style={g.label}>Members</Text>
-        <Text style={g.body}>{j.members}</Text>
-
-        <Text style={[g.label, { marginTop: 6 }]}>Your name in groups</Text>
+        <Text style={g.label}>Your name in groups</Text>
         <TextInput
           value={j.selfName}
           onChangeText={j.setSelfName}
@@ -44,11 +44,18 @@ export function JoinGroupScreen() {
       </Card>
 
       <Card style={g.card}>
+        <Text style={g.cardTitle}>What you&rsquo;re agreeing to</Text>
         <Text style={g.body}>
-          Joining shares nothing yet. The others see your name and daily totals, never which apps you used, once you tap
-          Share my day and send them the link.
+          From now on, Gauge will automatically send your name and your total screen time for each day to the group, a
+          few times a day, so the points stay accurate. Everyone in the group can see them.
+        </Text>
+        <Text style={g.body}>
+          It never sends which apps you used, only daily totals. You can leave the group, or delete your group data, at
+          any time in Group settings.
         </Text>
       </Card>
+
+      {j.error !== null && <Text style={g.error}>{j.error}</Text>}
 
       <Pressable
         onPress={j.join}
@@ -56,7 +63,11 @@ export function JoinGroupScreen() {
         accessibilityRole="button"
         style={[g.primary, !j.canJoin && g.disabled]}
       >
-        <Text style={g.primaryText}>Join group</Text>
+        {j.busy ? (
+          <ActivityIndicator color="#ffffff" />
+        ) : (
+          <Text style={g.primaryText}>Join and share automatically</Text>
+        )}
       </Pressable>
       <Pressable onPress={j.notNow} accessibilityRole="button" style={g.secondary}>
         <Text style={g.secondaryText}>Not now</Text>

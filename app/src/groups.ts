@@ -1,9 +1,9 @@
-// Groups: friends compare screen time, sharing their numbers by link.
+// Groups: friends compare screen time.
 //
-// There is no server. Each person's numbers travel inside links they choose to
-// send (see groupLink.ts), and every phone works out the standings itself from
-// what it has received. Nothing here talks to a network. It is plain data and
-// arithmetic, so all of it is unit tested.
+// Each phone uploads its own daily totals to the group server (sync/groupsApi.ts)
+// and downloads everyone else's. Every phone then works out the standings itself
+// from that data. This file is plain data and arithmetic with no network access,
+// so all of it is unit tested.
 //
 // The rules of the game:
 //
@@ -13,9 +13,11 @@
 //    and easy to game by untracking something.
 //  * The lowest full-day total wins that day's point. Ties each get a point.
 //    Today is "so far" and isn't awarded until it's over.
-//  * A day is only scored once every member who was in the group that day has
-//    shared their number for it. Missing numbers never count as zero. Otherwise
-//    whoever forgot to share would win.
+//  * A day is scored once every member who was in the group that day has synced
+//    it, or once it is GRACE_DAYS old, whichever comes first. A missing number
+//    never counts as zero, or a phone that failed to sync would win. After the
+//    grace period, anyone still missing sits that day out, so one dead phone
+//    can't freeze the points for everyone.
 //  * Leaving an app out needs every member to agree. Any single member can
 //    bring it back by withdrawing their agreement.
 //  * Members compete from the day they joined.
@@ -26,17 +28,20 @@ import { dayStampToDate } from './usage/ledger';
 export const MIN_GROUP_SIZE = 2;
 export const NAME_MAX = 30;
 
-/** Days of history each share carries, so a few missed shares are backfilled. */
+/** Days of your history uploaded on each sync, so a few missed syncs are backfilled. */
 export const SHARE_DAYS = 14;
+
+/** How old a day must be before members who never synced it sit it out. */
+export const GRACE_DAYS = 2;
 
 export interface Member {
   id: string;
   name: string;
   /** Day stamp (YYYY-MM-DD) of the first day this member competes on. */
   joined: string;
-  /** When this member made the share we hold (ms). 0 for you: your numbers are live. */
+  /** When this member last synced (ms), set by the server. */
   sharedAt: number;
-  /** Day stamp -> minutes, as this member computed and shared them. Empty for you. */
+  /** Day stamp -> minutes, as this member's phone uploaded them. */
   days: Record<string, number>;
   /** Apps this member agrees to leave out: package -> label. */
   excludes: Record<string, string>;
@@ -51,6 +56,8 @@ export interface Group {
   created: string;
   /** Everyone in the group, you included (id === your selfId). */
   members: Member[];
+  /** The secret that lets someone join. Only members can read it. */
+  inviteCode?: string;
 }
 
 // --- Dates ---------------------------------------------------------------------
@@ -73,33 +80,36 @@ export function makeGroup(id: string, name: string, created: string, self: Membe
 }
 
 /**
- * Folds received members into a group.
+ * Your numbers for a group over the last SHARE_DAYS days you've been in it:
+ * every app counts except the ones the group left out.
  *
- * For each person, the newer share decides their name and votes, so an old link
- * opened late can't roll them back. Days are combined, not replaced: each share
- * carries only the last SHARE_DAYS days, so replacing would drop the older
- * history already collected. Where both have a day, the newer share's number
- * wins. Your own entry is never taken from someone else's copy of it.
+ * `readDay` supplies one day's per-app minutes. In the app that is the loaded
+ * usage source; in the background task, which runs without it, it is the
+ * history database read directly.
+ *
+ * A day with nothing recorded is left out rather than reported as zero. An
+ * empty read usually means the data isn't loaded, and uploading a zero would
+ * overwrite a real number and hand you a win you didn't earn.
  */
-export function mergeMembers(g: Group, incoming: Member[], selfId: string): Group {
-  const byId = new Map(g.members.map((m) => [m.id, m]));
-  for (const m of incoming) {
-    if (m.id === selfId) continue;
-    const have = byId.get(m.id);
-    if (!have) {
-      byId.set(m.id, m);
-      continue;
-    }
-    const newer = m.sharedAt > have.sharedAt ? m : have;
-    const older = newer === m ? have : m;
-    byId.set(m.id, {
-      ...newer,
-      // Joining is a one-time fact, so the earliest date seen stands.
-      joined: have.joined < m.joined ? have.joined : m.joined,
-      days: { ...older.days, ...newer.days },
-    });
+export function selfDays(
+  g: Group,
+  selfId: string,
+  today: string,
+  readDay: (stamp: string) => Record<string, number>
+): Record<string, number> {
+  const self = g.members.find((m) => m.id === selfId);
+  if (!self) return {};
+  const excluded = excludedApps(g);
+  const start = self.joined > g.created ? self.joined : g.created;
+  const days: Record<string, number> = {};
+  for (let k = 0; k < SHARE_DAYS; k++) {
+    const day = shiftStamp(today, -k);
+    if (day < start) break;
+    const perApp = readDay(day);
+    if (Object.keys(perApp).length === 0) continue;
+    days[day] = groupMinutes(perApp, excluded);
   }
-  return { ...g, members: [...byId.values()] };
+  return days;
 }
 
 // --- Leaving apps out --------------------------------------------------------
@@ -186,7 +196,10 @@ export interface DayResult {
   winners: string[];
   /** Why a day wasn't scored, or null if it was. */
   unscored: null | 'too-few' | 'waiting';
-  /** For a 'waiting' day, who hasn't shared it yet. */
+  /**
+   * Who never synced this day. For a 'waiting' day, the people still awaited.
+   * For a scored day, those who sat it out once the grace period ran out.
+   */
   missing: string[];
 }
 
@@ -210,12 +223,13 @@ export type DayValue = (member: Member, day: string) => number | undefined;
 /**
  * Points, streaks and every settled day, from creation up to yesterday.
  * `value` supplies each member's minutes. For you that is computed live from
- * this phone, and for everyone else it comes from what they shared.
+ * this phone, and for everyone else it comes from what their phones synced.
  */
 export function standings(g: Group, today: string, value: DayValue): Standings {
   const board = new Map<string, Standing>(
     g.members.map((m) => [m.id, { memberId: m.id, points: 0, streak: 0, best: 0 }])
   );
+  const graceEnds = shiftStamp(today, -GRACE_DAYS);
   const days: DayResult[] = [];
   for (let day = g.created; day < today; day = shiftStamp(day, 1)) {
     const present = g.members.filter((m) => m.joined <= day);
@@ -225,17 +239,23 @@ export function standings(g: Group, today: string, value: DayValue): Standings {
     }
     const totals = present.map((m) => value(m, day));
     const missing = present.filter((_, i) => totals[i] === undefined).map((m) => m.id);
-    if (missing.length > 0) {
+    if (missing.length > 0 && day > graceEnds) {
       days.unshift({ day, winners: [], unscored: 'waiting', missing });
       continue;
     }
-    const rounded = totals.map((t) => Math.round(t as number));
+    // Past the grace period, whoever never synced sits the day out.
+    const competing = present.filter((_, i) => totals[i] !== undefined);
+    if (competing.length < MIN_GROUP_SIZE) {
+      days.unshift({ day, winners: [], unscored: 'too-few', missing });
+      continue;
+    }
+    const rounded = competing.map((m) => Math.round(value(m, day) as number));
     const low = Math.min(...rounded);
-    const winners = present.filter((_, i) => rounded[i] === low).map((m) => m.id);
-    days.unshift({ day, winners, unscored: null, missing: [] });
-    // Streaks run over scored days only. A day nobody could score neither
-    // extends nor breaks one.
-    for (const m of present) {
+    const winners = competing.filter((_, i) => rounded[i] === low).map((m) => m.id);
+    days.unshift({ day, winners, unscored: null, missing });
+    // Streaks run over days a member competed in. A day they sat out, or one
+    // nobody could score, neither extends nor breaks theirs.
+    for (const m of competing) {
       const s = board.get(m.id) as Standing;
       if (winners.includes(m.id)) {
         s.points++;

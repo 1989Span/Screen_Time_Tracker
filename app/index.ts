@@ -2,6 +2,7 @@ import { registerRootComponent } from 'expo';
 
 import App from './App';
 import { installDefaultUsageSource, installRealUsageSource } from './src/usage/bootstrap';
+import { startGroupSync } from './src/sync/groupSync';
 import {
   logDeviceProbe,
   logLiveSource,
@@ -16,6 +17,8 @@ import {
 // gate in App.tsx holds back every screen until the real source can actually
 // answer, so the demo numbers are never what the user sees on a phone.
 installDefaultUsageSource();
+// Before the first load, so group sync follows it too.
+startGroupSync();
 void installRealUsageSource().catch((e: unknown) => console.log('[SOURCE] install failed: ' + String(e)));
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);

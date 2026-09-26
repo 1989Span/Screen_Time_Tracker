@@ -1,6 +1,4 @@
-import { dayStamp } from '../clock';
-import { appLinkFor, groupLink } from '../groupLink';
-import { newMember } from '../groups';
+import { appLinkFor, inviteLink } from '../groupLink';
 import { useDetailStore } from '../state/detailStore';
 import { useGroupsStore } from '../state/groupsStore';
 import { openLink, rangeFromLink } from '../state/incomingLinks';
@@ -50,11 +48,10 @@ describe('routing an incoming link', () => {
     expect(useNavStore.getState().view).toBe('detail');
   });
 
-  it('hands a group link to the groups store', () => {
-    const alex = { ...newMember('alex0001', 'Alex', dayStamp()), sharedAt: Date.now() - 1000 };
-    const https = groupLink({ id: 'fam00001', name: 'Family', created: dayStamp(), members: [alex] }, alex);
+  it('hands an invite link to the groups store', () => {
+    const https = inviteLink('0123456789abcdef0123456789abcdef', 'Family', 'Alex');
     openLink(appLinkFor(https));
-    expect(useGroupsStore.getState().incoming?.name).toBe('Family');
+    expect(useGroupsStore.getState().incoming?.groupName).toBe('Family');
     expect(useNavStore.getState().view).toBe('groupJoin');
   });
 

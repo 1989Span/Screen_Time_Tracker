@@ -77,16 +77,16 @@ function Empty({ m }: { m: GroupsViewModel }) {
       <Card style={gs.card}>
         <Text style={gs.cardTitle}>How it works</Text>
         <Text style={gs.body}>
-          Start a group and send the invite link to friends or family by text, WhatsApp or anything else. Each day,
-          everyone taps Share my day to send their total to the group.
+          Start a group and send the invite link to friends or family by text, WhatsApp or anything else. Once they
+          join, everyone&rsquo;s daily totals sync automatically, and the lowest each day wins the point.
         </Text>
         <Text style={gs.body}>
-          There are no accounts and no server. Your numbers only leave your phone inside the links you choose to send.
+          Only group members see your name and daily totals, never which apps you used. No sign-up needed.
         </Text>
       </Card>
       <Card style={gs.card}>
         <Text style={gs.cardTitle}>Got an invite?</Text>
-        <Text style={gs.meta}>Tapping the link usually opens Gauge. If it didn&rsquo;t, paste it here.</Text>
+        <Text style={gs.meta}>Tapping the invite link usually opens Gauge. If it didn&rsquo;t, paste it here.</Text>
         <OpenLink m={m} />
       </Card>
     </>
@@ -148,16 +148,31 @@ function GroupBody({ m }: { m: GroupsViewModel }) {
           </View>
         ))}
 
-        <Pressable
-          onPress={m.share}
-          accessibilityRole="button"
-          style={({ pressed }) => [gs.primary, { marginTop: 4 }, pressed && { opacity: 0.85 }]}
-        >
-          <Text style={gs.primaryText}>{m.alone ? 'Invite someone' : 'Share my day'}</Text>
-        </Pressable>
-        <Text style={gs.meta}>
-          {m.alone ? 'A group needs at least two people before points are awarded.' : m.lastShared}
-        </Text>
+        {m.alone && (
+          <>
+            <Pressable
+              onPress={m.invite}
+              accessibilityRole="button"
+              style={({ pressed }) => [gs.primary, { marginTop: 4 }, pressed && { opacity: 0.85 }]}
+            >
+              <Text style={gs.primaryText}>Invite someone</Text>
+            </Pressable>
+            <Text style={gs.meta}>A group needs at least two people before points are awarded.</Text>
+          </>
+        )}
+
+        <View style={styles.syncRow}>
+          <Text style={[gs.meta, { flex: 1 }]}>{m.syncLine}</Text>
+          <Pressable
+            onPress={m.syncNow}
+            disabled={m.syncing}
+            accessibilityRole="button"
+            hitSlop={8}
+            style={m.syncing && gs.disabled}
+          >
+            <Text style={styles.syncNow}>Sync now</Text>
+          </Pressable>
+        </View>
       </Card>
 
       {m.yesterday !== '' && (
@@ -205,7 +220,7 @@ function GroupBody({ m }: { m: GroupsViewModel }) {
       </Pressable>
 
       <Card style={gs.card}>
-        <Text style={gs.label}>Open a group link</Text>
+        <Text style={gs.label}>Open an invite link</Text>
         <OpenLink m={m} />
       </Card>
     </>
@@ -216,6 +231,8 @@ const styles = StyleSheet.create({
   newBtn: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: 999, backgroundColor: color.accent },
   newBtnText: { fontFamily: font.bodySemiBold, fontSize: 13, color: '#ffffff' },
   dismiss: { fontSize: 14, color: color.tealDark, paddingHorizontal: 2 },
+  syncRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
+  syncNow: { fontSize: 12.5, fontFamily: font.bodySemiBold, color: color.accent700 },
   segWrap: {
     flexGrow: 1,
     flexDirection: 'row',

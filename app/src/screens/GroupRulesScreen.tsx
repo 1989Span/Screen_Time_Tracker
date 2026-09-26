@@ -45,8 +45,7 @@ export function GroupRulesScreen() {
 
       <Text style={g.subtitle}>
         Every app counts for everyone, unless the whole group agrees to leave one out, like music playing in the
-        background or maps while driving. Anyone can bring an app back. Your votes reach the others the next time you
-        share.
+        background or maps while driving. Anyone can bring an app back. Votes sync automatically.
       </Text>
 
       {r.alone && (

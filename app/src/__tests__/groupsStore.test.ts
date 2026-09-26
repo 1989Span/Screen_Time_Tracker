@@ -1,10 +1,11 @@
 import { Share } from 'react-native';
 
 import { dayStamp } from '../clock';
-import { groupLink, readGroupLink } from '../groupLink';
-import { Group, Member, agreeToExclude, makeGroup, newMember, shiftStamp } from '../groups';
+import { inviteLink, readInvite } from '../groupLink';
+import { Group, Member, newMember, shiftStamp } from '../groups';
 import { currentGroup, useGroupsStore } from '../state/groupsStore';
 import { useNavStore } from '../state/navStore';
+import { groupsApi } from '../sync/groupsApi';
 import { emptySource } from '../usage/emptySource';
 import { Series } from '../usage/series';
 import { SourceStatus, UsageSource, setUsageSource } from '../usage/source';
@@ -14,16 +15,24 @@ const view = () => useNavStore.getState().view;
 const initial = useGroupsStore.getState();
 
 const today = dayStamp();
-const created = shiftStamp(today, -3);
+const CODE = '0123456789abcdef0123456789abcdef';
 
-/** Alex's phone: a group Alex created, with Alex's numbers, shared as a link. */
-function alexLink(sharedAt: number, days: Record<string, number>, extra: Member[] = []): string {
-  const alex: Member = { ...newMember('alex0001', 'Alex Kim', created), sharedAt, days };
-  const g: Group = { id: 'fam00001', name: 'Family', created, members: [alex, ...extra] };
-  return groupLink(g, alex);
-}
+const me = (over: Partial<Member> = {}): Member => ({ ...newMember('me', 'Stewart', today), ...over });
+const alex = (over: Partial<Member> = {}): Member => ({
+  ...newMember('alex', 'Alex Kim', shiftStamp(today, -3)),
+  sharedAt: Date.now() - 60_000,
+  days: { [shiftStamp(today, -1)]: 100 },
+  ...over,
+});
+const family = (members: Member[] = [me(), alex()]): Group => ({
+  id: 'g1',
+  name: 'Family',
+  created: shiftStamp(today, -3),
+  inviteCode: CODE,
+  members,
+});
 
-/** A source whose every day has the same per-app minutes, for the share tests. */
+/** A loaded source whose every day has the same per-app minutes. */
 class SameEveryDay implements UsageSource {
   readonly id = 'same';
   readonly status: SourceStatus = 'ready';
@@ -44,167 +53,224 @@ class SameEveryDay implements UsageSource {
   invalidate() {}
 }
 
+/** Stubs every server call; tests override the ones they care about. */
+function stubServer() {
+  return {
+    signIn: jest.spyOn(groupsApi, 'signIn').mockResolvedValue('me'),
+    fetchGroups: jest.spyOn(groupsApi, 'fetchGroups').mockResolvedValue([family()]),
+    createGroup: jest.spyOn(groupsApi, 'createGroup').mockResolvedValue({ id: 'g1', inviteCode: CODE }),
+    joinGroup: jest.spyOn(groupsApi, 'joinGroup').mockResolvedValue({ id: 'g1', name: 'Family' }),
+    pushDays: jest.spyOn(groupsApi, 'pushDays').mockResolvedValue(),
+    updateMe: jest.spyOn(groupsApi, 'updateMe').mockResolvedValue(),
+    leaveGroup: jest.spyOn(groupsApi, 'leaveGroup').mockResolvedValue(),
+    deleteMyData: jest.spyOn(groupsApi, 'deleteMyData').mockResolvedValue(),
+    share: jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' } as never),
+  };
+}
+
 beforeEach(() => {
-  useGroupsStore.setState({ ...initial, selfId: 'me000001', selfName: '', groups: [], groupId: '' }, true);
+  jest.restoreAllMocks();
+  useGroupsStore.setState({ ...initial, selfId: '', selfName: '', groups: [], groupId: '', syncStatus: 'idle' }, true);
   useNavStore.setState({ view: 'ov' });
   setUsageSource(emptySource);
-  jest.restoreAllMocks();
 });
 
 describe('receiving an invite', () => {
-  it('asks before joining a group you are not in', () => {
-    expect(store().receive(alexLink(Date.now() - 1000, { [shiftStamp(today, -1)]: 100 }))).toBe(true);
-    expect(store().incoming?.name).toBe('Family');
+  it('asks before joining, and contacts nobody yet', () => {
+    const api = stubServer();
+    expect(store().receive(inviteLink(CODE, 'Family', 'Alex'))).toBe(true);
+    expect(store().incoming).toEqual({ code: CODE, groupName: 'Family', inviter: 'Alex' });
     expect(view()).toBe('groupJoin');
-    expect(store().groups).toEqual([]);
+    expect(api.signIn).not.toHaveBeenCalled();
   });
 
-  it('needs your name, then adds you and everyone the link carried', () => {
-    store().receive(alexLink(Date.now() - 1000, { [shiftStamp(today, -1)]: 100 }));
-    store().joinIncoming();
-    expect(store().groups).toEqual([]); // no name yet
+  it('needs your name, then joins on the server and syncs', async () => {
+    const api = stubServer();
+    store().receive(inviteLink(CODE, 'Family', 'Alex'));
+    await store().joinIncoming();
+    expect(api.joinGroup).not.toHaveBeenCalled(); // no name yet
 
     store().setSelfName('Stewart');
-    store().joinIncoming();
-    const g = currentGroup(store()) as Group;
-    expect(g.members.map((m) => m.id).sort()).toEqual(['alex0001', 'me000001']);
-    expect(g.members.find((m) => m.id === 'me000001')?.joined).toBe(today);
-    expect(g.members.find((m) => m.id === 'alex0001')?.days).toEqual({ [shiftStamp(today, -1)]: 100 });
+    await store().joinIncoming();
+    expect(api.joinGroup).toHaveBeenCalledWith(CODE, 'Stewart', today);
+    expect(store().selfId).toBe('me');
+    expect(currentGroup(store())?.name).toBe('Family');
     expect(store().incoming).toBeNull();
-    expect(store().notice).toContain('Alex');
+    expect(store().notice).toMatch(/sync automatically/);
     expect(view()).toBe('groups');
   });
 
-  it('declining leaves nothing behind', () => {
-    store().receive(alexLink(Date.now() - 1000, {}));
-    store().dismissIncoming();
-    expect(store().incoming).toBeNull();
+  it('uploads your numbers to a group the moment you join it', async () => {
+    const api = stubServer();
+    setUsageSource(new SameEveryDay({ 'com.a': 40 }));
+    store().setSelfName('Stewart');
+    store().receive(inviteLink(CODE, 'Family', 'Alex'));
+    await store().joinIncoming();
+    expect(api.pushDays).toHaveBeenCalledWith('g1', { [today]: 40 });
+    // Downloaded again, so your number shows alongside everyone else's.
+    expect(api.fetchGroups).toHaveBeenCalledTimes(2);
+  });
+
+  it("runs a join's sync even while another sync is under way", async () => {
+    const api = stubServer();
+    let release = () => {};
+    const gate = new Promise<void>((open) => (release = open));
+    api.fetchGroups.mockImplementationOnce(async () => {
+      await gate;
+      return [];
+    });
+    useGroupsStore.setState({ groups: [family()], selfId: 'me' });
+    const first = store().sync();
+    const second = store().sync();
+    release();
+    await Promise.all([first, second]);
+    expect(api.fetchGroups).toHaveBeenCalledTimes(2);
+  });
+
+  it('explains an invite that no longer works', async () => {
+    const api = stubServer();
+    api.joinGroup.mockRejectedValue(new Error('invite-not-found'));
+    store().setSelfName('Stewart');
+    store().receive(inviteLink(CODE, 'Family', 'Alex'));
+    await store().joinIncoming();
+    expect(store().error).toMatch(/doesn't work any more/);
     expect(store().groups).toEqual([]);
   });
-});
 
-describe('later links from the same group', () => {
-  // One timestamp for the first link, so resending that exact share really is nothing new.
-  const firstShare = Date.now() - 60_000;
-
-  beforeEach(() => {
-    store().setSelfName('Stewart');
-    store().receive(alexLink(firstShare, { [shiftStamp(today, -1)]: 100 }));
-    store().joinIncoming();
-  });
-
-  it('update the group in place instead of asking again', () => {
-    expect(store().receive(alexLink(Date.now() - 1000, { [today]: 42 }))).toBe(true);
-    const alex = currentGroup(store())?.members.find((m) => m.id === 'alex0001');
-    expect(alex?.days).toEqual({ [shiftStamp(today, -1)]: 100, [today]: 42 });
+  it("just opens a group you're already in", () => {
+    stubServer();
+    useGroupsStore.setState({ groups: [family()], selfId: 'me' });
+    store().receive(inviteLink(CODE, 'Family', 'Alex'));
     expect(store().incoming).toBeNull();
-    expect(store().notice).toBe('Updated Alex in "Family".');
-    expect(view()).toBe('groups');
+    expect(store().notice).toMatch(/already in/);
   });
 
-  it('say so when there is nothing new', () => {
-    store().receive(alexLink(firstShare, { [shiftStamp(today, -1)]: 100 }));
-    expect(store().notice).toBe('"Family" is already up to date.');
-  });
-
-  it('bring in members you had not met yet', () => {
-    const sam: Member = { ...newMember('sam00001', 'Sam', today), sharedAt: Date.now() - 5000 };
-    store().receive(alexLink(Date.now() - 1000, {}, [sam]));
-    expect(
-      currentGroup(store())
-        ?.members.map((m) => m.name)
-        .sort()
-    ).toEqual(['Alex Kim', 'Sam', 'Stewart']);
-  });
-});
-
-describe('pasting a link', () => {
-  it('rejects anything that is not a group link, and says so', () => {
+  it('rejects a pasted message with no invite in it', () => {
     store().setLinkDraft('hello there');
     store().openLinkDraft();
-    expect(store().linkError).toMatch(/isn't a Gauge group link/);
-    expect(store().receive('https://example.com')).toBe(false);
-  });
-
-  it('accepts a whole pasted message', () => {
-    store().setLinkDraft('Join us!\n' + alexLink(Date.now() - 1000, {}) + '\nbye');
-    store().openLinkDraft();
-    expect(store().linkError).toBeNull();
-    expect(store().incoming?.id).toBe('fam00001');
+    expect(store().error).toMatch(/isn't a Gauge invite link/);
   });
 });
 
-describe('creating and sharing', () => {
+describe('creating a group', () => {
   it('needs a group name and your name', async () => {
-    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' } as never);
+    const api = stubServer();
     store().setNgName('Work');
     await store().createGroup();
-    expect(store().groups).toEqual([]);
-    expect(share).not.toHaveBeenCalled();
+    expect(api.createGroup).not.toHaveBeenCalled();
   });
 
-  it('starts a group with only you and opens the invite', async () => {
-    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' } as never);
+  it('creates it on the server, syncs, and opens an invite', async () => {
+    const api = stubServer();
     store().setSelfName('Stewart');
     store().setNgName('Work');
     await store().createGroup();
-
-    const g = currentGroup(store()) as Group;
-    expect(g.name).toBe('Work');
-    expect(g.members.map((m) => m.id)).toEqual(['me000001']);
-    expect(share).toHaveBeenCalledTimes(1);
-    const message = (share.mock.calls[0][0] as { message: string }).message;
-    expect(message).toMatch(/^Join my group "Work"/);
-    expect(readGroupLink(message)?.id).toBe(g.id);
-  });
-
-  it('shares every app except the ones the group left out', async () => {
-    setUsageSource(new SameEveryDay({ 'com.a': 30, 'com.music': 20 }));
-    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' } as never);
-    store().setSelfName('Stewart');
-    store().receive(alexLink(Date.now() - 1000, {}));
-    store().joinIncoming();
-    // Both members agree to leave music out.
-    useGroupsStore.setState((s) => ({
-      groups: s.groups.map((g) =>
-        agreeToExclude(agreeToExclude(g, 'me000001', 'com.music', 'Music'), 'alex0001', 'com.music', 'Music')
-      ),
-    }));
-
-    await store().share('update');
-    const got = readGroupLink((share.mock.calls[0][0] as { message: string }).message);
-    const me = got?.members.find((m) => m.id === 'me000001');
-    // Joined today, so only today is shared: 30, not 50.
-    expect(me?.days).toEqual({ [today]: 30 });
-    expect(me?.name).toBe('Stewart');
-    expect(currentGroup(store())?.members.find((m) => m.id === 'me000001')?.sharedAt).toBeGreaterThan(0);
+    expect(api.createGroup).toHaveBeenCalledWith('Work', 'Stewart', today);
+    expect(api.share).toHaveBeenCalledTimes(1);
+    const message = (api.share.mock.calls[0][0] as { message: string }).message;
+    expect(readInvite(message)?.code).toBe(CODE);
   });
 });
 
-describe('votes and leaving', () => {
-  beforeEach(() => {
-    store().setSelfName('Stewart');
-    store().receive(alexLink(Date.now() - 1000, {}));
-    store().joinIncoming();
+describe('automatic sync', () => {
+  it('uploads your numbers for each group, then downloads everyone', async () => {
+    const api = stubServer();
+    setUsageSource(new SameEveryDay({ 'com.a': 30, 'com.b': 20 }));
+    useGroupsStore.setState({ groups: [family()], selfId: 'me', selfName: 'Stewart' });
+
+    await store().sync();
+
+    // Joined today, so only today goes up: every app counts.
+    expect(api.pushDays).toHaveBeenCalledWith('g1', { [today]: 50 });
+    expect(api.fetchGroups).toHaveBeenCalled();
+    expect(store().syncStatus).toBe('ok');
+    expect(store().lastSynced).toBeGreaterThan(0);
   });
 
-  it('a vote changes only your own entry', () => {
+  it('never uploads days it has no data for', async () => {
+    const api = stubServer();
+    // The empty source isn't loaded, so nothing is known.
+    useGroupsStore.setState({ groups: [family()], selfId: 'me', selfName: 'Stewart' });
+    await store().sync();
+    expect(api.pushDays).not.toHaveBeenCalled();
+    expect(api.fetchGroups).toHaveBeenCalled();
+  });
+
+  it('never signs in someone who has never used groups', async () => {
+    const api = stubServer();
+    await store().sync();
+    expect(api.signIn).not.toHaveBeenCalled();
+  });
+
+  it('keeps the cached groups when offline, and says so', async () => {
+    const api = stubServer();
+    api.fetchGroups.mockRejectedValue(new Error('Network request failed'));
+    const cached = family();
+    useGroupsStore.setState({ groups: [cached], selfId: 'me' });
+    await store().sync();
+    expect(store().syncStatus).toBe('offline');
+    expect(store().groups).toEqual([cached]);
+  });
+
+  it('saves a new name on the next sync', async () => {
+    const api = stubServer();
+    useGroupsStore.setState({ groups: [family()], selfId: 'me', selfName: 'Stewart' });
+    store().setSelfName('Stu');
+    await store().sync();
+    expect(api.updateMe).toHaveBeenCalledWith('g1', 'me', { name: 'Stu' });
+  });
+
+  it('lets one failing group not stop the others', async () => {
+    const api = stubServer();
+    setUsageSource(new SameEveryDay({ 'com.a': 30 }));
+    const other: Group = { ...family(), id: 'g2', inviteCode: 'f'.repeat(32) };
+    api.pushDays.mockImplementation(async (id) => {
+      if (id === 'g1') throw new Error('not a member');
+    });
+    useGroupsStore.setState({ groups: [family(), other], selfId: 'me' });
+    await store().sync();
+    expect(api.pushDays).toHaveBeenCalledWith('g2', { [today]: 30 });
+    expect(store().syncStatus).toBe('ok');
+  });
+});
+
+describe('votes, leaving and deleting', () => {
+  beforeEach(() => {
+    useGroupsStore.setState({ groups: [family()], groupId: 'g1', selfId: 'me', selfName: 'Stewart' });
+  });
+
+  it('a vote changes and saves only your own row', () => {
+    const api = stubServer();
     store().proposeExclude('com.maps', 'Maps');
     const g = currentGroup(store()) as Group;
-    expect(g.members.find((m) => m.id === 'me000001')?.excludes).toEqual({ 'com.maps': 'Maps' });
-    expect(g.members.find((m) => m.id === 'alex0001')?.excludes).toEqual({});
+    expect(g.members.find((m) => m.id === 'me')?.excludes).toEqual({ 'com.maps': 'Maps' });
+    expect(g.members.find((m) => m.id === 'alex')?.excludes).toEqual({});
+    expect(api.updateMe).toHaveBeenCalledWith('g1', 'me', { excludes: { 'com.maps': 'Maps' }, declines: [] });
   });
 
-  it('leaving removes the group from this phone, and its notice', () => {
-    store().leave();
+  it('leaving removes you on the server, then here, and clears the notice', async () => {
+    const api = stubServer();
+    useGroupsStore.setState({ notice: 'old news' });
+    await store().leave();
+    expect(api.leaveGroup).toHaveBeenCalledWith('g1', 'me');
     expect(store().groups).toEqual([]);
     expect(store().notice).toBeNull();
-    expect(view()).toBe('groups');
   });
 
-  it('renaming yourself updates your name in every group', () => {
-    store().setSelfName('Stu');
-    expect(currentGroup(store())?.members.find((m) => m.id === 'me000001')?.name).toBe('Stu');
+  it("doesn't pretend to leave when the server can't be reached", async () => {
+    const api = stubServer();
+    api.leaveGroup.mockRejectedValue(new Error('Network request failed'));
+    await store().leave();
+    expect(store().groups).toHaveLength(1);
+    expect(store().notice).toMatch(/Couldn't leave/);
+  });
+
+  it('deleting your data clears everything, including your server identity', async () => {
+    const api = stubServer();
+    await store().deleteMyData();
+    expect(api.deleteMyData).toHaveBeenCalled();
+    expect(store().selfId).toBe('');
+    expect(store().groups).toEqual([]);
   });
 });
 
@@ -212,25 +278,18 @@ describe('saved state', () => {
   const merge = (persisted: unknown) =>
     useGroupsStore.persist.getOptions().merge?.(persisted, store()) as ReturnType<typeof store>;
 
-  it('keeps your group identity and groups across restarts', () => {
-    const g = makeGroup('grp00001', 'Family', created, newMember('me000009', 'Me', created));
+  it('keeps your identity and cached groups across restarts', () => {
+    const g = family();
     const restored = merge(
-      JSON.parse(JSON.stringify({ selfId: 'me000009', selfName: 'Me', groups: [g], groupId: g.id }))
+      JSON.parse(JSON.stringify({ selfId: 'me', selfName: 'Me', groups: [g], groupId: 'g1', lastSynced: 5 }))
     );
-    expect(restored.selfId).toBe('me000009');
+    expect(restored.selfId).toBe('me');
     expect(restored.groups).toEqual([g]);
-    expect(restored.groupId).toBe('grp00001');
+    expect(restored.lastSynced).toBe(5);
   });
 
-  it('drops groups saved by the old contact-based design instead of half-loading them', () => {
-    const old = {
-      id: 'g-1',
-      name: 'Old',
-      created: 3,
-      members: [{ id: 'you', name: 'You', joined: 3, seed: 0, scale: [] }],
-    };
-    const restored = merge({ groups: [old], groupId: 'g-1' });
-    expect(restored.groups).toEqual([]);
-    expect(restored.groupId).toBe('');
+  it('drops groups from the link-based design, which never reached the server', () => {
+    const linkEra = { ...family(), inviteCode: undefined };
+    expect(merge({ groups: [linkEra], groupId: 'g1' }).groups).toEqual([]);
   });
 });

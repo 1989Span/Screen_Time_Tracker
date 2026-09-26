@@ -1,56 +1,58 @@
-// Groups: which groups you're in, who you are in them, and the actions that
-// move numbers between phones.
+// Groups: which groups you're in, your group identity, and syncing with the
+// group server.
 //
-// Persisted: your group identity (a random id plus the name you chose), your
-// groups and the one selected. Not persisted: a link waiting for you to join,
-// the notice shown after a link is applied, and form drafts.
+// The server holds the truth. This store keeps the last copy it returned, so
+// groups still show (with an "as of" time) when the phone is offline.
 //
-// Nothing is sent anywhere by this store. share() hands a link to the phone's
-// own share sheet, and the user picks who gets it.
+// Sync is automatic. It runs after every usage load (see sync/groupSync.ts),
+// from the background task every few hours (sync/groupsBackground.ts), and
+// after anything you change. Each sync uploads your recent daily totals for
+// every group you're in, then downloads everyone's.
+//
+// Persisted: your name, your server user id, the cached groups and the
+// selection. Not persisted: sync status, an invite waiting for Join, notices
+// and drafts.
 
 import { Share } from 'react-native';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import { dayStamp } from '../clock';
-import { ReceivedGroup, groupLink, readGroupLink } from '../groupLink';
-import {
-  Group,
-  Member,
-  NAME_MAX,
-  SHARE_DAYS,
-  agreeToExclude,
-  declineExclude,
-  excludedApps,
-  groupMinutes,
-  makeGroup,
-  mergeMembers,
-  newMember,
-  shiftStamp,
-  withdrawExclude,
-} from '../groups';
-import { reloadUsage } from '../usage/bootstrap';
+import { Invite, inviteLink, readInvite } from '../groupLink';
+import { Group, NAME_MAX, agreeToExclude, declineExclude, selfDays, withdrawExclude } from '../groups';
+import { groupsApi } from '../sync/groupsApi';
+import { groupsServerConfigured } from '../sync/supabase';
 import { usageSource } from '../usage/source';
 import { goTo } from './navStore';
 import { STORAGE_VERSION, deviceStorage, storageKey } from './storage';
 
 export const GROUP_NAME_MAX = NAME_MAX;
 
-/** Random id for you or a new group. Unique enough between friends. Not a secret. */
-export const randomId = (length = 12): string =>
-  Array.from({ length }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
+export type SyncStatus = 'idle' | 'syncing' | 'ok' | 'offline' | 'unconfigured';
+
+/** One day's per-app minutes, empty if unknown. See selfDays(). */
+export type DayReader = (stamp: string) => Record<string, number>;
+
+/** Reads days from the loaded usage source, and knows nothing until it has loaded. */
+const fromLoadedSource: DayReader = (stamp) =>
+  usageSource().status === 'ready' ? usageSource().allAppsDay(stamp) : {};
 
 interface GroupsState {
+  /** Your anonymous id on the group server. Empty until you first create or join. */
   selfId: string;
   selfName: string;
   groups: Group[];
   groupId: string;
-  /** A received link for a group you're not in, waiting for Join. */
-  incoming: ReceivedGroup | null;
-  /** One line shown after a link was applied or a group created. */
+  lastSynced: number;
+  syncStatus: SyncStatus;
+  /** A create or join is in flight. */
+  busy: boolean;
+  /** An invite waiting for you to join. */
+  incoming: Invite | null;
+  /** One line shown at the top of the Groups page. */
   notice: string | null;
-  /** Set when a pasted link couldn't be read. */
-  linkError: string | null;
+  /** Why a pasted link, a join or a create failed. */
+  error: string | null;
   ngName: string;
   linkDraft: string;
 
@@ -65,231 +67,293 @@ interface GroupsState {
   openNewGroup: () => void;
   setNgName: (name: string) => void;
   createGroup: () => Promise<void>;
+  /** Opens the share sheet with an invite link for the current group. */
+  invite: () => Promise<void>;
 
-  /** Opens the share sheet with a link carrying your latest numbers. */
-  share: (purpose: 'update' | 'invite') => Promise<void>;
-  /** Applies a group link, or a message containing one. False if it isn't one. */
+  /** Uploads your numbers and downloads everyone's. `readDay` defaults to the loaded usage. */
+  sync: (readDay?: DayReader) => Promise<void>;
+
   receive: (text: string) => boolean;
   setLinkDraft: (text: string) => void;
   openLinkDraft: () => void;
-  joinIncoming: () => void;
+  joinIncoming: () => Promise<void>;
   dismissIncoming: () => void;
 
   proposeExclude: (app: string, label: string) => void;
   withdrawVote: (app: string) => void;
   declineProposal: (app: string) => void;
 
-  leave: () => void;
+  leave: () => Promise<void>;
+  deleteMyData: () => Promise<void>;
 }
 
 export const currentGroup = (s: Pick<GroupsState, 'groups' | 'groupId'>): Group | null =>
   s.groups.find((g) => g.id === s.groupId) || s.groups[0] || null;
 
-/**
- * Your numbers for a group, computed from this phone for the last SHARE_DAYS
- * days you've been in it. Every app counts except the ones the group left out.
- */
-export function selfDays(g: Group, selfId: string, today: string): Record<string, number> {
-  const self = g.members.find((m) => m.id === selfId);
-  if (!self) return {};
-  const excluded = excludedApps(g);
-  const start = self.joined > g.created ? self.joined : g.created;
-  const days: Record<string, number> = {};
-  for (let k = 0; k < SHARE_DAYS; k++) {
-    const day = shiftStamp(today, -k);
-    if (day < start) break;
-    days[day] = groupMinutes(usageSource().allAppsDay(day), excluded);
-  }
-  return days;
-}
+/** Network failures read as offline; anything else is reported as it is. */
+const describe = (e: unknown): { offline: boolean; message: string } => {
+  const message = e instanceof Error ? e.message : String(e);
+  return { offline: /network|fetch|timed? ?out|failed to fetch/i.test(message), message };
+};
 
-const firstName = (m: Member) => m.name.split(' ')[0];
-const listNames = (names: string[]) =>
-  names.length <= 1 ? names.join('') : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
-
-/** Replaces the current group with `change(group)`. */
-const editGroup = (s: GroupsState, change: (g: Group) => Group): Partial<GroupsState> => {
-  const g = currentGroup(s);
-  if (!g) return {};
-  return { groups: s.groups.map((x) => (x.id === g.id ? change(x) : x)) };
+const JOIN_ERRORS: Record<string, string> = {
+  'invite-not-found': "That invite doesn't work any more. The group may have been deleted.",
+  'group-full': 'That group is full (30 members).',
 };
 
 export const useGroupsStore = create<GroupsState>()(
   persist(
-    (set, get) => ({
-      selfId: randomId(),
-      selfName: '',
-      groups: [],
-      groupId: '',
-      incoming: null,
-      notice: null,
-      linkError: null,
-      ngName: '',
-      linkDraft: '',
-
-      select: (groupId) => set({ groupId }),
-      openSettings: () => goTo('groupSettings'),
-      openRules: () => goTo('groupRules'),
-      backToGroups: () => goTo('groups'),
-      backToSettings: () => goTo('groupSettings'),
-      clearNotice: () => set({ notice: null }),
-
-      setSelfName: (name) =>
-        set((s) => {
-          const selfName = name.slice(0, NAME_MAX);
-          // Your name inside each group follows, so the next share carries it.
-          const groups = s.groups.map((g) => ({
-            ...g,
-            members: g.members.map((m) => (m.id === s.selfId ? { ...m, name: selfName.trim() || m.name } : m)),
-          }));
-          return { selfName, groups };
-        }),
-
-      openNewGroup: () => {
-        set({ ngName: '' });
-        goTo('newGroup');
-      },
-      setNgName: (name) => set({ ngName: name.slice(0, NAME_MAX) }),
-
-      createGroup: async () => {
+    (set, get) => {
+      /** Runs `change` on the current group's copy of you, then saves your votes. */
+      const vote = (change: (g: Group, selfId: string) => Group) => {
         const s = get();
-        const name = s.ngName.trim();
-        const selfName = s.selfName.trim();
-        if (!name || !selfName) return;
+        const g = currentGroup(s);
+        if (!g || !s.selfId) return;
+        const updated = change(g, s.selfId);
+        set({ groups: s.groups.map((x) => (x.id === g.id ? updated : x)) });
+        const me = updated.members.find((m) => m.id === s.selfId);
+        if (!me) return;
+        groupsApi
+          .updateMe(g.id, s.selfId, { excludes: me.excludes, declines: me.declines })
+          // The next sync restores the server's view if this didn't land.
+          .then(() => get().sync())
+          .catch(() => set({ notice: "Your vote couldn't be saved. It'll be retried when you're back online." }));
+      };
+
+      let queue = Promise.resolve();
+
+      /** Uploads your numbers (and any new name) to each group. Returns whether anything went up. */
+      const upload = async (groups: Group[], selfId: string, readDay: DayReader): Promise<boolean> => {
         const today = dayStamp();
-        const g = makeGroup(randomId(10), name, today, newMember(s.selfId, selfName, today));
-        set({ groups: s.groups.concat([g]), groupId: g.id, notice: null });
-        goTo('groups');
-        await get().share('invite');
-      },
+        const selfName = get().selfName.trim();
+        let sent = false;
+        for (const g of groups) {
+          try {
+            const days = selfDays(g, selfId, today, readDay);
+            if (Object.keys(days).length > 0) {
+              await groupsApi.pushDays(g.id, days);
+              sent = true;
+            }
+            const me = g.members.find((m) => m.id === selfId);
+            if (me && selfName && me.name !== selfName) await groupsApi.updateMe(g.id, selfId, { name: selfName });
+          } catch {
+            // One group failing (you were removed, say) mustn't stop the rest.
+          }
+        }
+        return sent;
+      };
 
-      share: async (purpose) => {
-        const g = currentGroup(get());
-        if (!g) return;
-        // Refresh first, so today's number is as of now rather than as of the
-        // last time the app loaded.
-        await reloadUsage().catch(() => {});
+      const runSync = async (readDay: DayReader): Promise<void> => {
+        if (!groupsServerConfigured()) {
+          set({ syncStatus: 'unconfigured' });
+          return;
+        }
         const s = get();
-        const self = g.members.find((m) => m.id === s.selfId);
-        if (!self) return;
-        const now = Date.now();
-        const fresh: Member = {
-          ...self,
-          name: s.selfName.trim() || self.name,
-          sharedAt: now,
-          days: selfDays(g, s.selfId, dayStamp()),
-        };
-        const link = groupLink(g, fresh);
-        const message =
-          purpose === 'invite'
-            ? `Join my group "${g.name}" on Gauge. Lowest screen time each day wins the point.\n` +
-              `Install Gauge, then open this link:\n${link}`
-            : `My screen time for "${g.name}" on Gauge. Open to update the group:\n${link}`;
-        await Share.share({ message });
-        // Remember when you last shared, for the "last shared" line.
-        set((st) =>
-          editGroup(st, (x) => ({
-            ...x,
-            members: x.members.map((m) => (m.id === st.selfId ? { ...m, sharedAt: now } : m)),
-          }))
-        );
-      },
+        // Someone who has never used groups never gets a server identity.
+        if (!s.selfId && s.groups.length === 0) return;
+        set({ syncStatus: 'syncing' });
+        try {
+          const selfId = await groupsApi.signIn();
+          const cached = get().groups;
+          await upload(cached, selfId, readDay);
+          let groups = await groupsApi.fetchGroups();
+          // A group you've just created or joined wasn't in the cache, so it
+          // gets its first upload now rather than on the next sync.
+          const fresh = groups.filter((g) => !cached.some((c) => c.id === g.id));
+          if (await upload(fresh, selfId, readDay)) groups = await groupsApi.fetchGroups();
+          const keep = groups.some((g) => g.id === get().groupId);
+          set({
+            selfId,
+            groups,
+            groupId: keep ? get().groupId : (groups[0]?.id ?? ''),
+            lastSynced: Date.now(),
+            syncStatus: 'ok',
+          });
+        } catch (e) {
+          set({
+            syncStatus: describe(e).offline ? 'offline' : 'idle',
+            notice: describe(e).offline ? null : "Couldn't sync: " + describe(e).message,
+          });
+        }
+      };
 
-      receive: (text) => {
-        const r = readGroupLink(text);
-        if (!r) return false;
-        const s = get();
-        const existing = s.groups.find((g) => g.id === r.id);
-        const stillMember = existing?.members.some((m) => m.id === s.selfId);
-        if (!existing || !stillMember) {
-          set({ incoming: r, linkError: null, linkDraft: '' });
+      return {
+        selfId: '',
+        selfName: '',
+        groups: [],
+        groupId: '',
+        lastSynced: 0,
+        syncStatus: 'idle',
+        busy: false,
+        incoming: null,
+        notice: null,
+        error: null,
+        ngName: '',
+        linkDraft: '',
+
+        select: (groupId) => set({ groupId }),
+        openSettings: () => goTo('groupSettings'),
+        openRules: () => goTo('groupRules'),
+        backToGroups: () => goTo('groups'),
+        backToSettings: () => goTo('groupSettings'),
+        clearNotice: () => set({ notice: null }),
+
+        // Saved to the server on the next sync, rather than on every keystroke.
+        setSelfName: (name) => set({ selfName: name.slice(0, NAME_MAX) }),
+
+        openNewGroup: () => {
+          set({ ngName: '', error: null });
+          goTo('newGroup');
+        },
+        setNgName: (name) => set({ ngName: name.slice(0, NAME_MAX) }),
+
+        createGroup: async () => {
+          const s = get();
+          const name = s.ngName.trim();
+          const selfName = s.selfName.trim();
+          if (!name || !selfName || s.busy) return;
+          set({ busy: true, error: null });
+          try {
+            const selfId = await groupsApi.signIn();
+            const { id } = await groupsApi.createGroup(name, selfName, dayStamp());
+            set({ selfId, groupId: id });
+            await get().sync();
+            goTo('groups');
+            await get().invite();
+          } catch (e) {
+            set({ error: "Couldn't create the group: " + describe(e).message });
+          } finally {
+            set({ busy: false });
+          }
+        },
+
+        invite: async () => {
+          const s = get();
+          const g = currentGroup(s);
+          if (!g?.inviteCode) return;
+          const link = inviteLink(g.inviteCode, g.name, s.selfName.trim() || 'A friend');
+          await Share.share({
+            message:
+              `Join my group "${g.name}" on Gauge. Lowest screen time each day wins the point.\n` +
+              `Install Gauge, then open this link:\n${link}`,
+          });
+        },
+
+        // Queued rather than skipped when one is already running: the sync a
+        // join starts must still run, or the new group wouldn't show up.
+        sync: (readDay = fromLoadedSource) => (queue = queue.then(() => runSync(readDay)).catch(() => {})),
+
+        receive: (text) => {
+          const invite = readInvite(text);
+          if (!invite) return false;
+          const already = get().groups.find((g) => g.inviteCode === invite.code);
+          if (already) {
+            set({ groupId: already.id, notice: `You're already in "${already.name}".`, linkDraft: '' });
+            goTo('groups');
+            return true;
+          }
+          set({ incoming: invite, error: null, linkDraft: '' });
           goTo('groupJoin');
           return true;
-        }
-        const merged = mergeMembers(existing, r.members, s.selfId);
-        const updated = r.members
-          .filter((m) => m.id !== s.selfId)
-          .filter((m) => {
-            const before = existing.members.find((x) => x.id === m.id);
-            return !before || m.sharedAt > before.sharedAt;
-          });
-        set({
-          groups: s.groups.map((g) => (g.id === r.id ? merged : g)),
-          groupId: r.id,
-          linkError: null,
-          linkDraft: '',
-          notice:
-            updated.length === 0
-              ? `"${existing.name}" is already up to date.`
-              : `Updated ${listNames(updated.map(firstName))} in "${existing.name}".`,
-        });
-        goTo('groups');
-        return true;
-      },
+        },
 
-      setLinkDraft: (text) => set({ linkDraft: text, linkError: null }),
-      openLinkDraft: () => {
-        const s = get();
-        if (!s.receive(s.linkDraft)) {
-          set({ linkError: "That isn't a Gauge group link. Paste the whole message you were sent." });
-        }
-      },
+        setLinkDraft: (text) => set({ linkDraft: text, error: null }),
+        openLinkDraft: () => {
+          if (!get().receive(get().linkDraft)) {
+            set({ error: "That isn't a Gauge invite link. Paste the whole message you were sent." });
+          }
+        },
 
-      joinIncoming: () => {
-        const s = get();
-        const r = s.incoming;
-        const selfName = s.selfName.trim();
-        if (!r || !selfName) return;
-        const today = dayStamp();
-        const base = makeGroup(r.id, r.name, r.created, newMember(s.selfId, selfName, today));
-        const joined = mergeMembers(base, r.members, s.selfId);
-        const sender = r.members.find((m) => m.id === r.senderId);
-        set({
-          groups: s.groups.filter((g) => g.id !== r.id).concat([joined]),
-          groupId: r.id,
-          incoming: null,
-          notice: `You joined "${r.name}". Tap Share my day so ${sender ? firstName(sender) : 'the others'} can see you.`,
-        });
-        goTo('groups');
-      },
+        joinIncoming: async () => {
+          const s = get();
+          const invite = s.incoming;
+          const selfName = s.selfName.trim();
+          if (!invite || !selfName || s.busy) return;
+          set({ busy: true, error: null });
+          try {
+            const selfId = await groupsApi.signIn();
+            const { id, name } = await groupsApi.joinGroup(invite.code, selfName, dayStamp());
+            set({ selfId, groupId: id, incoming: null });
+            await get().sync();
+            set({ notice: `You joined "${name}". Your numbers now sync automatically.` });
+            goTo('groups');
+          } catch (e) {
+            const m = describe(e).message;
+            set({ error: JOIN_ERRORS[m] ?? "Couldn't join: " + m });
+          } finally {
+            set({ busy: false });
+          }
+        },
 
-      dismissIncoming: () => {
-        set({ incoming: null });
-        goTo('groups');
-      },
-
-      proposeExclude: (app, label) => set((s) => editGroup(s, (g) => agreeToExclude(g, s.selfId, app, label))),
-      withdrawVote: (app) => set((s) => editGroup(s, (g) => withdrawExclude(g, s.selfId, app))),
-      declineProposal: (app) => set((s) => editGroup(s, (g) => declineExclude(g, s.selfId, app))),
-
-      leave: () =>
-        set((s) => {
-          const g = currentGroup(s);
-          if (!g) return {};
-          const groups = s.groups.filter((x) => x.id !== g.id);
+        dismissIncoming: () => {
+          set({ incoming: null, error: null });
           goTo('groups');
+        },
+
+        proposeExclude: (app, label) => vote((g, me) => agreeToExclude(g, me, app, label)),
+        withdrawVote: (app) => vote((g, me) => withdrawExclude(g, me, app)),
+        declineProposal: (app) => vote((g, me) => declineExclude(g, me, app)),
+
+        leave: async () => {
+          const s = get();
+          const g = currentGroup(s);
+          if (!g) return;
+          try {
+            if (s.selfId) await groupsApi.leaveGroup(g.id, s.selfId);
+          } catch (e) {
+            set({ notice: "Couldn't leave right now: " + describe(e).message });
+            return;
+          }
+          const groups = get().groups.filter((x) => x.id !== g.id);
           // A notice about the group you just left would only confuse.
-          return { groups, groupId: groups[0]?.id ?? '', notice: null };
-        }),
-    }),
+          set({ groups, groupId: groups[0]?.id ?? '', notice: null });
+          goTo('groups');
+        },
+
+        deleteMyData: async () => {
+          try {
+            if (get().selfId) await groupsApi.deleteMyData();
+          } catch (e) {
+            set({ notice: "Couldn't delete your group data right now: " + describe(e).message });
+            return;
+          }
+          set({
+            selfId: '',
+            groups: [],
+            groupId: '',
+            lastSynced: 0,
+            syncStatus: 'idle',
+            notice: 'Your group data was deleted from the server.',
+          });
+          goTo('groups');
+        },
+      };
+    },
     {
       name: storageKey('groups'),
       version: STORAGE_VERSION,
       storage: deviceStorage,
-      partialize: (s) => ({ selfId: s.selfId, selfName: s.selfName, groups: s.groups, groupId: s.groupId }),
+      partialize: (s) => ({
+        selfId: s.selfId,
+        selfName: s.selfName,
+        groups: s.groups,
+        groupId: s.groupId,
+        lastSynced: s.lastSynced,
+      }),
       merge: (persisted, current) => {
         const p = persisted as Partial<GroupsState> | undefined;
         if (!p) return current;
-        // Groups saved by the old, contact-based design have a different shape.
-        // Anything that doesn't validate is dropped rather than half-loaded.
+        // Groups saved by the older, link-based design have no invite code and
+        // aren't on the server. Anything that doesn't validate is dropped.
         const groups = Array.isArray(p.groups) ? p.groups.filter(isGroup) : [];
         const ids = new Set(groups.map((g) => g.id));
         return {
           ...current,
-          selfId: typeof p.selfId === 'string' && /^[a-z0-9]{6,32}$/.test(p.selfId) ? p.selfId : current.selfId,
-          selfName: typeof p.selfName === 'string' ? p.selfName.slice(0, NAME_MAX) : current.selfName,
+          selfId: typeof p.selfId === 'string' ? p.selfId : '',
+          selfName: typeof p.selfName === 'string' ? p.selfName.slice(0, NAME_MAX) : '',
           groups,
           groupId: typeof p.groupId === 'string' && ids.has(p.groupId) ? p.groupId : (groups[0]?.id ?? ''),
+          lastSynced: typeof p.lastSynced === 'number' ? p.lastSynced : 0,
         };
       },
     }
@@ -298,23 +362,6 @@ export const useGroupsStore = create<GroupsState>()(
 
 const isStampish = (v: unknown) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
 
-function isMember(v: unknown): v is Member {
-  const m = v as Partial<Member>;
-  return (
-    typeof m === 'object' &&
-    m !== null &&
-    typeof m.id === 'string' &&
-    typeof m.name === 'string' &&
-    isStampish(m.joined) &&
-    typeof m.sharedAt === 'number' &&
-    typeof m.days === 'object' &&
-    m.days !== null &&
-    typeof m.excludes === 'object' &&
-    m.excludes !== null &&
-    Array.isArray(m.declines)
-  );
-}
-
 function isGroup(v: unknown): v is Group {
   const g = v as Partial<Group>;
   return (
@@ -322,9 +369,20 @@ function isGroup(v: unknown): v is Group {
     g !== null &&
     typeof g.id === 'string' &&
     typeof g.name === 'string' &&
+    typeof g.inviteCode === 'string' &&
     isStampish(g.created) &&
     Array.isArray(g.members) &&
-    g.members.length > 0 &&
-    g.members.every(isMember)
+    g.members.every(
+      (m) =>
+        typeof m?.id === 'string' &&
+        typeof m.name === 'string' &&
+        isStampish(m.joined) &&
+        typeof m.sharedAt === 'number' &&
+        typeof m.days === 'object' &&
+        m.days !== null &&
+        typeof m.excludes === 'object' &&
+        m.excludes !== null &&
+        Array.isArray(m.declines)
+    )
   );
 }
