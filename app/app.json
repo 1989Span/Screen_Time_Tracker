@@ -36,6 +36,10 @@
     "extra": {
       "eas": {
         "projectId": "5435e821-f330-417e-adb1-1e36f63619cd"
+      },
+      "supabase": {
+        "url": "https://fzyafipyvajtxrzurdtl.supabase.co",
+        "publishableKey": "sb_publishable_u01Ei1LKriXFiRk3s7yivQ_KgOeFGKQ"
       }
     },
     "owner": "ragecage169"

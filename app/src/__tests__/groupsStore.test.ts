@@ -107,8 +107,6 @@ describe('receiving an invite', () => {
     store().receive(inviteLink(CODE, 'Family', 'Alex'));
     await store().joinIncoming();
     expect(api.pushDays).toHaveBeenCalledWith('g1', { [today]: 40 });
-    // Downloaded again, so your number shows alongside everyone else's.
-    expect(api.fetchGroups).toHaveBeenCalledTimes(2);
   });
 
   it("runs a join's sync even while another sync is under way", async () => {
@@ -173,7 +171,7 @@ describe('creating a group', () => {
 });
 
 describe('automatic sync', () => {
-  it('uploads your numbers for each group, then downloads everyone', async () => {
+  it('downloads everyone, then uploads your numbers to each group', async () => {
     const api = stubServer();
     setUsageSource(new SameEveryDay({ 'com.a': 30, 'com.b': 20 }));
     useGroupsStore.setState({ groups: [family()], selfId: 'me', selfName: 'Stewart' });
@@ -212,6 +210,17 @@ describe('automatic sync', () => {
     expect(store().groups).toEqual([cached]);
   });
 
+  it('follows rules the group agreed since the last sync', async () => {
+    const api = stubServer();
+    setUsageSource(new SameEveryDay({ 'com.a': 30, 'com.music': 20 }));
+    // This phone last saw only its own vote; the other member has agreed since.
+    const agreed = { 'com.music': 'Music' };
+    api.fetchGroups.mockResolvedValue([family([me({ excludes: agreed }), alex({ excludes: agreed })])]);
+    useGroupsStore.setState({ groups: [family([me({ excludes: agreed }), alex()])], selfId: 'me' });
+    await store().sync();
+    expect(api.pushDays).toHaveBeenCalledWith('g1', { [today]: 30 });
+  });
+
   it('saves a new name on the next sync', async () => {
     const api = stubServer();
     useGroupsStore.setState({ groups: [family()], selfId: 'me', selfName: 'Stewart' });
@@ -224,6 +233,7 @@ describe('automatic sync', () => {
     const api = stubServer();
     setUsageSource(new SameEveryDay({ 'com.a': 30 }));
     const other: Group = { ...family(), id: 'g2', inviteCode: 'f'.repeat(32) };
+    api.fetchGroups.mockResolvedValue([family(), other]);
     api.pushDays.mockImplementation(async (id) => {
       if (id === 'g1') throw new Error('not a member');
     });

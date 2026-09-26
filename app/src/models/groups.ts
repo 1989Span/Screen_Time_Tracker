@@ -8,7 +8,17 @@ import { useMemo } from 'react';
 
 import { dayStamp } from '../clock';
 import { fmtShort } from '../data';
-import { Group, Member, MIN_GROUP_SIZE, excludedApps, openProposals, selfDays, shiftStamp, standings } from '../groups';
+import {
+  GRACE_DAYS,
+  Group,
+  Member,
+  MIN_GROUP_SIZE,
+  excludedApps,
+  openProposals,
+  selfDays,
+  shiftStamp,
+  standings,
+} from '../groups';
 import { useAppsStore } from '../state/appsStore';
 import { currentGroup, useGroupsStore } from '../state/groupsStore';
 import { useNow } from '../state/useNow';
@@ -37,6 +47,9 @@ export const ago = (ms: number, now: number) => {
   const days = Math.round(m / (24 * 60));
   return days === 1 ? 'yesterday' : days + ' days ago';
 };
+/** When a member's phone last uploaded numbers, or that it hasn't yet. */
+const lastSynced = (m: Member, now: number) =>
+  m.sharedAt > 0 ? 'last synced ' + ago(m.sharedAt, now) : 'not synced yet';
 const firstName = (m: Member) => m.name.split(' ')[0];
 const listNames = (names: string[]) =>
   names.length <= 1 ? names.join('') : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
@@ -165,7 +178,7 @@ export function useGroupsModel(): GroupsViewModel {
         m.id === selfId
           ? 'live on this phone'
           : v === undefined
-            ? 'nothing synced today · last synced ' + ago(m.sharedAt, now)
+            ? 'nothing synced today · ' + lastSynced(m, now)
             : 'as of ' + clockTime(m.sharedAt),
       pct: v === undefined ? 0 : Math.max(2, (v / most) * 100),
     }));
@@ -193,7 +206,9 @@ export function useGroupsModel(): GroupsViewModel {
         "Yesterday's point is waiting for " +
         listNames(who) +
         (who.length === 1 && who[0] !== 'you' ? "'s phone" : '') +
-        ' to sync. Anyone who hasn’t within 2 days sits it out.';
+        ' to sync. Anyone who hasn’t within ' +
+        GRACE_DAYS +
+        ' days sits it out.';
     }
 
     const board = [...st.board].sort(
@@ -337,10 +352,7 @@ export function useGroupSettingsModel(): GroupSettingsViewModel | null {
       initial: m.name[0]?.toUpperCase() ?? '?',
       color: memberColor(m, s.selfId),
       detail:
-        'joined ' +
-        shortDate(m.joined) +
-        ' · ' +
-        (m.id === s.selfId ? 'syncs from this phone' : 'last synced ' + ago(m.sharedAt, now)),
+        'joined ' + shortDate(m.joined) + ' · ' + (m.id === s.selfId ? 'syncs from this phone' : lastSynced(m, now)),
     })),
     invite: () => void s.invite(),
     rulesNote: [

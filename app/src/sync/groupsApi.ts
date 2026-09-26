@@ -24,13 +24,13 @@ interface MemberRow {
   joined_day: string;
   excludes: Record<string, string> | null;
   declines: string[] | null;
-  updated_at: string;
 }
 interface DayRow {
   group_id: string;
   user_id: string;
   day: string;
   minutes: number;
+  updated_at: string;
 }
 
 async function selectAll<T>(table: string, columns: string): Promise<T[]> {
@@ -52,11 +52,15 @@ const safeName = (s: string) => cleanText(s, NAME_MAX) ?? '?';
 /** The rows the database lets you see, which are the groups you're in, as domain groups. */
 export function buildGroups(groups: GroupRow[], members: MemberRow[], days: DayRow[]): Group[] {
   const daysOf = new Map<string, Record<string, number>>();
+  // When each member last uploaded numbers. (The member row's updated_at also
+  // moves on a vote or rename, so it would overstate how fresh the numbers are.)
+  const uploadedAt = new Map<string, number>();
   for (const d of days) {
     const key = d.group_id + '/' + d.user_id;
     const map = daysOf.get(key) ?? {};
     map[d.day] = d.minutes;
     daysOf.set(key, map);
+    uploadedAt.set(key, Math.max(uploadedAt.get(key) ?? 0, Date.parse(d.updated_at) || 0));
   }
   return groups.map((g) => ({
     id: g.id,
@@ -69,7 +73,7 @@ export function buildGroups(groups: GroupRow[], members: MemberRow[], days: DayR
         id: m.user_id,
         name: safeName(m.name),
         joined: m.joined_day,
-        sharedAt: Date.parse(m.updated_at) || 0,
+        sharedAt: uploadedAt.get(g.id + '/' + m.user_id) ?? 0,
         days: daysOf.get(g.id + '/' + m.user_id) ?? {},
         excludes: Object.fromEntries(
           Object.entries(m.excludes ?? {}).map(([app, label]) => [app, cleanText(label, 60) ?? app])
@@ -87,8 +91,8 @@ export const groupsApi = {
   async fetchGroups(): Promise<Group[]> {
     const [groups, members, days] = await Promise.all([
       selectAll<GroupRow>('groups', 'id, name, created_day, invite_code'),
-      selectAll<MemberRow>('members', 'group_id, user_id, name, joined_day, excludes, declines, updated_at'),
-      selectAll<DayRow>('days', 'group_id, user_id, day, minutes'),
+      selectAll<MemberRow>('members', 'group_id, user_id, name, joined_day, excludes, declines'),
+      selectAll<DayRow>('days', 'group_id, user_id, day, minutes, updated_at'),
     ]);
     return buildGroups(groups, members, days);
   },

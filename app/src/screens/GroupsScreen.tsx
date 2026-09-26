@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 
 import { ChevronRightIcon, SettingsIcon } from '../components/Icons';
 import { Avatar, Card } from '../components/ui';
+import { GRACE_DAYS } from '../groups';
 import { GroupsViewModel, useGroupsModel } from '../models/groups';
 import { alpha, color, font } from '../theme';
 import { g as gs } from './groupStyles';
@@ -51,7 +52,7 @@ function OpenLink({ m }: { m: GroupsViewModel }) {
       <TextInput
         value={m.link.value}
         onChangeText={m.link.onChange}
-        placeholder="Paste a group link someone sent you"
+        placeholder="Paste an invite link someone sent you"
         placeholderTextColor={alpha(color.text, 35)}
         autoCorrect={false}
         autoCapitalize="none"
@@ -199,7 +200,8 @@ function GroupBody({ m }: { m: GroupsViewModel }) {
             </View>
           ))}
           <Text style={gs.meta}>
-            A day is scored once everyone has shared it. Numbers come from each person&rsquo;s own phone.
+            A day is scored once everyone&rsquo;s phone has synced it, or after {GRACE_DAYS} days. Numbers come from
+            each person&rsquo;s own phone.
           </Text>
         </Card>
       )}

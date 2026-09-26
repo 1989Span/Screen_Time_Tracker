@@ -6,8 +6,8 @@
 //
 // Sync is automatic. It runs after every usage load (see sync/groupSync.ts),
 // from the background task every few hours (sync/groupsBackground.ts), and
-// after anything you change. Each sync uploads your recent daily totals for
-// every group you're in, then downloads everyone's.
+// after anything you change. Each sync downloads every group you're in, then
+// uploads your recent daily totals to each.
 //
 // Persisted: your name, your server user id, the cached groups and the
 // selection. Not persisted: sync status, an invite waiting for Join, notices
@@ -122,25 +122,20 @@ export const useGroupsStore = create<GroupsState>()(
 
       let queue = Promise.resolve();
 
-      /** Uploads your numbers (and any new name) to each group. Returns whether anything went up. */
-      const upload = async (groups: Group[], selfId: string, readDay: DayReader): Promise<boolean> => {
+      /** Uploads your numbers (and any new name) to each group. */
+      const upload = async (groups: Group[], selfId: string, readDay: DayReader): Promise<void> => {
         const today = dayStamp();
         const selfName = get().selfName.trim();
-        let sent = false;
         for (const g of groups) {
           try {
             const days = selfDays(g, selfId, today, readDay);
-            if (Object.keys(days).length > 0) {
-              await groupsApi.pushDays(g.id, days);
-              sent = true;
-            }
+            if (Object.keys(days).length > 0) await groupsApi.pushDays(g.id, days);
             const me = g.members.find((m) => m.id === selfId);
             if (me && selfName && me.name !== selfName) await groupsApi.updateMe(g.id, selfId, { name: selfName });
           } catch {
-            // One group failing (you were removed, say) mustn't stop the rest.
+            // One group failing mustn't stop the rest.
           }
         }
-        return sent;
       };
 
       const runSync = async (readDay: DayReader): Promise<void> => {
@@ -154,13 +149,12 @@ export const useGroupsStore = create<GroupsState>()(
         set({ syncStatus: 'syncing' });
         try {
           const selfId = await groupsApi.signIn();
-          const cached = get().groups;
-          await upload(cached, selfId, readDay);
-          let groups = await groupsApi.fetchGroups();
-          // A group you've just created or joined wasn't in the cache, so it
-          // gets its first upload now rather than on the next sync.
-          const fresh = groups.filter((g) => !cached.some((c) => c.id === g.id));
-          if (await upload(fresh, selfId, readDay)) groups = await groupsApi.fetchGroups();
+          // Download first, so the upload follows the group's latest rules (an
+          // app everyone has just agreed to leave out, say) and reaches a group
+          // you've only just joined. Your own row is computed live on this
+          // phone, so it needn't be downloaded again afterwards.
+          const groups = await groupsApi.fetchGroups();
+          await upload(groups, selfId, readDay);
           const keep = groups.some((g) => g.id === get().groupId);
           set({
             selfId,
