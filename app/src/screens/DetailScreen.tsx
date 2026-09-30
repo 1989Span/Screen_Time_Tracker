@@ -83,7 +83,7 @@ export function DetailScreen() {
           ))}
         </View>
         <View style={styles.chartFooter}>
-          <Text style={styles.chartFooterText}>{d.axisNote}</Text>
+          <Text style={styles.chartFooterSelection}>{d.selection}</Text>
           <Text style={styles.chartFooterText}>Tap a bar to zoom in</Text>
         </View>
       </Card>
@@ -163,6 +163,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   chartFooterText: { fontSize: 11.5, color: alpha(color.text, 48) },
+  chartFooterSelection: { fontSize: 11.5, fontFamily: font.bodyBold, color: color.text },
   bkHeadRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 4 },
   bkTitle: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 17, color: color.text },
   bkCount: { fontSize: 12, color: alpha(color.text, 48) },

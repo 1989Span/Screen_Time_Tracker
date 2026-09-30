@@ -161,8 +161,8 @@ export interface Bucket {
   per: number[];
   tick: string;
   label: string;
-  /** The calendar day a week or month bar covers. */
-  date?: Date;
+  /** Shown under the chart when this bar is tapped: an hour range, a full date, or a month. */
+  name: string;
 }
 
 export function buckets(range: RangeId): Bucket[] {
@@ -174,6 +174,7 @@ export function buckets(range: RangeId): Bucket[] {
         per: hourByCat(0, h),
         tick: h % 6 === 0 ? (h === 0 ? '12a' : h === 12 ? '12p' : (h % 12) + (h < 12 ? 'a' : 'p')) : '',
         label: hourLabel(h) + ', today',
+        name: hourLabel(h),
       });
     }
   } else if (range === 'week' || range === 'month') {
@@ -184,7 +185,7 @@ export function buckets(range: RangeId): Bucket[] {
         per: dayByCat(i),
         tick: range === 'week' ? DOWI[d.getDay()] : String(d.getDate()),
         label: dstr(i),
-        date: d,
+        name: longDate(d),
       });
     }
   } else {
@@ -198,7 +199,12 @@ export function buckets(range: RangeId): Bucket[] {
         if (idx < 0) continue;
         dayByCat(idx).forEach((v, a) => (per[a] += v));
       }
-      out.push({ per, tick: MON[d.getMonth()][0], label: MON[d.getMonth()] + ' ' + d.getFullYear() });
+      out.push({
+        per,
+        tick: MON[d.getMonth()][0],
+        label: MON[d.getMonth()] + ' ' + d.getFullYear(),
+        name: MONTH_NAME[d.getMonth()] + ' ' + d.getFullYear(),
+      });
     }
   }
   return out;

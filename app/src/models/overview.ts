@@ -12,7 +12,6 @@ import {
   fmt,
   fmtShort,
   limLabel,
-  longDate,
   prevTotal,
   series,
   slice,
@@ -36,8 +35,6 @@ const PREV_NAME: Record<RangeId, string> = {
   month: 'last month',
   year: 'last year',
 };
-// Month leaves this blank and names the tapped day there instead (see axisNote).
-const AXIS_NOTE: Record<RangeId, string> = { day: 'By hour', week: 'By day', month: '', year: 'By month' };
 
 export interface Change {
   text: string;
@@ -159,7 +156,8 @@ export interface DetailViewModel {
   comp: Segment[];
   stacks: StackBar[];
   rows: DetailRow[];
-  axisNote: string;
+  /** The tapped bar's full name (an hour range, a date or a month), or blank when none is tapped. */
+  selection: string;
   count: string;
   gap: number;
   goOverview: () => void;
@@ -181,7 +179,6 @@ export function useDetailModel(): DetailViewModel {
     const m = slice(range, selected);
     const change = changeVsPrevious(m.total, prevTotal(range), PREV_NAME[range]);
     const todayPer = dayUsage();
-    const selDate = m.sel != null ? m.bk[m.sel].date : undefined;
 
     return {
       range,
@@ -225,7 +222,7 @@ export function useDetailModel(): DetailViewModel {
           onPress: () => openTimer(id),
         };
       }),
-      axisNote: range === 'month' && selDate ? longDate(selDate) : AXIS_NOTE[range],
+      selection: m.sel != null ? m.bk[m.sel].name : '',
       count: m.rows.length + (m.rows.length === 1 ? ' app' : ' apps'),
       gap: range === 'month' ? 2 : range === 'day' ? 3 : 7,
       goOverview: () => go('ov'),
