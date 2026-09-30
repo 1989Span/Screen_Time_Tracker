@@ -24,6 +24,21 @@ export type { Cat };
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DOWI = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const DAY_NAME = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTH_NAME = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
 export const RANGE_LABEL: Record<RangeId, string> = { day: 'Day', week: 'Week', month: 'Month', year: 'Year' };
 export const N_DAYS: Record<RangeId, number> = { day: 1, week: 7, month: 30, year: 365 };
 
@@ -113,6 +128,12 @@ function dstr(idx: number): string {
   return DOW[d.getDay()] + ' ' + d.getDate() + ' ' + MON[d.getMonth()];
 }
 
+/** "Tuesday, September 29, 2026". Spelled out here rather than left to the
+ *  phone's locale, so it reads the same on every device. */
+export function longDate(d: Date): string {
+  return DAY_NAME[d.getDay()] + ', ' + MONTH_NAME[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+}
+
 function dshort(idx: number): string {
   const d = dateAt(idx);
   return d.getDate() + ' ' + MON[d.getMonth()];
@@ -140,6 +161,8 @@ export interface Bucket {
   per: number[];
   tick: string;
   label: string;
+  /** The calendar day a week or month bar covers. */
+  date?: Date;
 }
 
 export function buckets(range: RangeId): Bucket[] {
@@ -157,7 +180,12 @@ export function buckets(range: RangeId): Bucket[] {
     const n = range === 'week' ? 7 : 30;
     for (let i = n - 1; i >= 0; i--) {
       const d = dateAt(i);
-      out.push({ per: dayByCat(i), tick: range === 'week' ? DOWI[d.getDay()] : String(d.getDate()), label: dstr(i) });
+      out.push({
+        per: dayByCat(i),
+        tick: range === 'week' ? DOWI[d.getDay()] : String(d.getDate()),
+        label: dstr(i),
+        date: d,
+      });
     }
   } else {
     for (let i = 11; i >= 0; i--) {

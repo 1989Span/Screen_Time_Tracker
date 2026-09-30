@@ -12,6 +12,7 @@ import {
   fmt,
   fmtShort,
   limLabel,
+  longDate,
   prevTotal,
   series,
   slice,
@@ -35,7 +36,8 @@ const PREV_NAME: Record<RangeId, string> = {
   month: 'last month',
   year: 'last year',
 };
-const AXIS_NOTE: Record<RangeId, string> = { day: 'By hour', week: 'By day', month: 'By day', year: 'By month' };
+// Month leaves this blank and names the tapped day there instead (see axisNote).
+const AXIS_NOTE: Record<RangeId, string> = { day: 'By hour', week: 'By day', month: '', year: 'By month' };
 
 export interface Change {
   text: string;
@@ -179,6 +181,7 @@ export function useDetailModel(): DetailViewModel {
     const m = slice(range, selected);
     const change = changeVsPrevious(m.total, prevTotal(range), PREV_NAME[range]);
     const todayPer = dayUsage();
+    const selDate = m.sel != null ? m.bk[m.sel].date : undefined;
 
     return {
       range,
@@ -222,7 +225,7 @@ export function useDetailModel(): DetailViewModel {
           onPress: () => openTimer(id),
         };
       }),
-      axisNote: AXIS_NOTE[range],
+      axisNote: range === 'month' && selDate ? longDate(selDate) : AXIS_NOTE[range],
       count: m.rows.length + (m.rows.length === 1 ? ' app' : ' apps'),
       gap: range === 'month' ? 2 : range === 'day' ? 3 : 7,
       goOverview: () => go('ov'),
