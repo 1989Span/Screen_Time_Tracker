@@ -34,6 +34,23 @@
   </queries>
 
   <application>
+    <!-- Group request notifications arrive by push (expo-notifications, see
+         src/sync/groupNotifications.ts). Without these they would show the app's
+         full-colour launcher icon, which Android flattens to a white square. The
+         Firebase keys cover any message Firebase draws itself. -->
+    <meta-data
+        android:name="expo.modules.notifications.default_notification_icon"
+        android:resource="@drawable/gauge_nudge_icon" />
+    <meta-data
+        android:name="expo.modules.notifications.default_notification_color"
+        android:resource="@color/gauge_notification_color" />
+    <meta-data
+        android:name="com.google.firebase.messaging.default_notification_icon"
+        android:resource="@drawable/gauge_nudge_icon" />
+    <meta-data
+        android:name="com.google.firebase.messaging.default_notification_color"
+        android:resource="@color/gauge_notification_color" />
+
     <!-- Home-screen widget. Exported because the system widget host has to
          deliver APPWIDGET_UPDATE to it. A stray update from another app only
          causes a harmless redraw. -->

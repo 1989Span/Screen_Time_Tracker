@@ -7,14 +7,18 @@ import {
   N_DAYS,
   RANGE_LABEL,
   RangeId,
+  countsUnlocks,
   dayUsage,
   factFor,
   fmt,
   fmtShort,
+  fmtUnlocks,
   limLabel,
   prevTotal,
+  prevUnlocks,
   series,
   slice,
+  unlockBuckets,
 } from '../data';
 import { useAppsStore } from '../state/appsStore';
 import { rangeAvailability } from '../usage/rangeAvailability';
@@ -77,6 +81,8 @@ export interface OverviewCard {
   /** Null when the range is fully covered; otherwise how partial it is, so a
    *  month-to-date chart cannot be mistaken for a whole month. */
   coverageNote: string | null;
+  /** "301 unlocks · 43/day", or null on a phone that can't count unlocks. */
+  unlocks: string | null;
   top: CategoryRow[];
   comp: Segment[];
   onPress: () => void;
@@ -96,9 +102,11 @@ export function useOverviewModel(): OverviewViewModel {
     const label = dates();
     const seriesList = series();
     const coverage = rangeAvailability(historyDays);
+    const withUnlocks = countsUnlocks();
     return {
       cards: RANGE_IDS.map((id) => {
         const sl = slice(id, null);
+        const unlocks = withUnlocks ? unlockBuckets(id).reduce((a, b) => a + b, 0) : 0;
         return {
           id,
           label: RANGE_LABEL[id],
@@ -108,6 +116,9 @@ export function useOverviewModel(): OverviewViewModel {
           avg: id === 'day' ? 'so far today' : fmtShort(sl.total / N_DAYS[id]) + '/day',
           more: sl.rows.length > 3 ? '+' + (sl.rows.length - 3) + ' more' : '',
           coverageNote: coverage[id].note,
+          unlocks: !withUnlocks
+            ? null
+            : fmtUnlocks(unlocks) + (id === 'day' ? '' : ' · ' + Math.round(unlocks / N_DAYS[id]) + '/day'),
           top: sl.rows.slice(0, 3),
           comp: sl.order.map((ci) => ({
             w: (sl.scoped[ci] / Math.max(1, sl.total)) * 100,
@@ -153,6 +164,10 @@ export interface DetailViewModel {
   delta: string;
   deltaPositive: boolean;
   deltaNeutral: boolean;
+  /** Unlocks in the range or tapped bar, or null on a phone that can't count them. */
+  unlocks: string | null;
+  /** How unlocks compare with the period before. Null with a bar tapped, or without unlocks. */
+  unlockDelta: Change | null;
   comp: Segment[];
   stacks: StackBar[];
   rows: DetailRow[];
@@ -179,6 +194,9 @@ export function useDetailModel(): DetailViewModel {
     const m = slice(range, selected);
     const change = changeVsPrevious(m.total, prevTotal(range), PREV_NAME[range]);
     const todayPer = dayUsage();
+    const withUnlocks = countsUnlocks();
+    const unlockBars = withUnlocks ? unlockBuckets(range) : [];
+    const unlocks = m.sel != null ? (unlockBars[m.sel] ?? 0) : unlockBars.reduce((a, b) => a + b, 0);
 
     return {
       range,
@@ -196,6 +214,10 @@ export function useDetailModel(): DetailViewModel {
       delta: m.sel != null ? 'Tap the bar again to clear' : change.text,
       deltaPositive: change.positive,
       deltaNeutral: m.sel != null || change.neutral,
+      unlocks: withUnlocks ? fmtUnlocks(unlocks) : null,
+      // Counts compare like minutes do: nothing before means no percentage.
+      unlockDelta:
+        withUnlocks && m.sel == null ? changeVsPrevious(unlocks, prevUnlocks(range), PREV_NAME[range]) : null,
       comp: m.order.map((ci) => ({ w: (m.scoped[ci] / Math.max(1, m.total)) * 100, color: tone(seriesList, ci) })),
       stacks: m.bk.map((b, i) => {
         const segs = m.order

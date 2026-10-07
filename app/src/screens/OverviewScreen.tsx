@@ -5,7 +5,7 @@ import { Card, CompositionBar, Dot } from '../components/ui';
 import { FactBox } from '../components/FactBox';
 import { PenaltyCard } from '../components/PenaltyCard';
 import { PENALTY_LIMIT_ENABLED } from '../features';
-import { ChevronRightIcon } from '../components/Icons';
+import { ChevronRightIcon, LockIcon } from '../components/Icons';
 import { useOverviewModel } from '../models/overview';
 
 export function OverviewScreen() {
@@ -32,6 +32,13 @@ export function OverviewScreen() {
                   <Text style={styles.metaText}>{c.avg}</Text>
                 </View>
               </View>
+
+              {c.unlocks !== null && (
+                <View style={styles.unlockRow}>
+                  <LockIcon size={13} color={alpha(color.text, 55)} />
+                  <Text style={styles.unlockText}>{c.unlocks}</Text>
+                </View>
+              )}
 
               {/* A partial range still shows its real numbers, but says so, so a
                   month-to-date total is not read as a whole month. */}
@@ -111,6 +118,8 @@ const styles = StyleSheet.create({
   },
   moreText: { fontSize: 12, fontFamily: font.bodySemiBold, color: color.accent700 },
   coverageNote: { fontSize: 11, color: alpha(color.text, 45) },
+  unlockRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -4 },
+  unlockText: { fontSize: 12.5, fontFamily: font.bodySemiBold, color: alpha(color.text, 62) },
   fullRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   fullText: { fontSize: 12, fontFamily: font.bodySemiBold, color: color.accent700 },
 });

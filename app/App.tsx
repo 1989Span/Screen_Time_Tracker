@@ -27,6 +27,7 @@ import { PermissionScreen } from './src/screens/PermissionScreen';
 import { useSetupGate } from './src/state/useSetupGate';
 import { useIncomingLinks } from './src/state/incomingLinks';
 import { useNudgePrompt } from './src/state/nudges';
+import { useGroupNotifications } from './src/sync/groupNotifications';
 import { DISABLED_VIEWS } from './src/features';
 
 export default function App() {
@@ -66,6 +67,8 @@ function Tracker() {
   const gate = useSetupGate();
   // Widget taps open a range's breakdown; group links join or update a group.
   useIncomingLinks(hydrated);
+  // Tapping a group request notification opens that group's requests.
+  useGroupNotifications(hydrated);
   // Hourly nudges are on by default. Ask for notification permission once,
   // after setup, when there is finally something to nudge about.
   useNudgePrompt(hydrated && gate === null);

@@ -64,7 +64,7 @@
 <main>
 <article>
   <h1>Gauge Privacy Policy</h1>
-  <p class="effective">Effective September 26, 2026</p>
+  <p class="effective">Effective October 6, 2026</p>
 
   <p class="summary"><strong>In short:</strong> Gauge shows you how much time you spend in the apps on
   your phone. Everything it reads and stores stays on your phone, with one exception: if you create or
@@ -77,6 +77,9 @@
     were in the foreground and for how long. Android keeps this behind a setting called
     <em>Usage access</em> (on some phones, <em>Usage data access</em>), which only you can turn on
     in Android's settings. Gauge cannot turn it on for you.</li>
+    <li><strong>Unlocks.</strong> Through the same Usage access, Gauge reads when your phone was
+    unlocked, so it can show how many times you unlock it each day. It stores only a count per day,
+    on your phone, and never shares it, not even with a group.</li>
     <li><strong>Your list of apps.</strong> Gauge reads the names of the apps on your phone that have
     a home-screen icon, so you can choose which ones to track.</li>
   </ul>
@@ -97,6 +100,10 @@
   another hour. These reminders are created on your phone from the same data. Nothing is sent
   to a server to produce them. You can turn them off with the Hourly nudges switch in Gauge's
   Settings, or in Android's notification settings.</p>
+  <p>If you're in a group, Gauge also notifies you when another member asks to stop tracking an app
+  in the group, and, if you asked, how each member votes. These come from the group server, as
+  described <a href="#notifications">below</a>. You can turn them off in Android's notification
+  settings, under <em>Group requests</em>.</p>
 
   <h2>What Gauge shares</h2>
   <p>Outside of Groups, nothing. Gauge never sends your usage data to the developer, and it contains no
@@ -115,7 +122,9 @@
     <li>your total screen time for each day you've been in the group, counting every app except any
     the group agreed to leave out. It never sends which apps you used, or when;</li>
     <li>any apps you vote to leave out of the group's totals, by their name and Android package
-    name (such as <em>com.example.app</em>).</li>
+    name (such as <em>com.example.app</em>), and whether you were the one who asked;</li>
+    <li>a push token: a random address that lets the group server send notifications to this copy of
+    Gauge. It identifies the app on your phone, not you, and is never shown to other members.</li>
   </ul>
   <p>If you create a group, its name is stored too.</p>
 
@@ -129,6 +138,12 @@
   <p>There is no sign-up and no email address. The first time you create or join a group, the server
   gives your phone a random, anonymous ID, which Gauge keeps so the server knows which totals are
   yours.</p>
+  <h3 id="notifications">Group notifications</h3>
+  <p>When a member asks to stop tracking an app, or votes on that request, the group server sends a
+  notification to the other members' phones (or to the person who asked). It goes through Expo's push
+  notification service and Google's Firebase Cloud Messaging, which deliver it to your phone. The
+  notification contains the member's display name, the app's name and the group's name. Expo and
+  Google handle it only to deliver it.</p>
   <p>Invite links contain the group's name, the inviter's name and a random invite code, and nothing
   else. They point to a page on this site, but that information sits after the <em>#</em> in the
   link, a part browsers never send to a website, so this site never receives it.</p>
@@ -136,7 +151,8 @@
   <h3>How long it's kept</h3>
   <p>Daily totals older than 400 days are deleted automatically. If your phone doesn't sync with a
   group for 400 days, for example because you uninstalled Gauge, you're removed from the group and your
-  totals are deleted. A group is deleted when its last member leaves.</p>
+  totals are deleted. A group is deleted when its last member leaves. Your push token is deleted
+  when you leave your last group.</p>
 
   <h2 id="choices">Your choices</h2>
   <ul>
@@ -145,8 +161,8 @@
     <li><strong>Leave a group</strong> in Gauge, under the group's settings. Your name, votes and daily
     totals are deleted from that group on the server straight away, and nothing more is sent to it.</li>
     <li><strong>Delete your group data</strong> in Gauge, under any group's settings, with
-    <em>Delete my group data</em>. That deletes all your group memberships, daily totals and votes, and
-    your anonymous ID, from the server.</li>
+    <em>Delete my group data</em>. That deletes all your group memberships, daily totals and votes,
+    your push token and your anonymous ID from the server.</li>
     <li><strong>Already uninstalled Gauge?</strong> Email
     <a href="mailto:c2lomon@gmail.com">c2lomon@gmail.com</a> with the group's name and the name you
     used in it, and your group data will be deleted. It is also deleted automatically after 400 days

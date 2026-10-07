@@ -50,3 +50,8 @@ modules/*/android/.gradle/
 # Store screenshots are real usage from the developer's phone. They are uploaded
 # to the Play listing by hand and are not repo content.
 store/screenshots/
+
+# Firebase service account keys are private: they're uploaded to EAS by hand
+# (eas credentials) and must never be committed or sent with a build.
+*firebase-adminsdk*.json
+fcm-key.json

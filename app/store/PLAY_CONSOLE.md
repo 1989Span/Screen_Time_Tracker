@@ -31,34 +31,34 @@ See where your screen time goes, app by app, and compete with friends to cut it.
 **Full description** (4000 max)
 
 ```
-Gauge shows you exactly how much time you spend in each app, today and over the weeks, months and year.
+Gauge shows you exactly how much time you spend in each app, today and across the week, month and year.
 
 PICK THE APPS THAT MATTER
-Choose each app you want to measure from the apps installed on your phone, or select them all at once. Gauge tracks per app, not by broad category, so you see Instagram, not "Social".
+Choose the apps you want to measure from the ones installed on your phone, or select them all at once. Gauge tracks each app on its own, not by broad category, so you see Instagram, not "Social".
 
 TODAY, THIS WEEK, THIS MONTH, THIS YEAR
-See today hour by hour, and your totals for the week, month and year so far. Tap any period for a full breakdown: which apps took the most time, how today compares with yesterday, and a chart you can tap to focus on a single day or hour.
+See today hour by hour, plus your totals for the week, month and year so far, each compared with the period before. Gauge also counts how many times you unlock your phone, next to each total. Tap any period for a full breakdown: which apps took the most time, and a chart you can tap to focus on a single hour or day.
 
 DAILY LIMITS
-Give any app a daily time budget and see at a glance how much is left, or when you've gone over. Budgets start fresh at midnight.
+Give any app a daily time budget and see at a glance how much is left, or when you've gone over. Budgets reset at midnight.
 
 HOME SCREEN WIDGET
 Keep your total for today, the week, the month or the year on your home screen. Choose the range when you place the widget, and tap it to open the full breakdown.
 
 GROUPS
-Compete with friends or family for the lowest screen time. Invite people with a link. Once they join, everyone's daily totals sync automatically, so nobody has to remember to share, and the lowest total each day wins the point. No sign-up, and never a list of which apps anyone used.
+Compete with friends or family for the lowest screen time. Start a group and invite people with a link, sent by text, WhatsApp or anything else. Once they join, everyone's daily totals sync automatically and the lowest total each day wins the point. Follow the points and winning streaks. If an app shouldn't count, like music playing in the background or maps while driving, ask to stop tracking it: everyone gets a notification to vote, and it stops counting only if the whole group agrees. No sign-up needed.
 
 HOURLY NUDGES
-Each time today's screen time passes another hour, Gauge sends a short, slightly cheeky reminder to look up. Turn them off any time in Settings.
+Each time today's screen time passes another hour, Gauge sends a short reminder to look up. Turn them off any time in Settings.
 
 KEEPS COUNTING WHEN YOU DON'T LOOK
-Android only keeps a short window of detailed usage history. Gauge saves it as it goes, including in the background, so your history keeps building for up to a year even if you don't open the app for weeks.
+Android only keeps a short window of detailed usage history. Gauge saves it as it goes, including in the background, so your history keeps building for more than a year, even if you don't open the app for weeks.
 
 PRIVATE BY DESIGN
-Your usage stays on your phone. There are no ads, no analytics and no sign-up. Groups are the one exception: they share your display name and daily totals with the members of groups you choose to join, and never which apps you used.
+No ads, no analytics and no account. Your app-by-app usage never leaves your phone. If you join a group, Gauge syncs only your display name and daily totals so the other members can see them. You can leave a group, or delete your group data, at any time.
 
 HOW IT WORKS
-Android keeps app usage behind a permission called Usage access, which only you can switch on. Gauge walks you through it on first launch. It reads which app was open and for how long, never what you do inside other apps.
+Android keeps app usage behind a permission called Usage access, which only you can switch on. Gauge walks you through it the first time you open the app. It reads which app was open and for how long, never what you do inside other apps.
 ```
 
 **Graphics**
@@ -113,10 +113,13 @@ send anything), purpose **App functionality** only.
 | Personal info > Name | The display name chosen for groups |
 | Personal info > User IDs | The random anonymous ID Supabase issues |
 | App activity > App interactions | Total screen time per day. It's about app usage and is the closest fit Play offers. |
-| App activity > Installed apps | Package names of apps someone votes to leave out of a group's totals |
+| App activity > Installed apps | Package names of apps someone votes to leave out of a group's totals, and who asked |
+| Device or other IDs | The Expo push token that lets the server notify the phone about group requests (`push_tokens`, migration 0002) |
 
 **Shared: no.** Supabase stores the data on Gauge's behalf as a service provider,
-which Play doesn't count as sharing. Other members see your totals only after you
+which Play doesn't count as sharing. The same goes for Expo's push service and
+Firebase Cloud Messaging, which only deliver group notifications (member name,
+app name, group name). Other members see your totals only after you
 join their group on a screen that says exactly what they'll see. That is a
 transfer the user starts and expects, which Play also exempts.
 
@@ -136,7 +139,11 @@ Shipped permissions: `INTERNET`, `ACCESS_NETWORK_STATE`, `PACKAGE_USAGE_STATS`,
 `POST_NOTIFICATIONS`, `FOREGROUND_SERVICE`, `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `VIBRATE`,
 plus the app's own `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. `INTERNET` and
 `ACCESS_NETWORK_STATE` are used by Groups sync. `POST_NOTIFICATIONS` is for
-the hourly nudges. It is a normal runtime permission with no Play form. The nudges use
+the hourly nudges and group request notifications. It is a normal runtime permission with no Play form.
+Group notifications arrive through Firebase Cloud Messaging (`expo-notifications`), which adds
+`com.google.android.c2dm.permission.RECEIVE` (no form), plus launcher badge permissions
+(Samsung, Huawei and others) and the Play install-referrer binding, none of which need a form. `AD_ID` and the exact-alarm pair are in
+`blockedPermissions` in case a dependency brings them in. The nudges use
 inexact, non-wakeup alarms, so there is no `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM` (both
 restricted by Play) and no foreground service. Check any build with a parser that reads
 whole `<uses-permission>` elements. A line-based grep misses elements whose

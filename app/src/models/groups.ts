@@ -248,7 +248,7 @@ export function useGroupsModel(): GroupsViewModel {
       }),
       openSettings: store.openSettings,
       settingsNote:
-        needsVote > 0 ? needsVote + (needsVote === 1 ? ' proposal needs' : ' proposals need') + ' your vote' : '',
+        needsVote > 0 ? needsVote + (needsVote === 1 ? ' request needs' : ' requests need') + ' your vote' : '',
     };
     // dataVersion: your live numbers change when usage reloads.
   }, [store, dataVersion, now]);
@@ -357,7 +357,7 @@ export function useGroupSettingsModel(): GroupSettingsViewModel | null {
     invite: () => void s.invite(),
     rulesNote: [
       excluded === 0 ? 'Every app counts' : excluded + (excluded === 1 ? ' app' : ' apps') + ' left out',
-      open > 0 ? open + (open === 1 ? ' proposal' : ' proposals') : '',
+      open > 0 ? open + (open === 1 ? ' request' : ' requests') + ' to stop tracking' : '',
     ]
       .filter(Boolean)
       .join(' · '),
@@ -433,28 +433,35 @@ export function useGroupRulesModel(): GroupRulesViewModel | null {
       })),
       proposals: proposals.map((p) => {
         const youAgreed = p.agreed.includes(me);
+        const youAsked = p.requestedBy === me;
         const waiting = g.members.filter((m) => !p.agreed.includes(m.id) && !p.declined.includes(m.id));
+        const asker = p.requestedBy && g.members.some((m) => m.id === p.requestedBy) ? p.requestedBy : null;
         return {
           app: p.app,
           label: p.label,
           detail:
-            'Agreed: ' +
+            (asker ? capitalise(nameOf(asker)) + ' asked · ' : '') +
+            'Stop tracking: ' +
             listNames(p.agreed.map(nameOf)) +
-            (p.declined.length ? ' · declined: ' + listNames(p.declined.map(nameOf)) : '') +
+            (p.declined.length ? ' · keep tracking: ' + listNames(p.declined.map(nameOf)) : '') +
             (waiting.length ? ' · waiting on ' + listNames(waiting.map((m) => nameOf(m.id))) : ''),
-          primary: youAgreed ? undefined : { label: 'Agree', onPress: () => s.proposeExclude(p.app, p.label) },
-          secondary: youAgreed
-            ? { label: 'Withdraw', onPress: () => s.withdrawVote(p.app) }
-            : p.declined.includes(me)
+          primary: youAgreed ? undefined : { label: 'Stop tracking', onPress: () => s.proposeExclude(p.app, p.label) },
+          // Votes stay open, so either answer can be changed. Asking and then
+          // saying keep makes no sense, so the person who asked withdraws instead.
+          secondary: !youAgreed
+            ? p.declined.includes(me)
               ? undefined
-              : { label: 'Decline', onPress: () => s.declineProposal(p.app) },
+              : { label: 'Keep tracking', onPress: () => s.declineProposal(p.app) }
+            : youAsked
+              ? { label: 'Withdraw', onPress: () => s.withdrawVote(p.app) }
+              : { label: 'Keep tracking', onPress: () => s.declineProposal(p.app) },
         };
       }),
       suggestions: suggestions.map(([app, min]) => ({
         app,
         label: labelOf(app),
         detail: fmtShort(min) + ' in the last 7 days',
-        primary: { label: 'Propose', onPress: () => s.proposeExclude(app, labelOf(app)) },
+        primary: { label: 'Stop tracking', onPress: () => s.proposeExclude(app, labelOf(app)) },
       })),
     };
   }, [s, installed, dataVersion]);

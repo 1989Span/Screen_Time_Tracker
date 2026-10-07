@@ -31,7 +31,7 @@ import { UsageStats } from '../../modules/usage-stats';
 import { RawEvent, dayWindow, hourlyFromEvents } from './hourly';
 import { dateAt, dayStamp, now as clockNow, startOfToday } from '../clock';
 import { isCountable } from './appFilter';
-import { recordDay } from './rollupStore';
+import { recordDay, recordUnlocks } from './rollupStore';
 
 const MS_PER_MINUTE = 60_000;
 
@@ -50,6 +50,8 @@ export interface RecordResult {
   packagesSeen: number;
   /** Events fetched for the window; reused by the source so it need not re-query. */
   events: RawEvent[];
+  /** Unlock times in the window, for the source's per-hour counts. */
+  unlocks: number[];
   /** Which path produced the day totals, for diagnostics. */
   source: 'events' | 'daily-buckets' | 'none';
   skipped: 'no-permission' | null;
@@ -73,7 +75,7 @@ const countable = (totals: Record<string, number>): Record<string, number> => {
  */
 export async function recordOsDays(days: number = OS_RECORD_DAYS): Promise<RecordResult> {
   if (!UsageStats.hasPermission()) {
-    return { daysRecorded: 0, packagesSeen: 0, events: [], source: 'none', skipped: 'no-permission' };
+    return { daysRecorded: 0, packagesSeen: 0, events: [], unlocks: [], source: 'none', skipped: 'no-permission' };
   }
 
   const today = startOfToday();
@@ -94,6 +96,16 @@ export async function recordOsDays(days: number = OS_RECORD_DAYS): Promise<Recor
 
   const useEvents = events.length > 0;
 
+  // Unlocks for the same window. Separate from the usage path, so a failure here
+  // costs only the unlock count.
+  let unlocks: number[] = [];
+  try {
+    unlocks = await UsageStats.queryUnlocks(windowStart, nowMs);
+  } catch {
+    unlocks = [];
+  }
+  const unlocksByDay: Record<string, number> = {};
+
   for (let idx = 0; idx < span; idx++) {
     const { start, end } = dayWindow(today, idx, nowMs);
     if (end <= start) continue;
@@ -110,6 +122,8 @@ export async function recordOsDays(days: number = OS_RECORD_DAYS): Promise<Recor
       totals = countable(minutes);
     }
 
+    unlocksByDay[dayStamp(dateAt(idx))] = unlocks.filter((t) => t >= start && t < end).length;
+
     for (const pkg of Object.keys(totals)) seen.add(pkg);
     // An empty day is still recorded as *observed* - recordDay no longer treats
     // that as licence to delete what is already stored.
@@ -117,10 +131,13 @@ export async function recordOsDays(days: number = OS_RECORD_DAYS): Promise<Recor
     daysRecorded++;
   }
 
+  await recordUnlocks(unlocksByDay);
+
   return {
     daysRecorded,
     packagesSeen: seen.size,
     events,
+    unlocks,
     source: useEvents ? 'events' : daysRecorded > 0 ? 'daily-buckets' : 'none',
     skipped: null,
   };

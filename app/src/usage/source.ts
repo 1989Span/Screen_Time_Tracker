@@ -61,6 +61,17 @@ export interface UsageSource {
    */
   allAppsDay(stamp: string): Record<string, number>;
 
+  /**
+   * Phone unlocks, for the user's own view only (never Groups). Optional: a
+   * source without them shows no unlock counts at all, rather than zeros.
+   * True when this source can count unlocks on this device.
+   */
+  countsUnlocks?(): boolean;
+  /** Unlocks on the day `idx` days before today. */
+  unlocksDay?(idx: number): number;
+  /** Unlocks within hour `h` of the day `idx` days back. Zero beyond recent days. */
+  unlocksHour?(idx: number, h: number): number;
+
   /** Drop cached data. Called when the calendar day rolls over, since every
    *  index above is relative to "today" and so changes meaning at midnight. */
   invalidate(): void;

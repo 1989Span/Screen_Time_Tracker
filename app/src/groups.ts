@@ -19,7 +19,10 @@
 //    grace period, anyone still missing sits that day out, so one dead phone
 //    can't freeze the points for everyone.
 //  * Leaving an app out needs every member to agree. Any single member can
-//    bring it back by withdrawing their agreement.
+//    bring it back by withdrawing their agreement. The first person to ask is
+//    recorded by the server, which notifies the group about each request and
+//    tells the person who asked how everyone votes
+//    (supabase/migrations/0002_stop_tracking_requests.sql).
 //  * Members compete from the day they joined.
 
 import { dayStamp } from './clock';
@@ -58,6 +61,8 @@ export interface Group {
   members: Member[];
   /** The secret that lets someone join. Only members can read it. */
   inviteCode?: string;
+  /** Who asked to stop tracking each app: package -> member id. Missing in groups cached before requests existed. */
+  requestedBy?: Record<string, string>;
 }
 
 // --- Dates ---------------------------------------------------------------------
@@ -128,6 +133,8 @@ export interface Proposal {
   label: string;
   agreed: string[];
   declined: string[];
+  /** The member who asked, when the server has recorded it. */
+  requestedBy?: string;
 }
 
 /** Apps some members want left out but not everyone has agreed to yet. */
@@ -137,7 +144,7 @@ export function openProposals(g: Group): Proposal[] {
   for (const m of g.members) {
     for (const [app, label] of Object.entries(m.excludes)) {
       if (excluded.has(app)) continue;
-      const p = out.get(app) ?? { app, label, agreed: [], declined: [] };
+      const p = out.get(app) ?? { app, label, agreed: [], declined: [], requestedBy: g.requestedBy?.[app] };
       p.agreed.push(m.id);
       out.set(app, p);
     }
@@ -153,7 +160,7 @@ const editSelf = (g: Group, selfId: string, change: (m: Member) => Member): Grou
   members: g.members.map((m) => (m.id === selfId ? change(m) : m)),
 });
 
-/** Propose leaving an app out, or agree to someone else's proposal. */
+/** Ask to stop tracking an app, or agree to someone else's request. */
 export function agreeToExclude(g: Group, selfId: string, app: string, label: string): Group {
   return editSelf(g, selfId, (m) => ({
     ...m,
@@ -171,7 +178,7 @@ export function withdrawExclude(g: Group, selfId: string, app: string): Group {
   });
 }
 
-/** Say no to someone's proposal. The others see it when you next share. */
+/** Vote to keep tracking an app someone asked to stop. The others see it when you next share. */
 export function declineExclude(g: Group, selfId: string, app: string): Group {
   return editSelf(withdrawExclude(g, selfId, app), selfId, (m) => ({
     ...m,

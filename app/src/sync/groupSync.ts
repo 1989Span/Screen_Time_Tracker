@@ -9,6 +9,7 @@
 
 import { useGroupsStore } from '../state/groupsStore';
 import { onUsageLoaded, reloadUsage } from '../usage/bootstrap';
+import { registerForGroupPushes } from './groupNotifications';
 
 let started = false;
 
@@ -16,7 +17,17 @@ let started = false;
 export function startGroupSync(): void {
   if (started) return;
   started = true;
-  onUsageLoaded(() => void useGroupsStore.getState().sync());
+  onUsageLoaded(() => void useGroupsStore.getState().sync().then(registerIfInGroups));
+  // Joining or creating your first group registers straight away, so the first
+  // request reaches you without waiting for the next usage load.
+  useGroupsStore.subscribe((s, prev) => {
+    if (s.groups.length > 0 && prev.groups.length === 0) registerIfInGroups();
+  });
+}
+
+/** Group notifications are only for people in a group. (Leaving your last one unregisters: see groupsStore.) */
+function registerIfInGroups(): void {
+  if (useGroupsStore.getState().groups.length > 0) void registerForGroupPushes().catch(() => {});
 }
 
 /** "Sync now": reload usage first so today's number is current. The load then triggers the sync. */

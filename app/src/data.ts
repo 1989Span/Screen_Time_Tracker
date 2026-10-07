@@ -165,6 +165,24 @@ export interface Bucket {
   name: string;
 }
 
+/** The Year view's twelve months, oldest first, each with the day indexes (days
+ *  before today) it covers so far. */
+function yearMonths(): { d: Date; idxs: number[] }[] {
+  const t = startOfToday();
+  const out: { d: Date; idxs: number[] }[] = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(t.getFullYear(), t.getMonth() - i, 1);
+    const n = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    const idxs: number[] = [];
+    for (let k = 1; k <= n; k++) {
+      const idx = daysBetween(new Date(d.getFullYear(), d.getMonth(), k), t);
+      if (idx >= 0) idxs.push(idx);
+    }
+    out.push({ d, idxs });
+  }
+  return out;
+}
+
 export function buckets(range: RangeId): Bucket[] {
   checkDayRollover();
   const out: Bucket[] = [];
@@ -189,16 +207,9 @@ export function buckets(range: RangeId): Bucket[] {
       });
     }
   } else {
-    for (let i = 11; i >= 0; i--) {
-      const t = startOfToday();
-      const d = new Date(t.getFullYear(), t.getMonth() - i, 1);
+    for (const { d, idxs } of yearMonths()) {
       const per = zeros();
-      const n = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-      for (let k = 1; k <= n; k++) {
-        const idx = daysBetween(new Date(d.getFullYear(), d.getMonth(), k), t);
-        if (idx < 0) continue;
-        dayByCat(idx).forEach((v, a) => (per[a] += v));
-      }
+      for (const idx of idxs) dayByCat(idx).forEach((v, a) => (per[a] += v));
       out.push({
         per,
         tick: MON[d.getMonth()][0],
@@ -275,6 +286,51 @@ export function slice(range: RangeId, sel: number | null): Slice {
     tone: ser[i].color,
   }));
   return { bk, totals, max, sel: s, scoped, total, order, rows };
+}
+
+// --- Unlocks -------------------------------------------------------------------
+// How often the phone was unlocked, for the user's own view. Groups never read
+// these: a group compares screen time only.
+
+/** Whether unlock counts can be shown: the source counts them, on an Android
+ *  version that records them. Otherwise the UI shows none rather than zeros. */
+export function countsUnlocks(): boolean {
+  const s = usageSource();
+  return s.unlocksDay !== undefined && (s.countsUnlocks?.() ?? false);
+}
+
+const unlocksDay = (idx: number) => usageSource().unlocksDay?.(idx) ?? 0;
+const unlocksHour = (idx: number, h: number) => usageSource().unlocksHour?.(idx, h) ?? 0;
+
+/** Unlocks per bar, in the same order as buckets(range), so a tapped bar's index works for both. */
+export function unlockBuckets(range: RangeId): number[] {
+  checkDayRollover();
+  if (range === 'day') return Array.from({ length: 24 }, (_, h) => unlocksHour(0, h));
+  if (range === 'week' || range === 'month') {
+    const n = range === 'week' ? 7 : 30;
+    return Array.from({ length: n }, (_, k) => unlocksDay(n - 1 - k));
+  }
+  return yearMonths().map(({ idxs }) => idxs.reduce((s, idx) => s + unlocksDay(idx), 0));
+}
+
+/** Unlocks over the span before `range`, matching prevTotal(). */
+export function prevUnlocks(range: RangeId): number {
+  checkDayRollover();
+  let t = 0;
+  if (range === 'day') {
+    const cur = currentHour();
+    for (let h = 0; h <= cur; h++) t += unlocksHour(1, h);
+  } else {
+    const [from, to] = range === 'week' ? [7, 14] : range === 'month' ? [30, 60] : [365, 730];
+    for (let i = from; i < to; i++) t += unlocksDay(i);
+  }
+  return t;
+}
+
+/** "1 unlock", "48 unlocks", "1,204 unlocks". */
+export function fmtUnlocks(n: number): string {
+  const whole = Math.round(n);
+  return String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (whole === 1 ? ' unlock' : ' unlocks');
 }
 
 export function dayUsage(): number[] {

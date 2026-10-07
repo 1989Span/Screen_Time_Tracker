@@ -5,6 +5,7 @@ import { inviteLink, readInvite } from '../groupLink';
 import { Group, Member, newMember, shiftStamp } from '../groups';
 import { currentGroup, useGroupsStore } from '../state/groupsStore';
 import { useNavStore } from '../state/navStore';
+import { openFromNotification } from '../sync/groupNotifications';
 import { groupsApi } from '../sync/groupsApi';
 import { emptySource } from '../usage/emptySource';
 import { Series } from '../usage/series';
@@ -64,6 +65,7 @@ function stubServer() {
     updateMe: jest.spyOn(groupsApi, 'updateMe').mockResolvedValue(),
     leaveGroup: jest.spyOn(groupsApi, 'leaveGroup').mockResolvedValue(),
     deleteMyData: jest.spyOn(groupsApi, 'deleteMyData').mockResolvedValue(),
+    clearPushToken: jest.spyOn(groupsApi, 'clearPushToken').mockResolvedValue(),
     share: jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' } as never),
   };
 }
@@ -267,6 +269,20 @@ describe('votes, leaving and deleting', () => {
     expect(store().notice).toBeNull();
   });
 
+  it('stops group notifications once you leave your last group', async () => {
+    const api = stubServer();
+    await store().leave();
+    expect(api.clearPushToken).toHaveBeenCalled();
+  });
+
+  it('keeps group notifications while you are still in another group', async () => {
+    const api = stubServer();
+    useGroupsStore.setState({ groups: [family(), { ...family(), id: 'g2', name: 'Work' }] });
+    await store().leave();
+    expect(store().groups.map((g) => g.id)).toEqual(['g2']);
+    expect(api.clearPushToken).not.toHaveBeenCalled();
+  });
+
   it("doesn't pretend to leave when the server can't be reached", async () => {
     const api = stubServer();
     api.leaveGroup.mockRejectedValue(new Error('Network request failed'));
@@ -281,6 +297,26 @@ describe('votes, leaving and deleting', () => {
     expect(api.deleteMyData).toHaveBeenCalled();
     expect(store().selfId).toBe('');
     expect(store().groups).toEqual([]);
+  });
+});
+
+describe('a tapped request notification', () => {
+  it("opens that group's requests and fetches the latest votes", async () => {
+    const api = stubServer();
+    api.fetchGroups.mockResolvedValue([family(), { ...family(), id: 'g2', name: 'Work' }]);
+    useGroupsStore.setState({ groups: [family()], groupId: 'g1', selfId: 'me', selfName: 'Stewart' });
+    expect(openFromNotification({ kind: 'stop-request', groupId: 'g2' })).toBe(true);
+    expect(view()).toBe('groupRules');
+    await store().sync();
+    // Not on this phone until the sync, and still selected after it.
+    expect(currentGroup(store())?.id).toBe('g2');
+  });
+
+  it('ignores anything that is not a group request', () => {
+    for (const data of [null, 'x', {}, { kind: 'stop-request' }, { kind: 'other', groupId: 'g1' }]) {
+      expect(openFromNotification(data)).toBe(false);
+    }
+    expect(view()).toBe('ov');
   });
 });
 

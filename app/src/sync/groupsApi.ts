@@ -25,6 +25,11 @@ interface MemberRow {
   excludes: Record<string, string> | null;
   declines: string[] | null;
 }
+interface RequestRow {
+  group_id: string;
+  app: string;
+  requested_by: string;
+}
 interface DayRow {
   group_id: string;
   user_id: string;
@@ -50,7 +55,12 @@ async function selectAll<T>(table: string, columns: string): Promise<T[]> {
 const safeName = (s: string) => cleanText(s, NAME_MAX) ?? '?';
 
 /** The rows the database lets you see, which are the groups you're in, as domain groups. */
-export function buildGroups(groups: GroupRow[], members: MemberRow[], days: DayRow[]): Group[] {
+export function buildGroups(
+  groups: GroupRow[],
+  members: MemberRow[],
+  days: DayRow[],
+  requests: RequestRow[] = []
+): Group[] {
   const daysOf = new Map<string, Record<string, number>>();
   // When each member last uploaded numbers. (The member row's updated_at also
   // moves on a vote or rename, so it would overstate how fresh the numbers are.)
@@ -67,6 +77,7 @@ export function buildGroups(groups: GroupRow[], members: MemberRow[], days: DayR
     name: safeName(g.name),
     created: g.created_day,
     inviteCode: g.invite_code,
+    requestedBy: Object.fromEntries(requests.filter((r) => r.group_id === g.id).map((r) => [r.app, r.requested_by])),
     members: members
       .filter((m) => m.group_id === g.id)
       .map((m): Member => ({
@@ -89,12 +100,15 @@ export const groupsApi = {
 
   /** Every group you're in, with its roster and daily totals. */
   async fetchGroups(): Promise<Group[]> {
-    const [groups, members, days] = await Promise.all([
+    const [groups, members, days, requests] = await Promise.all([
       selectAll<GroupRow>('groups', 'id, name, created_day, invite_code'),
       selectAll<MemberRow>('members', 'group_id, user_id, name, joined_day, excludes, declines'),
       selectAll<DayRow>('days', 'group_id, user_id, day, minutes, updated_at'),
+      // Optional: a server without migration 0002 has no requests table, and
+      // groups must still sync against it. Votes then just show no requester.
+      selectAll<RequestRow>('stop_requests', 'group_id, app, requested_by').catch(() => [] as RequestRow[]),
     ]);
-    return buildGroups(groups, members, days);
+    return buildGroups(groups, members, days, requests);
   },
 
   async createGroup(name: string, memberName: string, today: string): Promise<{ id: string; inviteCode: string }> {
@@ -141,6 +155,18 @@ export const groupsApi = {
 
   async leaveGroup(groupId: string, selfId: string): Promise<void> {
     const { error } = await supabase().from('members').delete().eq('group_id', groupId).eq('user_id', selfId);
+    if (error) throw error;
+  },
+
+  /** Registers this phone's Expo push token for group request notifications. */
+  async setPushToken(token: string): Promise<void> {
+    const { error } = await supabase().rpc('set_push_token', { p_token: token });
+    if (error) throw error;
+  },
+
+  /** Stops group notifications to this phone. */
+  async clearPushToken(): Promise<void> {
+    const { error } = await supabase().rpc('clear_push_token');
     if (error) throw error;
   },
 

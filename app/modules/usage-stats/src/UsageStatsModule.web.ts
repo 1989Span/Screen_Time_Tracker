@@ -33,6 +33,12 @@ class UsageStatsModule extends NativeModule<Record<string, never>> {
   async queryEvents(): Promise<UsageEvent[]> {
     return [];
   }
+  async queryUnlocks(): Promise<number[]> {
+    return [];
+  }
+  unlocksSupported(): boolean {
+    return false;
+  }
   // No widgets or notifications on the web.
   syncTracked(): void {}
   nudgesEnabled(): boolean {

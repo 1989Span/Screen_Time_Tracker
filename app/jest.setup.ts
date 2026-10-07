@@ -30,6 +30,8 @@ jest.mock('./modules/usage-stats', () => ({
     installedApps: async () => [],
     queryTotals: async () => ({}),
     queryEvents: async () => [],
+    queryUnlocks: async () => [],
+    unlocksSupported: () => true,
     probeRetention: async () => ({}),
     syncTracked: () => {},
     nudgesEnabled: () => true,
@@ -50,6 +52,21 @@ jest.mock('./src/sync/supabase', () => ({
   },
   ensureSession: async () => 'test-user',
   signOutLocally: async () => {},
+}));
+
+// expo-notifications is native. Tests never register for pushes; the stub only
+// lets modules that import it load.
+jest.mock('expo-notifications', () => ({
+  AndroidImportance: { HIGH: 4 },
+  setNotificationChannelAsync: async () => null,
+  getPermissionsAsync: async () => ({ granted: false, canAskAgain: false }),
+  requestPermissionsAsync: async () => ({ granted: false, canAskAgain: false }),
+  getExpoPushTokenAsync: async () => ({ type: 'expo', data: 'ExpoPushToken[test]' }),
+  setNotificationHandler: () => {},
+  getLastNotificationResponse: () => null,
+  clearLastNotificationResponse: () => {},
+  addNotificationResponseReceivedListener: () => ({ remove: () => {} }),
+  addNotificationReceivedListener: () => ({ remove: () => {} }),
 }));
 
 // expo-sqlite is native and does not resolve under jest. Stubbed so modules that

@@ -64,6 +64,12 @@ describe('leaving apps out', () => {
     expect(excludedApps(g)).toEqual(['com.a']);
   });
 
+  it('names who asked, when the server recorded it', () => {
+    const g = agreeToExclude(two(), 'alex00', 'com.a', 'A');
+    expect(openProposals(g)[0].requestedBy).toBeUndefined();
+    expect(openProposals({ ...g, requestedBy: { 'com.a': 'alex00' } })[0].requestedBy).toBe('alex00');
+  });
+
   it('counts every app except the ones left out', () => {
     expect(groupMinutes({ 'com.a': 30, 'com.b': 20, 'com.c': 10 }, ['com.b'])).toBe(40);
     expect(groupMinutes({ 'com.a': -5, 'com.b': NaN, 'com.c': 10 }, [])).toBe(10);

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "882235708029",
+    "project_id": "gauge-time-tracker",
+    "storage_bucket": "gauge-time-tracker.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:882235708029:android:e2724fce8d5179a9765714",
+        "android_client_info": {
+          "package_name": "com.span1989.gauge"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBeftDt2SjcMID4ECd4TaS9UAYuTjcHelk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

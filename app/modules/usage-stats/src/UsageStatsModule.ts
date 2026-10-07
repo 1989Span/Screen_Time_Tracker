@@ -13,6 +13,10 @@ declare class UsageStatsModule extends NativeModule<Record<string, never>> {
   queryTotals(startMs: number, endMs: number): Promise<PackageTotals>;
   /** Raw resume/pause events, for attributing usage to an hour. */
   queryEvents(startMs: number, endMs: number): Promise<UsageEvent[]>;
+  /** When the phone was unlocked in [startMs, endMs), as timestamps. Empty below Android 9. */
+  queryUnlocks(startMs: number, endMs: number): Promise<number[]>;
+  /** Whether this Android version records unlocks (Android 9 and later). */
+  unlocksSupported(): boolean;
   /** What this device actually retains, measured rather than assumed. */
   probeRetention(): Promise<RetentionProbe>;
   /** Mirrors the tracked selection to the parts that run without JS, the

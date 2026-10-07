@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { alpha, color, font } from '../theme';
 import { BackChip, Card, CompositionBar, Dot } from '../components/ui';
 import { FactBox } from '../components/FactBox';
-import { ClockIcon } from '../components/Icons';
+import { ClockIcon, LockIcon } from '../components/Icons';
 import { useDetailModel } from '../models/overview';
 
 export function DetailScreen() {
@@ -56,6 +56,28 @@ export function DetailScreen() {
             <Text style={styles.avgLabel}>{d.avgLabel}</Text>
           </View>
         </View>
+        {d.unlocks !== null && (
+          <View style={styles.unlockRow}>
+            <LockIcon size={13} color={alpha(color.text, 55)} />
+            <Text style={styles.unlockText}>{d.unlocks}</Text>
+            {d.unlockDelta !== null && (
+              <Text
+                style={[
+                  styles.unlockDelta,
+                  {
+                    color: d.unlockDelta.neutral
+                      ? alpha(color.text, 48)
+                      : d.unlockDelta.positive
+                        ? color.roseDark
+                        : color.tealDark,
+                  },
+                ]}
+              >
+                · {d.unlockDelta.text}
+              </Text>
+            )}
+          </View>
+        )}
         <CompositionBar segments={d.comp} height={10} />
       </Card>
 
@@ -149,6 +171,9 @@ const styles = StyleSheet.create({
   deltaText: { fontSize: 12, fontFamily: font.bodySemiBold },
   avgText: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 19, color: color.text },
   avgLabel: { fontSize: 11, color: alpha(color.text, 48) },
+  unlockRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  unlockText: { fontSize: 13, fontFamily: font.bodySemiBold, color: alpha(color.text, 70) },
+  unlockDelta: { fontSize: 12, fontFamily: font.bodySemiBold },
   chartCard: { padding: 16, paddingTop: 16, paddingHorizontal: 14, paddingBottom: 12, gap: 12 },
   chart: { height: 180, flexDirection: 'row', alignItems: 'flex-end' },
   bar: { flex: 1, minWidth: 0, flexDirection: 'column' },

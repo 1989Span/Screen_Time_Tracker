@@ -55,4 +55,23 @@ describe('rows from the server, as groups', () => {
     expect(groups[0].members[0].days).toEqual({ '2026-09-25': 90 });
     expect(groups[1].members[0].days).toEqual({});
   });
+
+  it('records who asked to stop tracking each app, per group', () => {
+    const other = { ...group, id: 'g2' };
+    const groups = buildGroups(
+      [group, other],
+      [member('alex', 'Alex'), { ...member('sam', 'Sam'), group_id: 'g2' }],
+      [],
+      [
+        { group_id: G, app: 'com.spotify', requested_by: 'alex' },
+        { group_id: 'g2', app: 'com.maps', requested_by: 'sam' },
+      ]
+    );
+    expect(groups[0].requestedBy).toEqual({ 'com.spotify': 'alex' });
+    expect(groups[1].requestedBy).toEqual({ 'com.maps': 'sam' });
+  });
+
+  it('has no requests from a server without them', () => {
+    expect(buildGroups([group], [member('alex', 'Alex')], [])[0].requestedBy).toEqual({});
+  });
 });

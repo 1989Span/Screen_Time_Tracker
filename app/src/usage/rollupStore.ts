@@ -31,7 +31,7 @@ import { dayStamp } from '../clock';
 const DB_NAME = 'gauge-history.db';
 
 /** Bump and add a migration below when the schema changes. */
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
@@ -83,6 +83,11 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
     CREATE INDEX IF NOT EXISTS usage_day_day ON usage_day (day);
     CREATE TABLE IF NOT EXISTS observed_day (
       day TEXT PRIMARY KEY NOT NULL
+    );
+    -- Phone unlocks per day. Only ever raised, never lowered: see recordUnlocks.
+    CREATE TABLE IF NOT EXISTS unlock_day (
+      day   TEXT PRIMARY KEY NOT NULL,
+      count INTEGER NOT NULL
     );
     CREATE TABLE IF NOT EXISTS meta (
       key   TEXT PRIMARY KEY NOT NULL,
@@ -145,6 +150,46 @@ export async function recordDay({ day, totals }: DayTotals): Promise<void> {
         await stmt.finalizeAsync();
       }
     });
+  });
+}
+
+/**
+ * Record unlock counts per day (day stamp -> count).
+ *
+ * A stored count is only ever raised. Today's count grows all day, and a day
+ * the OS has partly or wholly forgotten comes back lower or empty - the same
+ * hazard recordDay guards against - so the larger number is always the truer
+ * one. Days with no unlocks aren't written: an absent day reads as zero.
+ */
+export async function recordUnlocks(counts: Record<string, number>): Promise<void> {
+  const entries = Object.entries(counts).filter(([, n]) => Number.isInteger(n) && n > 0);
+  if (entries.length === 0) return;
+  return serialize(async () => {
+    const db = await open();
+    await db.withTransactionAsync(async () => {
+      for (const [day, count] of entries) {
+        await db.runAsync(
+          'INSERT INTO unlock_day (day, count) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET count = MAX(count, excluded.count)',
+          day,
+          count
+        );
+      }
+    });
+  });
+}
+
+/** Unlocks per recorded day in [fromDay, toDay], keyed by day. */
+export async function readUnlocks(fromDay: string, toDay: string): Promise<Record<string, number>> {
+  return serialize(async () => {
+    const db = await open();
+    const rows = await db.getAllAsync<{ day: string; count: number }>(
+      'SELECT day, count FROM unlock_day WHERE day >= ? AND day <= ?',
+      fromDay,
+      toDay
+    );
+    const out: Record<string, number> = {};
+    for (const r of rows) out[r.day] = r.count;
+    return out;
   });
 }
 
@@ -255,6 +300,7 @@ export async function prune(keepDays = 400): Promise<number> {
     const stamp = dayStamp(cutoff);
     const result = await db.runAsync('DELETE FROM usage_day WHERE day < ?', stamp);
     await db.runAsync('DELETE FROM observed_day WHERE day < ?', stamp);
+    await db.runAsync('DELETE FROM unlock_day WHERE day < ?', stamp);
     return result.changes;
   });
 }

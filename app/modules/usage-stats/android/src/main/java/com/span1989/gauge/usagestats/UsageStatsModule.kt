@@ -126,6 +126,40 @@ class UsageStatsModule : Module() {
     }
 
     /**
+     * When the phone was unlocked in [startMs, endMs): each time the lock screen
+     * was dismissed, by PIN, fingerprint, face or swipe. Waking the screen
+     * without unlocking doesn't count. Android logs these as KEYGUARD_HIDDEN
+     * events from Android 9 (API 28); earlier versions return an empty list, and
+     * unlocksSupported() lets the app say so rather than show zero.
+     *
+     * A hide only counts after a show, so a repeated hide with no lock screen in
+     * between (some OEMs log one per display) isn't counted twice.
+     */
+    AsyncFunction("queryUnlocks") { startMs: Double, endMs: Double ->
+      val out = ArrayList<Double>()
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return@AsyncFunction out
+      val events = usage.queryEvents(startMs.toLong(), endMs.toLong())
+      val event = UsageEvents.Event()
+      var locked = true
+      while (events.hasNextEvent()) {
+        events.getNextEvent(event)
+        when (event.eventType) {
+          UsageEvents.Event.KEYGUARD_SHOWN -> locked = true
+          UsageEvents.Event.KEYGUARD_HIDDEN -> {
+            if (locked) out.add(event.timeStamp.toDouble())
+            locked = false
+          }
+        }
+      }
+      out
+    }
+
+    /** Whether this Android version records unlocks (Android 9 and later). */
+    Function("unlocksSupported") {
+      Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+    }
+
+    /**
      * Hands the tracked-app selection to the parts that run without JS, the
      * home-screen widget and the hourly nudges, then refreshes both.
      *

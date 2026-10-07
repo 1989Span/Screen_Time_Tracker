@@ -30,7 +30,7 @@ import { dayStamp, dateAt, now as clockNow, startOfToday } from '../clock';
 import { isCountable, seriesForApps } from './appFilter';
 import { dayWindow, hourlyFromEvents } from './hourly';
 import { OS_RECORD_DAYS, recordOsDays } from './recorder';
-import { readRange } from './rollupStore';
+import { readRange, readUnlocks } from './rollupStore';
 import { Series } from './series';
 import { SourceStatus, UsageSource } from './source';
 
@@ -56,6 +56,10 @@ export class AndroidUsageStatsSource implements UsageSource {
    * selection either.
    */
   private allDays: Record<string, Record<string, number>> = {};
+  /** day stamp -> unlocks, from the history database. Keyed by stamp like allDays. */
+  private unlockDays: Record<string, number> = {};
+  /** Unlock times the OS still holds (about the last fortnight), for per-hour counts. */
+  private unlockTimes: number[] = [];
 
   /** True when hourly figures were spread from a daily total rather than derived
    *  from real events, so the UI can say so instead of implying precision. */
@@ -115,6 +119,8 @@ export class AndroidUsageStatsSource implements UsageSource {
       // where the two could disagree.
       const stored = await readRange(dayStamp(dateAt(days - 1)), dayStamp(dateAt(0)));
       this.allDays = stored;
+      this.unlockDays = await readUnlocks(dayStamp(dateAt(days - 1)), dayStamp(dateAt(0)));
+      this.unlockTimes = recorded.unlocks;
       for (let idx = 0; idx < days; idx++) {
         const totals = stored[dayStamp(dateAt(idx))];
         if (totals) this.dayCache.set(idx, this.toSeriesArray(totals));
@@ -170,6 +176,21 @@ export class AndroidUsageStatsSource implements UsageSource {
 
   private zeros(): number[] {
     return new Array<number>(this.tracked.length).fill(0);
+  }
+
+  countsUnlocks(): boolean {
+    return UsageStats.unlocksSupported();
+  }
+
+  unlocksDay(idx: number): number {
+    return this.unlockDays[dayStamp(dateAt(idx))] ?? 0;
+  }
+
+  unlocksHour(idx: number, h: number): number {
+    const d = dateAt(idx);
+    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h).getTime();
+    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h + 1).getTime();
+    return this.unlockTimes.filter((t) => t >= start && t < end).length;
   }
 
   dayTotals(idx: number): number[] {

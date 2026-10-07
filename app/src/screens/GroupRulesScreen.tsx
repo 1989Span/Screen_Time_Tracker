@@ -44,14 +44,15 @@ export function GroupRulesScreen() {
       </View>
 
       <Text style={g.subtitle}>
-        Every app counts for everyone, unless the whole group agrees to leave one out, like music playing in the
-        background or maps while driving. Anyone can bring an app back. Votes sync automatically.
+        Every app counts for everyone, unless the whole group agrees to stop tracking one, like music playing in the
+        background or maps while driving. Everyone is notified when someone asks, and whoever asked hears how each
+        person votes. Anyone can bring an app back.
       </Text>
 
       {r.alone && (
         <Card style={g.card}>
           <Text style={g.body}>
-            Nothing can be left out until someone else joins, since one person can&rsquo;t decide alone.
+            You can&rsquo;t stop tracking an app until someone else joins, since one person can&rsquo;t decide alone.
           </Text>
         </Card>
       )}
@@ -65,19 +66,20 @@ export function GroupRulesScreen() {
 
       {r.proposals.length > 0 && (
         <Card style={g.card}>
-          <Text style={g.cardTitle}>Proposals</Text>
+          <Text style={g.cardTitle}>Requests to stop tracking</Text>
           <Rows rows={r.proposals} />
         </Card>
       )}
 
       <Card style={g.card}>
-        <Text style={g.cardTitle}>Propose leaving out</Text>
+        <Text style={g.cardTitle}>Ask to stop tracking</Text>
         {r.suggestions.length === 0 ? (
           <Text style={g.meta}>Your most-used apps show up here once Gauge has recorded some usage.</Text>
         ) : (
           <>
             <Text style={g.meta}>
-              Your most-used apps this week, visible only to you. Proposing one shares its name with the group.
+              Your most-used apps this week, visible only to you. Asking to stop tracking one shares its name with the
+              group.
             </Text>
             <Rows rows={r.suggestions} />
           </>

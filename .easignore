@@ -60,3 +60,8 @@ yarn-error.*
 
 # OS noise.
 .DS_Store
+
+# Firebase service account keys are private: they're uploaded to EAS by hand
+# (eas credentials) and must never be committed or sent with a build.
+*firebase-adminsdk*.json
+fcm-key.json

@@ -62,6 +62,8 @@ interface GroupsState {
   backToGroups: () => void;
   backToSettings: () => void;
   clearNotice: () => void;
+  /** Opens a group's requests to stop tracking, from a tapped notification. */
+  openRequests: (groupId: string) => void;
 
   setSelfName: (name: string) => void;
   openNewGroup: () => void;
@@ -191,6 +193,13 @@ export const useGroupsStore = create<GroupsState>()(
         backToGroups: () => goTo('groups'),
         backToSettings: () => goTo('groupSettings'),
         clearNotice: () => set({ notice: null }),
+        openRequests: (groupId) => {
+          // Selected even if this phone hasn't seen the group yet: the sync
+          // below brings it in, and keeps the selection once it exists.
+          set({ groupId });
+          goTo('groupRules');
+          void get().sync();
+        },
 
         // Saved to the server on the next sync, rather than on every keystroke.
         setSelfName: (name) => set({ selfName: name.slice(0, NAME_MAX) }),
@@ -299,6 +308,9 @@ export const useGroupsStore = create<GroupsState>()(
             return;
           }
           const groups = get().groups.filter((x) => x.id !== g.id);
+          // Out of every group, so nothing more to be notified about. Best
+          // effort: the server also drops tokens of anyone in no group.
+          if (groups.length === 0) void groupsApi.clearPushToken().catch(() => {});
           // A notice about the group you just left would only confuse.
           set({ groups, groupId: groups[0]?.id ?? '', notice: null });
           goTo('groups');

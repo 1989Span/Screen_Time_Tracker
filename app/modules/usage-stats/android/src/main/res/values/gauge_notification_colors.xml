@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- Tint for the small icon on group request notifications. The same blue the
+       hourly nudge sets in code (HourlyNudge.kt). -->
+  <color name="gauge_notification_color">#FF416180</color>
+</resources>
