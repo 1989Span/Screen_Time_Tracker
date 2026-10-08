@@ -4,15 +4,11 @@ import {
   RATE_MAX,
   RATE_MIN,
   chargeFor,
-  chargeHistory,
-  daysUntilUnlock,
-  fmtDate,
   fmtMoney,
   fmtShort,
   limLabel,
   minutesOver,
   trackedToday,
-  unlockDateFrom,
 } from '../data';
 import { Series } from '../usage/series';
 import { SourceStatus, UsageSource, setUsageSource } from '../usage/source';
@@ -97,84 +93,6 @@ describe('rate limits', () => {
   it('spans one cent to a thousand dollars a minute', () => {
     expect(RATE_MIN).toBe(0.01);
     expect(RATE_MAX).toBe(1000);
-  });
-});
-
-describe('the ledger', () => {
-  const setting: PenaltySetting = { limit: 60, rate: 0.5 };
-
-  beforeEach(() => {
-    setUsageSource(new FixedSource(90)); // 30 minutes over a 60-minute limit
-    setFixedClock(PINNED);
-    invalidate();
-  });
-
-  it('is empty when no penalty has been set', () => {
-    // Nothing is charged until the user opts in.
-    expect(chargeHistory(null, 30)).toEqual([]);
-  });
-
-  it('is empty before the penalty was switched on', () => {
-    // A limit set today cannot have charged for yesterday.
-    expect(chargeHistory(setting, 0)).toEqual([]);
-  });
-
-  it('covers only the days the penalty has been active, excluding today', () => {
-    // Today has not settled, so 5 active days means 5 settled rows behind it.
-    expect(chargeHistory(setting, 5)).toHaveLength(5);
-    expect(chargeHistory(setting, 1)).toHaveLength(1);
-  });
-
-  it('charges each day by that day’s overage at the chosen rate', () => {
-    for (const day of chargeHistory(setting, 4)) {
-      expect(day.limit).toBe(setting.limit);
-      expect(day.over).toBe(minutesOver(day.used, setting.limit));
-      expect(day.over).toBe(30);
-      expect(day.charge).toBeCloseTo(15, 2); // 30 minutes x $0.50
-    }
-  });
-
-  it('runs the balance up day by day, newest row holding the total', () => {
-    const history = chargeHistory(setting, 4);
-    let running = 0;
-    for (const day of [...history].reverse()) {
-      running = Math.round((running + day.charge) * 100) / 100;
-      expect(day.balance).toBeCloseTo(running, 2);
-    }
-    expect(history[0].balance).toBeCloseTo(
-      history.reduce((sum, d) => sum + d.charge, 0),
-      2
-    );
-  });
-
-  it('charges nothing on days under the limit', () => {
-    setUsageSource(new FixedSource(30)); // under a 60-minute limit
-    invalidate();
-    const history = chargeHistory(setting, 3);
-    expect(history).toHaveLength(3);
-    for (const day of history) {
-      expect(day.over).toBe(0);
-      expect(day.charge).toBe(0);
-      expect(day.balance).toBe(0);
-    }
-  });
-
-  it('orders rows newest first', () => {
-    const history = chargeHistory(setting, 3);
-    expect(history[0].label).toContain('24 Aug');
-    expect(history[history.length - 1].label).toContain('22 Aug');
-  });
-});
-
-describe('unlocking', () => {
-  it('unlocks one year after the penalty started', () => {
-    const start = new Date(2026, 2, 1);
-    expect(fmtDate(unlockDateFrom(start))).toBe('1 Mar 2027');
-  });
-
-  it('counts the days remaining from today', () => {
-    setFixedClock(PINNED); // 25 Aug 2026
-    expect(daysUntilUnlock(new Date(2026, 2, 1))).toBe(188);
   });
 });
 

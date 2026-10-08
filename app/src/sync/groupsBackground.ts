@@ -8,6 +8,7 @@ import { dayStamp } from '../clock';
 import { SHARE_DAYS, shiftStamp } from '../groups';
 import { useGroupsStore } from '../state/groupsStore';
 import { readRange } from '../usage/rollupStore';
+import { postChallengeNotices } from './challengeNotices';
 
 export async function syncGroupsFromHistory(): Promise<void> {
   // The persisted store hasn't loaded in a headless run until asked to.
@@ -16,5 +17,8 @@ export async function syncGroupsFromHistory(): Promise<void> {
   if (s.groups.length === 0) return;
   const today = dayStamp();
   const history = await readRange(shiftStamp(today, -(SHARE_DAYS - 1)), today);
-  await s.sync((stamp) => history[stamp] ?? {});
+  const readDay = (stamp: string) => history[stamp] ?? {};
+  await s.sync(readDay);
+  // A day just settled, or the month's challenge just ended: say so.
+  await postChallengeNotices(readDay).catch(() => {});
 }

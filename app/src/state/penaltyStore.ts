@@ -1,23 +1,20 @@
-// Penalty limit: `current` applies today, `next` is a saved change that starts
-// tomorrow (undefined = no change, null = turn off). The editor edits a draft
-// so today's charge can't be dodged by loosening the limit mid-day.
+// Penalty limit: the monthly plans (see penaltyPlan.ts) and the editor.
 //
-// Persisted: current, next, and the day `current` took effect.
+// Saving takes two steps. The first shows what will be locked and until when;
+// only the second, "I understand", commits it. Once confirmed, a month can't be
+// changed or switched off until it ends, except during the first days of a
+// carried-over month.
 //
-// That last field matters. "Starts tomorrow" only means anything if something
-// actually promotes `next` into `current` once tomorrow arrives. Before state
-// persisted, the app never outlived a day, so nothing had to. Now a user can
-// save a change, close the app, reopen it the next day - and without the
-// promotion below it would still read "From tomorrow: ..." forever, never
-// applying. `appliedOn` is what makes the boundary detectable across launches.
-//
-// The editor scratch fields (draft, rateText, limitH, limitM) are deliberately
-// not persisted: a half-typed limit should not survive a restart.
+// Persisted: the plans. The editor's fields and the confirmation step are
+// deliberately not: a half-typed limit, or a half-made commitment, should not
+// survive a restart.
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+
+import { dayStamp } from '../clock';
 import { DEFAULT_PENALTY, PENALTY_LIMIT_PRESETS, PenaltySetting, RATE_MAX, RATE_MIN, RATE_PRESETS } from '../data';
-import { dayStamp, onDayChange } from '../clock';
+import { MonthPlan, Plans, confirm, monthOf, planFor } from '../penaltyPlan';
 import { goTo } from './navStore';
 import { STORAGE_VERSION, deviceStorage, storageKey } from './storage';
 
@@ -55,64 +52,59 @@ const isSetting = (v: unknown): v is PenaltySetting => {
   );
 };
 
+const isStamp = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+
+const isPlan = (v: unknown): v is MonthPlan => {
+  const p = v as Partial<MonthPlan>;
+  return (
+    typeof p === 'object' &&
+    p !== null &&
+    (p.setting === null || isSetting(p.setting)) &&
+    isStamp(p.from) &&
+    typeof p.confirmed === 'boolean'
+  );
+};
+
 interface PenaltyState {
-  current: PenaltySetting | null;
-  next: PenaltySetting | null | undefined;
-  /** Day stamp on which `current` took effect; drives the promotion above. */
-  appliedOn: string;
-  /** Day stamp on which a penalty was first switched on, or '' if never.
-   *  The ledger starts here: applying today's limit to days before the user
-   *  opted in would invent a debt that was never incurred. */
-  startedOn: string;
+  plans: Plans;
+
   draft: PenaltySetting;
   rateText: string;
   limitH: string;
   limitM: string;
+  /** The choice awaiting "I understand": a setting, null to switch off, undefined when not confirming. */
+  pending: PenaltySetting | null | undefined;
+
   openEditor: () => void;
   openHistory: () => void;
   setLimitPreset: (minutes: number) => void;
   setLimitFields: (h: string, m: string) => void;
   setRatePreset: (rate: number) => void;
   setRateText: (text: string) => void;
-  save: () => void;
-  remove: () => void;
-  undoPending: () => void;
-  /** Apply a saved "from tomorrow" change if the day has moved on. Idempotent. */
-  promoteIfNewDay: () => void;
-}
-
-/** What applies from tomorrow: a saved change, else today's setting. */
-export const pendingSetting = (s: Pick<PenaltyState, 'current' | 'next'>) =>
-  s.next === undefined ? s.current : s.next;
-
-/** Pure form of the promotion, so it can be unit-tested without a store. */
-export function promote<T extends Pick<PenaltyState, 'current' | 'next' | 'appliedOn'>>(s: T, today: string) {
-  if (s.appliedOn === today) return null;
-  return {
-    current: s.next === undefined ? s.current : s.next,
-    next: undefined,
-    appliedOn: today,
-  };
+  /** First step: show what confirming would lock. */
+  review: (choice: PenaltySetting | null) => void;
+  /** Back out of the confirmation step. */
+  cancelReview: () => void;
+  /** Second step: commit the reviewed choice. */
+  confirmReview: () => void;
 }
 
 export const usePenaltyStore = create<PenaltyState>()(
   persist(
     (set, get) => ({
-      // No penalty until the user sets one. There is no starting charge.
-      current: null,
-      next: undefined,
-      appliedOn: dayStamp(),
-      startedOn: '',
+      plans: {},
       draft: DEFAULT_PENALTY,
       rateText: '',
       limitH: '',
       limitM: '',
+      pending: undefined,
 
       openEditor: () => {
-        const draft = pendingSetting(get()) || DEFAULT_PENALTY;
+        const draft = planFor(get().plans, monthOf(dayStamp()))?.setting ?? DEFAULT_PENALTY;
         const isPreset = PENALTY_LIMIT_PRESETS.indexOf(draft.limit) >= 0;
         set({
           draft,
+          pending: undefined,
           rateText: RATE_PRESETS.indexOf(draft.rate) >= 0 ? '' : draft.rate.toFixed(2),
           limitH: isPreset ? '' : String(Math.floor(draft.limit / 60)),
           limitM: isPreset ? '' : String(draft.limit % 60),
@@ -134,46 +126,33 @@ export const usePenaltyStore = create<PenaltyState>()(
           return rate != null ? { rateText: text, draft: { ...s.draft, rate } } : { rateText: text };
         }),
 
-      // Saving a draft identical to today's setting just cancels a pending change.
-      save: () =>
-        set((s) => ({
-          next: sameSetting(s.draft, s.current) ? undefined : { ...s.draft },
-          // First time a limit is saved, the ledger's clock starts.
-          startedOn: s.startedOn === '' ? dayStamp() : s.startedOn,
-        })),
-      remove: () => set((s) => ({ next: s.current == null ? undefined : null })),
-      undoPending: () => set({ next: undefined }),
-
-      promoteIfNewDay: () => {
-        const patch = promote(get(), dayStamp());
-        if (patch) set(patch);
+      review: (choice) => set({ pending: choice === null ? null : { ...choice } }),
+      cancelReview: () => set({ pending: undefined }),
+      confirmReview: () => {
+        const { pending, plans } = get();
+        if (pending === undefined) return;
+        const next = confirm(plans, pending, dayStamp());
+        // Null means the month locked while the screen was open (the window
+        // closed at midnight, say). Nothing changes.
+        set(next ? { plans: next, pending: undefined } : { pending: undefined });
       },
     }),
     {
-      name: storageKey('penalty'),
+      name: storageKey('penalty-plans'),
       version: STORAGE_VERSION,
       storage: deviceStorage,
-      partialize: (s) => ({ current: s.current, next: s.next, appliedOn: s.appliedOn, startedOn: s.startedOn }),
+      partialize: (s) => ({ plans: s.plans }),
       merge: (persisted, current) => {
         const p = persisted as Partial<PenaltyState> | undefined;
-        if (!p) return current;
-        // Reject anything that isn't a setting we would accept from the editor,
-        // so a corrupt or older payload can't put an impossible limit on screen.
-        const restored = {
-          ...current,
-          current: p.current === null ? null : isSetting(p.current) ? p.current : current.current,
-          next: p.next === undefined ? undefined : p.next === null ? null : isSetting(p.next) ? p.next : undefined,
-          appliedOn: typeof p.appliedOn === 'string' ? p.appliedOn : current.appliedOn,
-          startedOn: typeof p.startedOn === 'string' ? p.startedOn : current.startedOn,
-        };
-        // Reopening on a later day is exactly when "starts tomorrow" comes due.
-        return { ...restored, ...(promote(restored, dayStamp()) ?? {}) };
+        if (!p || typeof p.plans !== 'object' || p.plans === null) return current;
+        // Anything that isn't a plan the editor could have made is dropped, so
+        // a corrupt payload can't put an impossible limit on screen.
+        const plans: Plans = {};
+        for (const [month, plan] of Object.entries(p.plans)) {
+          if (/^\d{4}-\d{2}$/.test(month) && isPlan(plan)) plans[month] = plan;
+        }
+        return { ...current, plans };
       },
     }
   )
 );
-
-// Also promote while the app is open across midnight, not just on launch.
-onDayChange(() => {
-  usePenaltyStore.getState().promoteIfNewDay();
-});

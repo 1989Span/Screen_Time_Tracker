@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { ChevronRightIcon, SettingsIcon } from '../components/Icons';
+import { ChevronRightIcon, SettingsIcon, SparkleIcon } from '../components/Icons';
 import { Avatar, Card } from '../components/ui';
 import { GRACE_DAYS } from '../groups';
 import { GroupsViewModel, useGroupsModel } from '../models/groups';
@@ -95,6 +95,7 @@ function Empty({ m }: { m: GroupsViewModel }) {
 }
 
 function GroupBody({ m }: { m: GroupsViewModel }) {
+  const challenge = m.challenge;
   return (
     <>
       {m.tabs.length > 0 && (
@@ -204,6 +205,21 @@ function GroupBody({ m }: { m: GroupsViewModel }) {
             each person&rsquo;s own phone.
           </Text>
         </Card>
+      )}
+
+      {challenge && (
+        <Pressable onPress={challenge.open} accessibilityRole="button">
+          {({ pressed }) => (
+            <Card style={[styles.settingsCard, pressed && { backgroundColor: '#fbfbfc' }]}>
+              <SparkleIcon size={17} color={color.accent700} />
+              <View style={{ flex: 1, gap: 1 }}>
+                <Text style={styles.settingsTitle}>{challenge.title}</Text>
+                <Text style={challenge.needsYou ? styles.settingsNote : gs.meta}>{challenge.line}</Text>
+              </View>
+              <ChevronRightIcon size={15} color={alpha(color.text, 45)} />
+            </Card>
+          )}
+        </Pressable>
       )}
 
       <Pressable onPress={m.openSettings} accessibilityRole="button">

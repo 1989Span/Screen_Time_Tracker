@@ -34,16 +34,22 @@ export function PenaltyCard() {
           <Text style={styles.note}>{p.chargeNote}</Text>
         </View>
         <View style={styles.moneyCol}>
-          <View style={styles.lockLabel}>
-            <LockIcon size={13} color={alpha(color.text, 55)} />
-            <Text style={styles.label}>Locked balance</Text>
-          </View>
-          <Text style={styles.money}>{p.locked}</Text>
-          <Text style={styles.note}>{p.lockedNote}</Text>
+          <Text style={styles.label}>This month</Text>
+          <Text style={styles.money}>{p.monthTotal}</Text>
+          <Text style={styles.note}>{p.monthNote}</Text>
         </View>
       </View>
 
-      {p.pendingText !== '' && <Text style={styles.pending}>{p.pendingText}</Text>}
+      <Text style={styles.note}>
+        All time {p.allTime} · {p.allTimeNote} · paper money
+      </Text>
+
+      {p.status !== '' && (
+        <View style={styles.lockLabel}>
+          <LockIcon size={13} color={p.needsConfirm ? color.accent700 : alpha(color.text, 55)} />
+          <Text style={[styles.note, p.needsConfirm && styles.pending]}>{p.status}</Text>
+        </View>
+      )}
 
       <View style={styles.footer}>
         <Pressable onPress={p.openHistory} hitSlop={8} style={styles.link}>
@@ -51,7 +57,7 @@ export function PenaltyCard() {
           <ChevronRightIcon size={14} color={color.accent700} />
         </Pressable>
         <Pressable onPress={p.openSettings} hitSlop={8} style={styles.link}>
-          <Text style={styles.linkText}>{p.on ? 'Settings' : 'Set a limit'}</Text>
+          <Text style={styles.linkText}>{p.needsConfirm ? 'Keep or change' : p.on ? 'Settings' : 'Set a limit'}</Text>
           <ChevronRightIcon size={14} color={color.accent700} />
         </Pressable>
       </View>

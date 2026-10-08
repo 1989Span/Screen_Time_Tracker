@@ -57,88 +57,111 @@ export function PenaltyScreen() {
     <View style={styles.wrap}>
       <View style={styles.topRow}>
         <BackChip label="Overview" onPress={e.goOverview} />
-        <Text style={styles.title}>Penalty limit</Text>
+        <Text style={styles.title}>{e.heading}</Text>
       </View>
 
       <Card style={styles.card}>
         <View style={styles.statusRow}>
-          <Text style={styles.statusLabel}>Today</Text>
+          <Text style={styles.statusLabel}>This month</Text>
           <Text style={styles.statusValue}>{e.activeText}</Text>
         </View>
-        {e.pendingText !== '' && (
-          <View style={styles.statusRow}>
-            <Text style={[styles.statusValue, styles.pending]}>{e.pendingText}</Text>
-            <Pressable onPress={e.undoPending} hitSlop={8}>
-              <Text style={styles.undo}>Undo</Text>
-            </Pressable>
-          </View>
-        )}
-
-        <View style={styles.divider} />
-
-        <Text style={styles.sectionTitle}>Daily limit</Text>
-        <PresetRow items={e.limitPresets.slice(0, 4)} />
-        <PresetRow items={e.limitPresets.slice(4)} />
-        <View style={styles.customRow}>
-          <Text style={styles.customLabel}>Custom</Text>
-          <Field
-            value={e.limitH}
-            onChangeText={e.setLimitH}
-            placeholder="0"
-            suffix="hr"
-            keyboardType="number-pad"
-            maxLength={2}
-            error={e.limitError !== ''}
-          />
-          <Field
-            value={e.limitM}
-            onChangeText={e.setLimitM}
-            placeholder="0"
-            suffix="min"
-            keyboardType="number-pad"
-            maxLength={2}
-            error={e.limitError !== ''}
-          />
-        </View>
-        {e.limitError !== '' && <Text style={styles.error}>{e.limitError}</Text>}
-
-        <View style={styles.divider} />
-
-        <Text style={styles.sectionTitle}>Charge per minute over</Text>
-        <PresetRow items={e.ratePresets} />
-        <View style={styles.customRow}>
-          <Text style={styles.customLabel}>Custom</Text>
-          <Field
-            value={e.rateText}
-            onChangeText={e.setRateText}
-            placeholder="0.00"
-            prefix="$"
-            keyboardType="decimal-pad"
-            error={e.rateError !== ''}
-          />
-        </View>
-        {e.rateError !== '' && <Text style={styles.error}>{e.rateError}</Text>}
-
-        <View style={styles.divider} />
-
-        <Text style={styles.summary}>{e.summary}</Text>
-        <Text style={styles.hint}>{e.lockNote}</Text>
+        {e.status !== '' && <Text style={[styles.hint, styles.pending]}>{e.status}</Text>}
       </Card>
 
-      <View style={styles.actions}>
-        {e.canRemove && (
-          <Pressable onPress={e.remove} style={[styles.btn, styles.removeBtn]}>
-            <Text style={styles.removeText}>Turn off</Text>
-          </Pressable>
-        )}
-        <Pressable
-          onPress={e.save}
-          disabled={!e.canSave}
-          style={[styles.btn, styles.saveBtn, !e.canSave && { opacity: 0.4 }]}
-        >
-          <Text style={styles.saveText}>Save · starts tomorrow</Text>
-        </Pressable>
-      </View>
+      {e.review ? (
+        <Card style={[styles.card, styles.reviewCard]}>
+          <Text style={styles.sectionTitle}>{e.review.title}</Text>
+          {e.review.lines.map((line, i) => (
+            <Text key={i} style={styles.reviewLine}>
+              {line}
+            </Text>
+          ))}
+          <View style={[styles.actions, { marginTop: 6 }]}>
+            <Pressable onPress={e.review.cancel} style={[styles.btn, styles.removeBtn]}>
+              <Text style={styles.backText}>Go back</Text>
+            </Pressable>
+            <Pressable onPress={e.review.confirm} style={[styles.btn, styles.saveBtn]}>
+              <Text style={styles.saveText}>{e.review.confirmLabel}</Text>
+            </Pressable>
+          </View>
+        </Card>
+      ) : e.mode === 'locked' ? (
+        <Card style={styles.card}>
+          <Text style={styles.hint}>{e.lockNote}</Text>
+        </Card>
+      ) : (
+        <>
+          <Card style={styles.card}>
+            <Text style={styles.sectionTitle}>Daily limit</Text>
+            <PresetRow items={e.limitPresets.slice(0, 4)} />
+            <PresetRow items={e.limitPresets.slice(4)} />
+            <View style={styles.customRow}>
+              <Text style={styles.customLabel}>Custom</Text>
+              <Field
+                value={e.limitH}
+                onChangeText={e.setLimitH}
+                placeholder="0"
+                suffix="hr"
+                keyboardType="number-pad"
+                maxLength={2}
+                error={e.limitError !== ''}
+              />
+              <Field
+                value={e.limitM}
+                onChangeText={e.setLimitM}
+                placeholder="0"
+                suffix="min"
+                keyboardType="number-pad"
+                maxLength={2}
+                error={e.limitError !== ''}
+              />
+            </View>
+            {e.limitError !== '' && <Text style={styles.error}>{e.limitError}</Text>}
+
+            <View style={styles.divider} />
+
+            <Text style={styles.sectionTitle}>Charge per minute over</Text>
+            <PresetRow items={e.ratePresets} />
+            <View style={styles.customRow}>
+              <Text style={styles.customLabel}>Custom</Text>
+              <Field
+                value={e.rateText}
+                onChangeText={e.setRateText}
+                placeholder="0.00"
+                prefix="$"
+                keyboardType="decimal-pad"
+                error={e.rateError !== ''}
+              />
+            </View>
+            {e.rateError !== '' && <Text style={styles.error}>{e.rateError}</Text>}
+
+            <View style={styles.divider} />
+
+            <Text style={styles.summary}>{e.summary}</Text>
+            <Text style={styles.hint}>{e.lockNote}</Text>
+          </Card>
+
+          <View style={styles.actions}>
+            {e.turnOff && (
+              <Pressable onPress={e.turnOff} style={[styles.btn, styles.removeBtn]}>
+                <Text style={styles.removeText}>Turn off</Text>
+              </Pressable>
+            )}
+            {e.keep && (
+              <Pressable onPress={e.keep} style={[styles.btn, styles.removeBtn]}>
+                <Text style={styles.backText}>Keep as is</Text>
+              </Pressable>
+            )}
+            <Pressable
+              onPress={e.save}
+              disabled={!e.canSave}
+              style={[styles.btn, styles.saveBtn, !e.canSave && { opacity: 0.4 }]}
+            >
+              <Text style={styles.saveText}>{e.saveLabel}</Text>
+            </Pressable>
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -158,8 +181,7 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   statusLabel: { fontSize: 12.5, color: alpha(color.text, 52) },
   statusValue: { fontSize: 13, fontFamily: font.bodySemiBold, color: color.text },
-  pending: { flex: 1, color: color.accent700 },
-  undo: { fontSize: 13, fontFamily: font.bodySemiBold, color: color.roseDark },
+  pending: { color: color.accent700 },
   divider: { height: 1, backgroundColor: alpha(color.text, 7), marginVertical: 2 },
   sectionTitle: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 15, color: color.text },
   presetRow: { flexDirection: 'row', gap: 6 },
@@ -196,4 +218,7 @@ const styles = StyleSheet.create({
   saveText: { fontFamily: font.bodySemiBold, fontSize: 13.5, color: '#ffffff' },
   removeBtn: { flex: 1, borderWidth: 1, borderColor: alpha(color.text, 14) },
   removeText: { fontFamily: font.bodySemiBold, fontSize: 13.5, color: color.roseDark },
+  backText: { fontFamily: font.bodySemiBold, fontSize: 13.5, color: color.text },
+  reviewCard: { borderWidth: 1, borderColor: color.accent },
+  reviewLine: { fontSize: 13, lineHeight: 19, color: alpha(color.text, 75) },
 });

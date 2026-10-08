@@ -9,6 +9,8 @@
 
 import { useGroupsStore } from '../state/groupsStore';
 import { onUsageLoaded, reloadUsage } from '../usage/bootstrap';
+import { usageSource } from '../usage/source';
+import { postChallengeNotices } from './challengeNotices';
 import { registerForGroupPushes } from './groupNotifications';
 
 let started = false;
@@ -17,7 +19,19 @@ let started = false;
 export function startGroupSync(): void {
   if (started) return;
   started = true;
-  onUsageLoaded(() => void useGroupsStore.getState().sync().then(registerIfInGroups));
+  onUsageLoaded(
+    () =>
+      void useGroupsStore
+        .getState()
+        .sync()
+        .then(() => {
+          registerIfInGroups();
+          return postChallengeNotices((stamp) =>
+            usageSource().status === 'ready' ? usageSource().allAppsDay(stamp) : {}
+          );
+        })
+        .catch(() => {})
+  );
   // Joining or creating your first group registers straight away, so the first
   // request reaches you without waiting for the next usage load.
   useGroupsStore.subscribe((s, prev) => {

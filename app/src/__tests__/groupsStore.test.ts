@@ -66,6 +66,8 @@ function stubServer() {
     leaveGroup: jest.spyOn(groupsApi, 'leaveGroup').mockResolvedValue(),
     deleteMyData: jest.spyOn(groupsApi, 'deleteMyData').mockResolvedValue(),
     clearPushToken: jest.spyOn(groupsApi, 'clearPushToken').mockResolvedValue(),
+    proposeChallenge: jest.spyOn(groupsApi, 'proposeChallenge').mockResolvedValue(),
+    respondChallenge: jest.spyOn(groupsApi, 'respondChallenge').mockResolvedValue(),
     share: jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' } as never),
   };
 }
@@ -297,6 +299,61 @@ describe('votes, leaving and deleting', () => {
     expect(api.deleteMyData).toHaveBeenCalled();
     expect(store().selfId).toBe('');
     expect(store().groups).toEqual([]);
+  });
+});
+
+describe('time challenges', () => {
+  beforeEach(() => {
+    useGroupsStore.setState({ groups: [family()], groupId: 'g1', selfId: 'me', selfName: 'Stewart' });
+  });
+
+  it('proposes at the chosen fee, for today', async () => {
+    const api = stubServer();
+    store().setChFee(2);
+    await store().proposeChallenge();
+    expect(api.proposeChallenge).toHaveBeenCalledWith('g1', 2, dayStamp());
+  });
+
+  it('takes a custom fee, and refuses one out of range', async () => {
+    const api = stubServer();
+    store().setChFeeText('3.50');
+    expect(store().chFee).toBe(3.5);
+    store().setChFeeText('500');
+    await store().proposeChallenge();
+    expect(api.proposeChallenge).not.toHaveBeenCalled();
+  });
+
+  it('explains when the month already has a challenge', async () => {
+    const api = stubServer();
+    api.proposeChallenge.mockRejectedValue(new Error('challenge-exists'));
+    await store().proposeChallenge();
+    expect(store().error).toBe('There’s already a challenge this month.');
+  });
+
+  it('answers this month’s proposal', async () => {
+    const api = stubServer();
+    const month = dayStamp().slice(0, 7) + '-01';
+    const proposal = {
+      id: 'c1',
+      groupId: 'g1',
+      month,
+      fee: 1,
+      proposedBy: 'alex',
+      status: 'proposed' as const,
+      startDay: null,
+      players: [],
+      accepted: ['alex'],
+      declined: [],
+    };
+    useGroupsStore.setState({ groups: [{ ...family(), challenges: [proposal] }] });
+    await store().respondChallenge(true);
+    expect(api.respondChallenge).toHaveBeenCalledWith('c1', true, dayStamp());
+  });
+
+  it('opens a group’s challenge from a notification', () => {
+    stubServer();
+    expect(openFromNotification({ kind: 'challenge', groupId: 'g1' })).toBe(true);
+    expect(view()).toBe('groupChallenge');
   });
 });
 

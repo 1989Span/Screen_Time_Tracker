@@ -2,7 +2,6 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { alpha, color, font } from '../theme';
 import { BackChip, Card } from '../components/ui';
-import { LockIcon } from '../components/Icons';
 import { usePenaltyHistoryModel } from '../models/penalty';
 
 export function PenaltyHistoryScreen() {
@@ -14,12 +13,11 @@ export function PenaltyHistoryScreen() {
       <Text style={styles.title}>Charge history</Text>
 
       <Card style={styles.summaryCard}>
-        <View style={styles.lockLabel}>
-          <LockIcon size={14} color={alpha(color.text, 55)} />
-          <Text style={styles.label}>Locked balance</Text>
-        </View>
-        <Text style={styles.balance}>{h.locked}</Text>
-        <Text style={styles.label}>{h.unlockText}</Text>
+        <Text style={styles.label}>{h.monthNote}</Text>
+        <Text style={styles.balance}>{h.monthTotal}</Text>
+        <Text style={styles.label}>
+          All time {h.allTime} · {h.allTimeNote} · paper money
+        </Text>
         <View style={styles.statsRow}>
           <View style={styles.stat}>
             <Text style={styles.statValue}>{h.daysOver}</Text>
@@ -32,32 +30,23 @@ export function PenaltyHistoryScreen() {
         </View>
       </Card>
 
-      <Card style={styles.listCard}>
-        {h.today && (
-          <View style={styles.row}>
-            <View style={{ flex: 1, gap: 1 }}>
-              <Text style={styles.day}>Today, so far</Text>
-              <Text style={styles.detail}>{h.today.detail}</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end', gap: 1 }}>
-              <Text style={styles.amount}>{h.today.amount}</Text>
-              <Text style={styles.detail}>settles at midnight</Text>
-            </View>
+      {h.months.map((m) => (
+        <Card key={m.title} style={styles.listCard}>
+          <View style={[styles.row, styles.monthHead]}>
+            <Text style={[styles.day, { flex: 1 }]}>{m.title}</Text>
+            <Text style={styles.amount}>{m.total}</Text>
           </View>
-        )}
-        {h.rows.map((r, i: number) => (
-          <View key={i} style={[styles.row, i === h.rows.length - 1 && { borderBottomWidth: 0 }]}>
-            <View style={{ flex: 1, gap: 1 }}>
-              <Text style={styles.day}>{r.label}</Text>
-              <Text style={styles.detail}>{r.detail}</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end', gap: 1 }}>
+          {m.rows.map((r, i: number) => (
+            <View key={i} style={[styles.row, i === m.rows.length - 1 && { borderBottomWidth: 0 }]}>
+              <View style={{ flex: 1, gap: 1 }}>
+                <Text style={styles.day}>{r.label}</Text>
+                <Text style={styles.detail}>{r.detail}</Text>
+              </View>
               <Text style={[styles.amount, !r.over && { color: alpha(color.text, 40) }]}>{r.amount}</Text>
-              <Text style={styles.detail}>Balance {r.balance}</Text>
             </View>
-          </View>
-        ))}
-      </Card>
+          ))}
+        </Card>
+      ))}
     </View>
   );
 }
@@ -66,7 +55,6 @@ const styles = StyleSheet.create({
   wrap: { gap: 16 },
   title: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 24, letterSpacing: -0.2, color: color.text },
   summaryCard: { padding: 18, gap: 4 },
-  lockLabel: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   label: { fontSize: 11.5, color: alpha(color.text, 48) },
   balance: {
     fontFamily: font.headingBold,
@@ -87,6 +75,7 @@ const styles = StyleSheet.create({
   },
   statValue: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 18, color: color.text },
   listCard: { paddingHorizontal: 16, paddingVertical: 4 },
+  monthHead: { borderBottomColor: alpha(color.text, 12) },
   row: {
     width: '100%',
     flexDirection: 'row',

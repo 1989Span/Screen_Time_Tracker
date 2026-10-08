@@ -13,6 +13,7 @@ export type View =
   | 'groups'
   | 'groupSettings'
   | 'groupRules'
+  | 'groupChallenge'
   | 'groupJoin'
   | 'newGroup'
   | 'apps';
@@ -27,6 +28,7 @@ export const TAB_OF: Record<View, Tab> = {
   groups: 'groups',
   groupSettings: 'groups',
   groupRules: 'groups',
+  groupChallenge: 'groups',
   groupJoin: 'groups',
   newGroup: 'groups',
   limits: 'timers',

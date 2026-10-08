@@ -5,18 +5,13 @@
 // back to `true` and the feature returns exactly as it was.
 
 /**
- * The penalty limit: a daily budget that accrues a notional charge for every
- * minute over, settling into a locked balance.
- *
- * Off while the rest of the app is being tested on real data. The ledger logic,
- * its screens and its tests all remain — this only controls whether the card is
- * rendered on the Overview, which is the sole entry point to the penalty and
- * charge-history screens.
- *
- * Still to settle before turning it on: no money actually moves, and the "locked
- * balance" framing implies a custody model the app has no backend for.
+ * The penalty limit: a daily budget, set per month, that adds a paper-money
+ * charge for every minute over (penaltyPlan.ts). No money moves: the app keeps
+ * the tally. This controls whether the card is rendered on the Overview, the
+ * sole entry point to the penalty and charge-history screens, and whether its
+ * monthly reminders are scheduled.
  */
-export const PENALTY_LIMIT_ENABLED = false;
+export const PENALTY_LIMIT_ENABLED = true;
 
 /**
  * Groups: compare screen time with friends and vote on what counts.
@@ -28,7 +23,7 @@ export const PENALTY_LIMIT_ENABLED = false;
 export const GROUPS_ENABLED = true;
 
 const PENALTY_VIEWS = ['penalty', 'history'];
-const GROUP_VIEWS = ['groups', 'groupSettings', 'groupRules', 'groupJoin', 'newGroup'];
+const GROUP_VIEWS = ['groups', 'groupSettings', 'groupRules', 'groupChallenge', 'groupJoin', 'newGroup'];
 
 /** Views that only exist when a flag is on. Routing falls back to Overview for
  *  these while the flag is off, so nothing can strand the user on an orphan

@@ -25,6 +25,7 @@
 //    (supabase/migrations/0002_stop_tracking_requests.sql).
 //  * Members compete from the day they joined.
 
+import type { Challenge } from './challenge';
 import { dayStamp } from './clock';
 import { dayStampToDate } from './usage/ledger';
 
@@ -63,6 +64,8 @@ export interface Group {
   inviteCode?: string;
   /** Who asked to stop tracking each app: package -> member id. Missing in groups cached before requests existed. */
   requestedBy?: Record<string, string>;
+  /** Time challenges, newest month first (challenge.ts). Missing in groups cached before challenges existed. */
+  challenges?: Challenge[];
 }
 
 // --- Dates ---------------------------------------------------------------------

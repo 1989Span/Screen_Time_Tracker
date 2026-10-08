@@ -19,6 +19,7 @@ import { persist } from 'zustand/middleware';
 
 import { dayStamp } from '../clock';
 import { Invite, inviteLink, readInvite } from '../groupLink';
+import { currentChallenge } from '../challenge';
 import { Group, NAME_MAX, agreeToExclude, declineExclude, selfDays, withdrawExclude } from '../groups';
 import { groupsApi } from '../sync/groupsApi';
 import { groupsServerConfigured } from '../sync/supabase';
@@ -55,6 +56,16 @@ interface GroupsState {
   error: string | null;
   ngName: string;
   linkDraft: string;
+  /** The daily fee being proposed for a time challenge. */
+  chFee: number;
+  /** A custom fee as typed, or '' when a preset is chosen. */
+  chFeeText: string;
+  /**
+   * Challenge notifications already shown: challenge id -> the latest day
+   * announced, or 'final' once the winner was. Persisted, so a day is
+   * announced once however many syncs see it.
+   */
+  challengeSeen: Record<string, string>;
 
   select: (groupId: string) => void;
   openSettings: () => void;
@@ -85,9 +96,35 @@ interface GroupsState {
   withdrawVote: (app: string) => void;
   declineProposal: (app: string) => void;
 
+  openChallenge: () => void;
+  /** Opens a group's challenge, from a tapped notification. */
+  openChallengeFor: (groupId: string) => void;
+  setChFee: (fee: number) => void;
+  setChFeeText: (text: string) => void;
+  /** Proposes a challenge at the chosen fee, for the rest of this month. */
+  proposeChallenge: () => Promise<void>;
+  respondChallenge: (accept: boolean) => Promise<void>;
+  withdrawChallenge: () => Promise<void>;
+  markChallengeSeen: (challengeId: string, through: string) => void;
+
   leave: () => Promise<void>;
   deleteMyData: () => Promise<void>;
 }
+
+export const CHALLENGE_FEE_MIN = 0.25;
+export const CHALLENGE_FEE_MAX = 100;
+
+/** A custom challenge fee, to the cent, or null if it's out of range. */
+export function parseFee(text: string): number | null {
+  const v = parseFloat(text.replace(/[$,\s]/g, ''));
+  if (!isFinite(v) || v < CHALLENGE_FEE_MIN || v > CHALLENGE_FEE_MAX) return null;
+  return Math.round(v * 100) / 100;
+}
+
+const CHALLENGE_ERRORS: Record<string, string> = {
+  'challenge-exists': 'There’s already a challenge this month.',
+  'too-few': 'A challenge needs at least two people in the group.',
+};
 
 export const currentGroup = (s: Pick<GroupsState, 'groups' | 'groupId'>): Group | null =>
   s.groups.find((g) => g.id === s.groupId) || s.groups[0] || null;
@@ -186,6 +223,9 @@ export const useGroupsStore = create<GroupsState>()(
         error: null,
         ngName: '',
         linkDraft: '',
+        chFee: 1,
+        chFeeText: '',
+        challengeSeen: {},
 
         select: (groupId) => set({ groupId }),
         openSettings: () => goTo('groupSettings'),
@@ -297,6 +337,71 @@ export const useGroupsStore = create<GroupsState>()(
         withdrawVote: (app) => vote((g, me) => withdrawExclude(g, me, app)),
         declineProposal: (app) => vote((g, me) => declineExclude(g, me, app)),
 
+        openChallenge: () => {
+          set({ error: null });
+          goTo('groupChallenge');
+        },
+        openChallengeFor: (groupId) => {
+          // As openRequests: selected even before this phone has the group.
+          set({ groupId, error: null });
+          goTo('groupChallenge');
+          void get().sync();
+        },
+        setChFee: (fee) => set({ chFee: fee, chFeeText: '', error: null }),
+        setChFeeText: (text) => {
+          const fee = parseFee(text);
+          set(fee != null ? { chFeeText: text, chFee: fee, error: null } : { chFeeText: text });
+        },
+
+        proposeChallenge: async () => {
+          const s = get();
+          const g = currentGroup(s);
+          if (!g || s.busy || (s.chFeeText !== '' && parseFee(s.chFeeText) == null)) return;
+          set({ busy: true, error: null });
+          try {
+            await groupsApi.proposeChallenge(g.id, s.chFee, dayStamp());
+            await get().sync();
+          } catch (e) {
+            const m = describe(e).message;
+            set({ error: CHALLENGE_ERRORS[m] ?? "Couldn't propose the challenge: " + m });
+          } finally {
+            set({ busy: false });
+          }
+        },
+
+        respondChallenge: async (accept) => {
+          const s = get();
+          const c = currentChallenge(currentGroup(s)?.challenges, dayStamp());
+          if (!c || c.status !== 'proposed' || s.busy) return;
+          set({ busy: true, error: null });
+          try {
+            await groupsApi.respondChallenge(c.id, accept, dayStamp());
+            await get().sync();
+          } catch (e) {
+            set({ error: "Couldn't send your answer: " + describe(e).message });
+          } finally {
+            set({ busy: false });
+          }
+        },
+
+        withdrawChallenge: async () => {
+          const s = get();
+          const c = currentChallenge(currentGroup(s)?.challenges, dayStamp());
+          if (!c || c.status !== 'proposed' || c.proposedBy !== s.selfId || s.busy) return;
+          set({ busy: true, error: null });
+          try {
+            await groupsApi.withdrawChallenge(c.id);
+            await get().sync();
+          } catch (e) {
+            set({ error: "Couldn't withdraw it: " + describe(e).message });
+          } finally {
+            set({ busy: false });
+          }
+        },
+
+        markChallengeSeen: (challengeId, through) =>
+          set((s) => ({ challengeSeen: { ...s.challengeSeen, [challengeId]: through } })),
+
         leave: async () => {
           const s = get();
           const g = currentGroup(s);
@@ -345,6 +450,7 @@ export const useGroupsStore = create<GroupsState>()(
         groups: s.groups,
         groupId: s.groupId,
         lastSynced: s.lastSynced,
+        challengeSeen: s.challengeSeen,
       }),
       merge: (persisted, current) => {
         const p = persisted as Partial<GroupsState> | undefined;
@@ -360,6 +466,10 @@ export const useGroupsStore = create<GroupsState>()(
           groups,
           groupId: typeof p.groupId === 'string' && ids.has(p.groupId) ? p.groupId : (groups[0]?.id ?? ''),
           lastSynced: typeof p.lastSynced === 'number' ? p.lastSynced : 0,
+          challengeSeen:
+            typeof p.challengeSeen === 'object' && p.challengeSeen !== null
+              ? Object.fromEntries(Object.entries(p.challengeSeen).filter(([, v]) => typeof v === 'string'))
+              : {},
         };
       },
     }

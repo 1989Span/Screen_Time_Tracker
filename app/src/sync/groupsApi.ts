@@ -5,6 +5,7 @@
 // (groups.ts). Exported as one object so tests can replace its methods.
 
 import { cleanText } from '../groupLink';
+import { Challenge, ChallengeStatus } from '../challenge';
 import { Group, Member, NAME_MAX } from '../groups';
 import { ensureSession, signOutLocally, supabase } from './supabase';
 
@@ -29,6 +30,21 @@ interface RequestRow {
   group_id: string;
   app: string;
   requested_by: string;
+}
+interface ChallengeRow {
+  id: string;
+  group_id: string;
+  month: string;
+  fee: number | string;
+  proposed_by: string | null;
+  status: ChallengeStatus;
+  start_day: string | null;
+  players: string[] | null;
+}
+interface VoteRow {
+  challenge_id: string;
+  user_id: string;
+  accepted: boolean;
 }
 interface DayRow {
   group_id: string;
@@ -59,7 +75,9 @@ export function buildGroups(
   groups: GroupRow[],
   members: MemberRow[],
   days: DayRow[],
-  requests: RequestRow[] = []
+  requests: RequestRow[] = [],
+  challenges: ChallengeRow[] = [],
+  votes: VoteRow[] = []
 ): Group[] {
   const daysOf = new Map<string, Record<string, number>>();
   // When each member last uploaded numbers. (The member row's updated_at also
@@ -77,6 +95,22 @@ export function buildGroups(
     name: safeName(g.name),
     created: g.created_day,
     inviteCode: g.invite_code,
+    challenges: challenges
+      .filter((c) => c.group_id === g.id)
+      .sort((a, b) => (a.month < b.month ? 1 : a.month > b.month ? -1 : 0))
+      .map((c): Challenge => ({
+        id: c.id,
+        groupId: c.group_id,
+        month: c.month,
+        // numeric columns arrive as strings from PostgREST.
+        fee: Number(c.fee),
+        proposedBy: c.proposed_by,
+        status: c.status,
+        startDay: c.start_day,
+        players: c.players ?? [],
+        accepted: votes.filter((v) => v.challenge_id === c.id && v.accepted).map((v) => v.user_id),
+        declined: votes.filter((v) => v.challenge_id === c.id && !v.accepted).map((v) => v.user_id),
+      })),
     requestedBy: Object.fromEntries(requests.filter((r) => r.group_id === g.id).map((r) => [r.app, r.requested_by])),
     members: members
       .filter((m) => m.group_id === g.id)
@@ -100,15 +134,20 @@ export const groupsApi = {
 
   /** Every group you're in, with its roster and daily totals. */
   async fetchGroups(): Promise<Group[]> {
-    const [groups, members, days, requests] = await Promise.all([
+    const [groups, members, days, requests, challenges, votes] = await Promise.all([
       selectAll<GroupRow>('groups', 'id, name, created_day, invite_code'),
       selectAll<MemberRow>('members', 'group_id, user_id, name, joined_day, excludes, declines'),
       selectAll<DayRow>('days', 'group_id, user_id, day, minutes, updated_at'),
       // Optional: a server without migration 0002 has no requests table, and
       // groups must still sync against it. Votes then just show no requester.
       selectAll<RequestRow>('stop_requests', 'group_id, app, requested_by').catch(() => [] as RequestRow[]),
+      // Likewise for challenges (migration 0004).
+      selectAll<ChallengeRow>('challenges', 'id, group_id, month, fee, proposed_by, status, start_day, players').catch(
+        () => [] as ChallengeRow[]
+      ),
+      selectAll<VoteRow>('challenge_votes', 'challenge_id, user_id, accepted').catch(() => [] as VoteRow[]),
     ]);
-    return buildGroups(groups, members, days, requests);
+    return buildGroups(groups, members, days, requests, challenges, votes);
   },
 
   async createGroup(name: string, memberName: string, today: string): Promise<{ id: string; inviteCode: string }> {
@@ -155,6 +194,32 @@ export const groupsApi = {
 
   async leaveGroup(groupId: string, selfId: string): Promise<void> {
     const { error } = await supabase().from('members').delete().eq('group_id', groupId).eq('user_id', selfId);
+    if (error) throw error;
+  },
+
+  /** Proposes a time challenge for the rest of this month. Throws 'challenge-exists' or 'too-few'. */
+  async proposeChallenge(groupId: string, fee: number, today: string): Promise<void> {
+    const { error } = await supabase().rpc('propose_challenge', { p_group: groupId, p_fee: fee, p_today: today });
+    if (error) {
+      if (error.code === 'P0004') throw new Error('challenge-exists');
+      if (error.code === 'P0003') throw new Error('too-few');
+      throw error;
+    }
+  },
+
+  /** Accepts or declines a proposed challenge. */
+  async respondChallenge(challengeId: string, accept: boolean, today: string): Promise<void> {
+    const { error } = await supabase().rpc('respond_challenge', {
+      p_challenge: challengeId,
+      p_accept: accept,
+      p_today: today,
+    });
+    if (error) throw error;
+  },
+
+  /** Takes back your own proposal before it starts. */
+  async withdrawChallenge(challengeId: string): Promise<void> {
+    const { error } = await supabase().rpc('withdraw_challenge', { p_challenge: challengeId });
     if (error) throw error;
   },
 

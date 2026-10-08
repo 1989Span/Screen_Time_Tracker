@@ -4,7 +4,8 @@ import { emptySource } from '../usage/emptySource';
 import { useDetailStore } from '../state/detailStore';
 import { useGroupsStore } from '../state/groupsStore';
 import { useNavStore } from '../state/navStore';
-import { pendingSetting, usePenaltyStore } from '../state/penaltyStore';
+import { setFixedClock } from '../clock';
+import { usePenaltyStore } from '../state/penaltyStore';
 import { useTimersStore } from '../state/timersStore';
 
 const nav = () => useNavStore.getState();
@@ -77,16 +78,15 @@ describe('breakdown', () => {
 });
 
 describe('penalty limit', () => {
-  // No penalty ships with the app: `current` starts null and nothing is charged
-  // until the user saves a limit. These tests therefore set today's limit first.
-  const TODAY_SETTING = { limit: 240, rate: 0.1 };
-  beforeEach(() => {
-    usePenaltyStore.setState({ current: TODAY_SETTING, next: undefined, draft: TODAY_SETTING });
-  });
+  // Nothing ships switched on. Plans are set per test.
+  const SETTING = { limit: 240, rate: 0.1 };
 
-  it('seeds the editor from today’s setting', () => {
+  afterEach(() => setFixedClock(new Date(2026, 7, 25, 19, 0, 0)));
+
+  it('seeds the editor from this month’s setting', () => {
+    usePenaltyStore.setState({ plans: { '2026-08': { setting: SETTING, from: '2026-08-03', confirmed: true } } });
     penalty().openEditor();
-    expect(penalty().draft).toEqual(TODAY_SETTING);
+    expect(penalty().draft).toEqual(SETTING);
     // 4h is a preset button, so the custom hour/minute fields stay empty...
     expect(penalty().limitH).toBe('');
     expect(penalty().limitM).toBe('');
@@ -95,47 +95,64 @@ describe('penalty limit', () => {
   });
 
   it('fills the custom fields when the limit is not a preset', () => {
-    usePenaltyStore.setState({ current: { limit: 90, rate: 1 }, next: undefined });
+    usePenaltyStore.setState({
+      plans: { '2026-08': { setting: { limit: 90, rate: 1 }, from: '2026-08-03', confirmed: true } },
+    });
     penalty().openEditor();
     expect(penalty().limitH).toBe('1');
     expect(penalty().limitM).toBe('30');
     expect(penalty().rateText).toBe(''); // $1 is a preset
   });
 
-  it('saves a change for tomorrow and leaves today alone', () => {
+  it('offers the editor default when nothing is set', () => {
+    usePenaltyStore.setState({ plans: {} });
+    penalty().openEditor();
+    expect(penalty().draft).toEqual(DEFAULT_PENALTY);
+  });
+
+  it('takes two steps to lock in a limit', () => {
+    usePenaltyStore.setState({ plans: {} });
     penalty().openEditor();
     penalty().setLimitPreset(360);
     penalty().setRatePreset(1);
-    penalty().save();
-
-    expect(penalty().current).toEqual(TODAY_SETTING); // today is untouched
-    expect(pendingSetting(penalty())).toEqual({ limit: 360, rate: 1 });
+    penalty().review(penalty().draft);
+    // The first step only shows what would be locked.
+    expect(penalty().plans).toEqual({});
+    expect(penalty().pending).toEqual({ limit: 360, rate: 1 });
+    penalty().confirmReview();
+    expect(penalty().plans['2026-08']).toEqual({
+      setting: { limit: 360, rate: 1 },
+      from: '2026-08-25',
+      confirmed: true,
+    });
+    expect(penalty().pending).toBeUndefined();
   });
 
-  it('undoes a pending change', () => {
-    penalty().openEditor();
-    penalty().setLimitPreset(360);
-    penalty().save();
-    penalty().undoPending();
-    expect(penalty().next).toBeUndefined();
-    expect(pendingSetting(penalty())).toEqual(TODAY_SETTING);
+  it('going back from the confirmation step saves nothing', () => {
+    usePenaltyStore.setState({ plans: {} });
+    penalty().review({ limit: 360, rate: 1 });
+    penalty().cancelReview();
+    expect(penalty().plans).toEqual({});
   });
 
-  it('saving today’s setting again just cancels the pending change', () => {
-    penalty().openEditor();
-    penalty().setLimitPreset(360);
-    penalty().save();
-    penalty().setLimitPreset(TODAY_SETTING.limit);
-    penalty().setRatePreset(TODAY_SETTING.rate);
-    penalty().save();
-    expect(penalty().next).toBeUndefined();
+  it('a locked month ignores a confirmed change', () => {
+    const plans = { '2026-08': { setting: SETTING, from: '2026-08-03', confirmed: true } };
+    usePenaltyStore.setState({ plans });
+    penalty().review({ limit: 600, rate: 0.25 });
+    penalty().confirmReview();
+    expect(penalty().plans).toEqual(plans);
   });
 
-  it('turns the limit off from tomorrow', () => {
-    penalty().remove();
-    expect(penalty().current).toEqual(TODAY_SETTING);
-    expect(penalty().next).toBeNull();
-    expect(pendingSetting(penalty())).toBeNull();
+  it('in the first days of a carried-over month, a change covers the whole month', () => {
+    setFixedClock(new Date(2026, 8, 2, 12, 0, 0)); // 2 Sep
+    usePenaltyStore.setState({ plans: { '2026-08': { setting: SETTING, from: '2026-08-03', confirmed: true } } });
+    penalty().review({ limit: 600, rate: 0.25 });
+    penalty().confirmReview();
+    expect(penalty().plans['2026-09']).toEqual({
+      setting: { limit: 600, rate: 0.25 },
+      from: '2026-09-01',
+      confirmed: true,
+    });
   });
 
   it('keeps an invalid custom rate out of the draft', () => {
@@ -159,9 +176,18 @@ describe('penalty limit', () => {
     expect(penalty().draft.limit).toBe(90);
   });
 
-  it('offers the editor default when the limit is off', () => {
-    usePenaltyStore.setState({ current: null, next: undefined });
-    penalty().openEditor();
-    expect(penalty().draft).toEqual(DEFAULT_PENALTY);
+  it('drops anything saved that isn’t a valid plan', () => {
+    const merge = usePenaltyStore.persist.getOptions().merge as (p: unknown, c: unknown) => { plans: object };
+    const restored = merge(
+      {
+        plans: {
+          '2026-08': { setting: SETTING, from: '2026-08-03', confirmed: true },
+          '2026-09': { setting: { limit: 99999, rate: 1 }, from: '2026-09-01', confirmed: true },
+          junk: { setting: null, from: '2026-10-01', confirmed: true },
+        },
+      },
+      penalty()
+    );
+    expect(Object.keys(restored.plans)).toEqual(['2026-08']);
   });
 });

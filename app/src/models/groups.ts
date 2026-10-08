@@ -8,17 +8,7 @@ import { useMemo } from 'react';
 
 import { dayStamp } from '../clock';
 import { fmtShort } from '../data';
-import {
-  GRACE_DAYS,
-  Group,
-  Member,
-  MIN_GROUP_SIZE,
-  excludedApps,
-  openProposals,
-  selfDays,
-  shiftStamp,
-  standings,
-} from '../groups';
+import { GRACE_DAYS, Member, MIN_GROUP_SIZE, excludedApps, openProposals, shiftStamp, standings } from '../groups';
 import { useAppsStore } from '../state/appsStore';
 import { currentGroup, useGroupsStore } from '../state/groupsStore';
 import { useNow } from '../state/useNow';
@@ -27,6 +17,8 @@ import { colorForId } from '../usage/series';
 import { usageSource } from '../usage/source';
 import { dayStampToDate } from '../usage/ledger';
 import { color } from '../theme';
+import { ChallengeCard, challengeCard } from './challenge';
+import { capitalise, firstName, listNames, valueFor } from './groupText';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const shortDate = (stamp: string) => {
@@ -50,23 +42,11 @@ export const ago = (ms: number, now: number) => {
 /** When a member's phone last uploaded numbers, or that it hasn't yet. */
 const lastSynced = (m: Member, now: number) =>
   m.sharedAt > 0 ? 'last synced ' + ago(m.sharedAt, now) : 'not synced yet';
-const firstName = (m: Member) => m.name.split(' ')[0];
-const listNames = (names: string[]) =>
-  names.length <= 1 ? names.join('') : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
 const memberColor = (m: Member, selfId: string) => (m.id === selfId ? color.accent : colorForId(m.id));
-const capitalise = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
 /** Competition-style ranks: equal values share a rank, the next rank skips. */
 function ranks(values: number[]): number[] {
   return values.map((v) => values.filter((x) => x < v).length + 1);
-}
-
-/** Every member's number for a day: yours live from this phone, everyone else's as synced. */
-function valueFor(g: Group, selfId: string, today: string) {
-  const mine = selfDays(g, selfId, today, (stamp) =>
-    usageSource().status === 'ready' ? usageSource().allAppsDay(stamp) : {}
-  );
-  return (m: Member, day: string) => (m.id === selfId ? mine[day] : m.days[day]);
 }
 
 // --- Group page --------------------------------------------------------------
@@ -113,6 +93,8 @@ export interface GroupsViewModel {
   board: BoardRow[];
   openSettings: () => void;
   settingsNote: string;
+  /** The time challenge card, or null with no group. */
+  challenge: ChallengeCard | null;
 }
 
 function syncLineFor(status: string, lastSynced: number, now: number): string {
@@ -155,6 +137,7 @@ export function useGroupsModel(): GroupsViewModel {
         board: [],
         openSettings: () => {},
         settingsNote: '',
+        challenge: null,
       };
     }
 
@@ -252,6 +235,7 @@ export function useGroupsModel(): GroupsViewModel {
       openSettings: store.openSettings,
       settingsNote:
         needsVote > 0 ? needsVote + (needsVote === 1 ? ' request needs' : ' requests need') + ' your vote' : '',
+      challenge: challengeCard(g, selfId, today, store.openChallenge),
     };
     // dataVersion: your live numbers change when usage reloads.
   }, [store, dataVersion, now]);

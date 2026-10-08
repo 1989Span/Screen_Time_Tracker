@@ -17,6 +17,7 @@ import { PenaltyScreen } from './src/screens/PenaltyScreen';
 import { PenaltyHistoryScreen } from './src/screens/PenaltyHistoryScreen';
 import { GroupsScreen } from './src/screens/GroupsScreen';
 import { GroupRulesScreen } from './src/screens/GroupRulesScreen';
+import { ChallengeScreen } from './src/screens/ChallengeScreen';
 import { GroupSettingsScreen } from './src/screens/GroupSettingsScreen';
 import { JoinGroupScreen } from './src/screens/JoinGroupScreen';
 import { NewGroupScreen } from './src/screens/NewGroupScreen';
@@ -28,6 +29,7 @@ import { useSetupGate } from './src/state/useSetupGate';
 import { useIncomingLinks } from './src/state/incomingLinks';
 import { useNudgePrompt } from './src/state/nudges';
 import { useGroupNotifications } from './src/sync/groupNotifications';
+import { usePenaltyReminders } from './src/state/penaltyReminders';
 import { DISABLED_VIEWS } from './src/features';
 
 export default function App() {
@@ -46,6 +48,7 @@ const SCREENS = {
   groups: GroupsScreen,
   groupSettings: GroupSettingsScreen,
   groupRules: GroupRulesScreen,
+  groupChallenge: ChallengeScreen,
   groupJoin: JoinGroupScreen,
   newGroup: NewGroupScreen,
   limits: LimitsScreen,
@@ -69,6 +72,8 @@ function Tracker() {
   useIncomingLinks(hydrated);
   // Tapping a group request notification opens that group's requests.
   useGroupNotifications(hydrated);
+  // The penalty limit's reminders for the first days of each month.
+  usePenaltyReminders(hydrated);
   // Hourly nudges are on by default. Ask for notification permission once,
   // after setup, when there is finally something to nudge about.
   useNudgePrompt(hydrated && gate === null);

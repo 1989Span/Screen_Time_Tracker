@@ -83,13 +83,13 @@ Android keeps app usage behind a permission called Usage access, which only you 
 | Privacy policy | URL above | Required, because the app reads usage data |
 | Ads | **No**, the app does not contain ads | No ad SDKs in `package.json` |
 | App access | **All functionality is available without special access** | No login. Usage access is an Android setting the app walks reviewers through on first launch. |
-| Content rating | Category: *All other app types*. Answer **No** to the content questions (violence, language, gambling, etc.) but **Yes** to "Does the app allow users to interact or exchange content with other users?" | Groups show each member's chosen display name and the group name, both typed by users, to other people. Expected result: Everyone / PEGI 3 with a *Users Interact* notice. The app has no chat, and names are capped at 30 characters with control characters stripped. |
+| Content rating | **Revisit before the next submission:** group time challenges let members stake paper money on a contest and pay a winner from a pool. The questionnaire's gambling section asks about simulated gambling, and this may count, which can raise the rating. Answer it as the feature works. Previously: Category: *All other app types*. Answer **No** to the content questions (violence, language, gambling, etc.) but **Yes** to "Does the app allow users to interact or exchange content with other users?" | Groups show each member's chosen display name and the group name, both typed by users, to other people. Expected result: Everyone / PEGI 3 with a *Users Interact* notice. The app has no chat, and names are capped at 30 characters with control characters stripped. |
 | Target audience | **18 and over** only | Selecting any age under 13 brings in the Families policy and its extra requirements. You can widen this later. |
 | News app | No | |
 | Data safety | **Yes**, the app collects user data. Full answers in the next section. | Groups sync to a Supabase database. Everything else stays on the phone: no analytics, ads or crash SDKs. |
 | Advertising ID | **No** | No `AD_ID` permission in the shipped manifest |
 | Government app | No | |
-| Financial features | My app doesn't provide any financial features | The penalty limit, which mentions charges, is hidden and moves no money |
+| Financial features | My app doesn't provide any financial features | The penalty limit and group time challenges keep a paper-money tally only. No payments, no payment details, no real-money prizes. |
 | Health apps (if shown) | No health features | Screen time is not health data |
 
 ### Data safety answers
@@ -112,7 +112,7 @@ send anything), purpose **App functionality** only.
 |---|---|
 | Personal info > Name | The display name chosen for groups |
 | Personal info > User IDs | The random anonymous ID Supabase issues |
-| App activity > App interactions | Total screen time per day. It's about app usage and is the closest fit Play offers. |
+| App activity > App interactions | Total screen time per day. It's about app usage and is the closest fit Play offers. Also time challenge votes and fees (paper money, migration 0004). |
 | App activity > Installed apps | Package names of apps someone votes to leave out of a group's totals, and who asked |
 | Device or other IDs | The Expo push token that lets the server notify the phone about group requests (`push_tokens`, migration 0002) |
 

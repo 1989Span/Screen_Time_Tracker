@@ -21,9 +21,11 @@ import { useEffect } from 'react';
 import { AppState, Platform } from 'react-native';
 
 import { useGroupsStore } from '../state/groupsStore';
+import { usePenaltyStore } from '../state/penaltyStore';
 import { reloadUsage } from '../usage/bootstrap';
 import { recordOsDays } from '../usage/recorder';
 import { syncGroupsFromHistory } from './groupsBackground';
+import { CHALLENGE_CHANNEL } from './challengeNotices';
 import { groupsApi } from './groupsApi';
 import { groupsServerConfigured } from './supabase';
 
@@ -105,6 +107,12 @@ export async function registerForGroupPushes(): Promise<void> {
     description: 'When someone in your group asks to stop tracking an app, and how everyone votes.',
     importance: Notifications.AndroidImportance.HIGH,
   });
+  // Pushes about challenges name this channel too (0004_time_challenges.sql).
+  await Notifications.setNotificationChannelAsync(CHALLENGE_CHANNEL, {
+    name: 'Time challenges',
+    description: 'Challenge proposals, each day’s result, and the winner at the end of the month.',
+    importance: Notifications.AndroidImportance.DEFAULT,
+  });
 
   const perm = await Notifications.getPermissionsAsync();
   if (!perm.granted && perm.canAskAgain && !askedThisLaunch) {
@@ -129,8 +137,22 @@ const isRequest = (data: unknown): data is { kind: 'stop-request'; groupId: stri
   (data as { kind?: unknown }).kind === 'stop-request' &&
   typeof (data as { groupId?: unknown }).groupId === 'string';
 
-/** Opens the group's requests from a tapped notification. */
+const groupIdOf = (data: unknown): string | null => {
+  const id = typeof data === 'object' && data !== null ? (data as { groupId?: unknown }).groupId : null;
+  return typeof id === 'string' ? id : null;
+};
+
+/** Opens what a tapped notification is about: a group's requests or challenge, or the penalty limit's reminder. */
 export function openFromNotification(data: unknown): boolean {
+  if (kindOf(data) === 'penalty-window') {
+    usePenaltyStore.getState().openEditor();
+    return true;
+  }
+  const challengeGroup = kindOf(data) === 'challenge' ? groupIdOf(data) : null;
+  if (challengeGroup) {
+    useGroupsStore.getState().openChallengeFor(challengeGroup);
+    return true;
+  }
   if (!isRequest(data)) return false;
   useGroupsStore.getState().openRequests(data.groupId);
   return true;
@@ -167,7 +189,8 @@ export function useGroupNotifications(ready: boolean): void {
 
     const tapped = Notifications.addNotificationResponseReceivedListener(open);
     const received = Notifications.addNotificationReceivedListener((n) => {
-      if (isRequest(n.request.content.data)) void useGroupsStore.getState().sync();
+      const data = n.request.content.data;
+      if (isRequest(data) || kindOf(data) === 'challenge') void useGroupsStore.getState().sync();
     });
     return () => {
       tapped.remove();

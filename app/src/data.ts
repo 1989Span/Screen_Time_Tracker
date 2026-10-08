@@ -375,11 +375,6 @@ export interface PenaltySetting {
   rate: number; // dollars per minute over
 }
 
-/** Charges unlock a year after the penalty was first switched on. */
-export function unlockDateFrom(start: Date): Date {
-  return new Date(start.getFullYear() + 1, start.getMonth(), start.getDate());
-}
-
 /** What the editor starts on when the user has never set a limit. A starting
  *  point for a form, not a charge: nothing accrues until they save it. */
 export const DEFAULT_PENALTY: PenaltySetting = { limit: 360, rate: 1 };
@@ -410,51 +405,4 @@ export function chargeFor(used: number, s: PenaltySetting): number {
 export function trackedToday(): number {
   checkDayRollover();
   return dayByCat(0).reduce((s, v) => s + v, 0);
-}
-
-export function daysUntilUnlock(start: Date): number {
-  return daysBetween(startOfToday(), unlockDateFrom(start));
-}
-
-export interface ChargeDay {
-  label: string;
-  used: number;
-  over: number;
-  limit: number;
-  charge: number;
-  balance: number; // locked balance after this day settled
-}
-
-/**
- * Settled days, newest first: what the user's own recorded usage would have cost
- * under the penalty they set.
- *
- * Bounded by `sinceDays`, the number of days the penalty has been active, so no
- * charge is invented for a day before the user opted in. Today is excluded - it
- * has not settled yet.
- *
- * Reads through the installed source, so it covers exactly the days that source
- * has loaded; days with no recorded usage contribute nothing rather than a zero
- * that would read as a quiet day.
- */
-export function chargeHistory(setting: PenaltySetting | null, sinceDays: number): ChargeDay[] {
-  checkDayRollover();
-  if (setting == null || sinceDays < 1) return [];
-  const out: ChargeDay[] = [];
-  let balance = 0;
-  for (let idx = sinceDays; idx >= 1; idx--) {
-    const used = dayByCat(idx).reduce((sum, v) => sum + v, 0);
-    const charge = chargeFor(used, setting);
-    balance = Math.round((balance + charge) * 100) / 100;
-    // dayLabel() rather than 24h stepping, which drifts a day across a DST change.
-    out.push({
-      label: dayLabel(idx),
-      used,
-      over: minutesOver(used, setting.limit),
-      limit: setting.limit,
-      charge,
-      balance,
-    });
-  }
-  return out.reverse();
 }
