@@ -120,7 +120,10 @@ function syncLineFor(status: string, lastSynced: number, now: number): string {
   if (status === 'unconfigured') return 'Group sync isn’t set up in this build.';
   const when = lastSynced > 0 ? ago(lastSynced, now) : 'never';
   if (status === 'offline') return 'Offline. Numbers as of ' + when + '.';
-  return 'Synced ' + when + '. Updates automatically.';
+  // The server pings every phone at the top of each hour (0003_hourly_sync.sql).
+  const next = new Date(now);
+  next.setHours(next.getHours() + 1, 0, 0, 0);
+  return 'Synced ' + when + '. Next automatic sync at ' + clockTime(next.getTime()) + '.';
 }
 
 export function useGroupsModel(): GroupsViewModel {

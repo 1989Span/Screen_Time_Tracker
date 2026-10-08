@@ -67,6 +67,8 @@ jest.mock('expo-notifications', () => ({
   clearLastNotificationResponse: () => {},
   addNotificationResponseReceivedListener: () => ({ remove: () => {} }),
   addNotificationReceivedListener: () => ({ remove: () => {} }),
+  registerTaskAsync: async () => null,
+  BackgroundNotificationTaskResult: { NewData: 0, NoData: 1, Failed: 2 },
 }));
 
 // expo-sqlite is native and does not resolve under jest. Stubbed so modules that
