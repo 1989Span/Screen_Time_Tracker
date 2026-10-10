@@ -330,6 +330,17 @@ describe('time challenges', () => {
     expect(store().error).toBe('There’s already a challenge this month.');
   });
 
+  it('shows the server’s own message for an unexpected error', async () => {
+    const api = stubServer();
+    // Supabase rejects with a plain object, not an Error.
+    api.proposeChallenge.mockRejectedValue({
+      code: '42883',
+      message: 'function public.expo_post(jsonb) does not exist',
+    });
+    await store().proposeChallenge();
+    expect(store().error).toBe("Couldn't propose the challenge: function public.expo_post(jsonb) does not exist");
+  });
+
   it('answers this month’s proposal', async () => {
     const api = stubServer();
     const month = dayStamp().slice(0, 7) + '-01';

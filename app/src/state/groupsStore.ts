@@ -131,7 +131,14 @@ export const currentGroup = (s: Pick<GroupsState, 'groups' | 'groupId'>): Group 
 
 /** Network failures read as offline; anything else is reported as it is. */
 const describe = (e: unknown): { offline: boolean; message: string } => {
-  const message = e instanceof Error ? e.message : String(e);
+  // Supabase reports server errors as plain objects, not Error instances, so
+  // their message has to be read off directly or it prints "[object Object]".
+  const message =
+    e instanceof Error
+      ? e.message
+      : typeof e === 'object' && e !== null && typeof (e as { message?: unknown }).message === 'string'
+        ? (e as { message: string }).message
+        : String(e);
   return { offline: /network|fetch|timed? ?out|failed to fetch/i.test(message), message };
 };
 

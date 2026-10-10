@@ -112,7 +112,7 @@ export function ChallengeScreen() {
             accessibilityRole="button"
             style={[g.primary, (!c.propose.possible || c.busy || c.propose.feeError !== '') && g.disabled]}
           >
-            <Text style={g.primaryText}>Propose to the group</Text>
+            <Text style={g.primaryText}>Challenge group</Text>
           </Pressable>
         </Card>
       )}
