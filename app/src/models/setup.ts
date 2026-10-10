@@ -40,9 +40,9 @@ export function usePermissionModel(): PermissionViewModel {
     () => ({
       granted: permission === 'granted',
       unknown: permission === 'unknown',
-      title: 'Gauge needs usage access',
-      body: 'Android keeps screen time behind a separate permission that only you can switch on. Your app-by-app usage stays on your phone. Gauge reads it and stores it there.',
-      steps: ['Open Usage access settings', 'Find Gauge in the list', 'Switch it on, then come back'],
+      title: 'Right Now needs usage access',
+      body: 'Android keeps screen time behind a separate permission that only you can switch on. Your app-by-app usage stays on your phone. Right Now reads it and stores it there.',
+      steps: ['Open Usage access settings', 'Find Right Now in the list', 'Switch it on, then come back'],
       buttonLabel: 'Open usage access settings',
       openSettings,
       recheck: () => {

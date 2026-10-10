@@ -1,6 +1,6 @@
 # Play Console: listing text and form answers
 
-Everything the Play Console asks for, answered for Gauge as it ships today. Paste
+Everything the Play Console asks for, answered for Right Now as it ships today. Paste
 the listing text as-is. The form answers depend on facts about the build, which are
 noted beside each one. If a fact changes (a feature flag flips, a network call or
 analytics SDK is added, a permission comes back), re-check the answers it affects.
@@ -14,10 +14,10 @@ Privacy policy URL: https://1989span.github.io/Screen_Time_Tracker/privacy/
 
 | Field | Answer | Note |
 |---|---|---|
-| App name | `Gauge: Screen Time Tracker` | 26 of 30 characters |
+| App name | `Right Now: Screen Time Tracker` | 30 of 30 characters, the limit. The package stays `com.span1989.gauge`: Play never lets it change. |
 | Default language | English (United States) | |
 | App or game | App | |
-| Free or paid | **Free** | You can make a paid app free later, but never a free app paid. Gauge has no payment code. |
+| Free or paid | **Free** | You can make a paid app free later, but never a free app paid. Right Now has no payment code. |
 | Declarations | Accept both | Developer Program Policies and US export laws |
 
 ## 2. Store listing (Grow > Store presence > Main store listing)
@@ -31,13 +31,13 @@ See where your screen time goes, app by app, and compete with friends to cut it.
 **Full description** (4000 max)
 
 ```
-Gauge shows you exactly how much time you spend in each app, today and across the week, month and year.
+Right Now shows you exactly how much time you spend in each app, today and across the week, month and year.
 
 PICK THE APPS THAT MATTER
-Choose the apps you want to measure from the ones installed on your phone, or select them all at once. Gauge tracks each app on its own, not by broad category, so you see Instagram, not "Social".
+Choose the apps you want to measure from the ones installed on your phone, or select them all at once. Right Now tracks each app on its own, not by broad category, so you see Instagram, not "Social".
 
 TODAY, THIS WEEK, THIS MONTH, THIS YEAR
-See today hour by hour, plus your totals for the week, month and year so far, each compared with the period before. Gauge also counts how many times you unlock your phone, next to each total. Tap any period for a full breakdown: which apps took the most time, and a chart you can tap to focus on a single hour or day.
+See today hour by hour, plus your totals for the week, month and year so far, each compared with the period before. Right Now also counts how many times you unlock your phone, next to each total. Tap any period for a full breakdown: which apps took the most time, and a chart you can tap to focus on a single hour or day.
 
 DAILY LIMITS
 Give any app a daily time budget and see at a glance how much is left, or when you've gone over. Budgets reset at midnight.
@@ -49,16 +49,16 @@ GROUPS
 Compete with friends or family for the lowest screen time. Start a group and invite people with a link, sent by text, WhatsApp or anything else. Once they join, everyone's daily totals sync automatically and the lowest total each day wins the point. Follow the points and winning streaks. If an app shouldn't count, like music playing in the background or maps while driving, ask to stop tracking it: everyone gets a notification to vote, and it stops counting only if the whole group agrees. No sign-up needed.
 
 HOURLY NUDGES
-Each time today's screen time passes another hour, Gauge sends a short reminder to look up. Turn them off any time in Settings.
+Each time today's screen time passes another hour, Right Now sends a short reminder to look up. Turn them off any time in Settings.
 
 KEEPS COUNTING WHEN YOU DON'T LOOK
-Android only keeps a short window of detailed usage history. Gauge saves it as it goes, including in the background, so your history keeps building for more than a year, even if you don't open the app for weeks.
+Android only keeps a short window of detailed usage history. Right Now saves it as it goes, including in the background, so your history keeps building for more than a year, even if you don't open the app for weeks.
 
 PRIVATE BY DESIGN
-No ads, no analytics and no account. Your app-by-app usage never leaves your phone. If you join a group, Gauge syncs only your display name and daily totals so the other members can see them. You can leave a group, or delete your group data, at any time.
+No ads, no analytics and no account. Your app-by-app usage never leaves your phone. If you join a group, Right Now syncs only your display name and daily totals so the other members can see them. You can leave a group, or delete your group data, at any time.
 
 HOW IT WORKS
-Android keeps app usage behind a permission called Usage access, which only you can switch on. Gauge walks you through it the first time you open the app. It reads which app was open and for how long, never what you do inside other apps.
+Android keeps app usage behind a permission called Usage access, which only you can switch on. Right Now walks you through it the first time you open the app. It reads which app was open and for how long, never what you do inside other apps.
 ```
 
 **Graphics**
@@ -108,7 +108,7 @@ Declare these data types. For each: **Collected** yes, **Shared** no, **Processe
 ephemerally** no, **Optional** (users choose, since only people who join a group
 send anything), purpose **App functionality** only.
 
-| Data type | What Gauge sends |
+| Data type | What Right Now sends |
 |---|---|
 | Personal info > Name | The display name chosen for groups |
 | Personal info > User IDs | The random anonymous ID Supabase issues |
@@ -116,7 +116,7 @@ send anything), purpose **App functionality** only.
 | App activity > Installed apps | Package names of apps someone votes to leave out of a group's totals, and who asked |
 | Device or other IDs | The Expo push token that lets the server notify the phone about group requests (`push_tokens`, migration 0002) |
 
-**Shared: no.** Supabase stores the data on Gauge's behalf as a service provider,
+**Shared: no.** Supabase stores the data on Right Now's behalf as a service provider,
 which Play doesn't count as sharing. The same goes for Expo's push service and
 Firebase Cloud Messaging, which only deliver group notifications (member name,
 app name, group name). Other members see your totals only after you
@@ -130,7 +130,7 @@ or crash SDK), redo this section and the privacy policy first.
 `QUERY_ALL_PACKAGES` was removed (a launcher `<queries>` block covers the picker).
 `SYSTEM_ALERT_WINDOW` and the storage pair `READ_`/`WRITE_EXTERNAL_STORAGE` are blocked in
 `app.json`. The storage pair came from Expo's bundled file-system module, capped at
-Android 12. Gauge never touches shared storage, and leaving them in would contradict the
+Android 12. Right Now never touches shared storage, and leaving them in would contradict the
 privacy policy on older phones. `PACKAGE_USAGE_STATS` is granted by the user in Android
 settings and needs no form. No typed foreground services are declared, so the
 foreground-service declaration does not apply.

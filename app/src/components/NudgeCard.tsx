@@ -31,7 +31,7 @@ export function NudgeCard() {
       {s.blocked && (
         <Pressable onPress={s.openSystemSettings} accessibilityRole="link" hitSlop={6}>
           <Text style={styles.blocked}>
-            Notifications are off for Gauge in Android settings. <Text style={styles.link}>Open settings</Text>
+            Notifications are off for Right Now in Android settings. <Text style={styles.link}>Open settings</Text>
           </Text>
         </Pressable>
       )}

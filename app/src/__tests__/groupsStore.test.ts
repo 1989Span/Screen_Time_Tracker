@@ -150,7 +150,7 @@ describe('receiving an invite', () => {
   it('rejects a pasted message with no invite in it', () => {
     store().setLinkDraft('hello there');
     store().openLinkDraft();
-    expect(store().error).toMatch(/isn't a Gauge invite link/);
+    expect(store().error).toMatch(/isn't a Right Now invite link/);
   });
 });
 

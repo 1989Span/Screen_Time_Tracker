@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <title>Gauge group invite</title>
-  <meta name="description" content="Open a Gauge group invite on your phone.">
+  <title>Right Now group invite</title>
+  <meta name="description" content="Open a Right Now group invite on your phone.">
   <!--
-    Landing page for Gauge group invites: https://…/g/#<payload>
+    Landing page for Right Now group invites: https://…/g/#<payload>
 
     The invite (group name, inviter's name, invite code) is in the part after
     '#'. Browsers never send that to the server, so GitHub, which hosts this
     page, never receives it. Nothing here loads anything from elsewhere or
-    reports anywhere. The script below only passes the payload to the Gauge app
+    reports anywhere. The script below only passes the payload to the Right Now app
     on this phone.
   -->
   <style>
@@ -68,30 +68,30 @@
 <main>
   <div class="card">
     <div id="ok" class="hidden">
-      <h1>Open in Gauge</h1>
-      <p>This link invites you to a Gauge group. Gauge shows you what joining shares, and asks before you join.</p>
-      <a id="open" class="btn primary" href="#">Open in Gauge</a>
+      <h1>Open in Right Now</h1>
+      <p>This link invites you to a Right Now group. Right Now shows you what joining shares, and asks before you join.</p>
+      <a id="open" class="btn primary" href="#">Open in Right Now</a>
       <button id="copy" class="btn secondary" type="button">Copy link</button>
-      <p class="small">Didn't open? Install Gauge from Google Play, then tap the link in your message again. Or copy
-        it and paste it into Gauge's Groups tab.</p>
+      <p class="small">Didn't open? Install Right Now from Google Play, then tap the link in your message again. Or copy
+        it and paste it into Right Now's Groups tab.</p>
     </div>
 
     <div id="installed-missing" class="hidden">
-      <h1>Get Gauge first</h1>
-      <p>Gauge isn't installed on this phone. Install it from Google Play, set it up, then tap the link in your
+      <h1>Get Right Now first</h1>
+      <p>Right Now isn't installed on this phone. Install it from Google Play, set it up, then tap the link in your
         message again.</p>
-      <a class="btn primary" href="https://play.google.com/store/apps/details?id=com.span1989.gauge">Get Gauge on Google Play</a>
+      <a class="btn primary" href="https://play.google.com/store/apps/details?id=com.span1989.gauge">Get Right Now on Google Play</a>
     </div>
 
     <div id="bad" class="hidden">
       <h1>This link is incomplete</h1>
-      <p>Part of it went missing on the way. Ask whoever sent it to share it again from Gauge.</p>
+      <p>Part of it went missing on the way. Ask whoever sent it to share it again from Right Now.</p>
     </div>
 
     <div id="not-android" class="hidden">
       <h1>Open this on your Android phone</h1>
-      <p>Gauge group invites open in the Gauge app, which is on Android. Send this link to the phone that has
-        Gauge and tap it there.</p>
+      <p>Right Now group invites open in the Right Now app, which is on Android. Send this link to the phone that has
+        Right Now and tap it there.</p>
     </div>
   </div>
   <p class="small">The invite is inside the link itself. This page never receives it.</p>
@@ -100,13 +100,13 @@
   (function () {
     var show = function (id) { document.getElementById(id).classList.remove('hidden'); };
     var payload = location.hash.slice(1);
-    // Only the characters a Gauge payload can contain, so nothing else ever
+    // Only the characters a Right Now payload can contain, so nothing else ever
     // ends up inside the intent below.
     if (!/^[A-Za-z0-9_-]{8,2000}$/.test(payload)) { show('bad'); return; }
     if (new URLSearchParams(location.search).get('install') === '1') { show('installed-missing'); return; }
     if (!/Android/i.test(navigator.userAgent)) { show('not-android'); return; }
 
-    // If Gauge isn't installed, Chrome goes to the fallback: this page again,
+    // If Right Now isn't installed, Chrome goes to the fallback: this page again,
     // flagged, with the payload kept after '#' so it still never reaches a server.
     var fallback = location.origin + location.pathname + '?install=1#' + payload;
     document.getElementById('open').href =

@@ -284,8 +284,8 @@ export const useGroupsStore = create<GroupsState>()(
           const link = inviteLink(g.inviteCode, g.name, s.selfName.trim() || 'A friend');
           await Share.share({
             message:
-              `Join my group "${g.name}" on Gauge. Lowest screen time each day wins the point.\n` +
-              `Install Gauge, then open this link:\n${link}`,
+              `Join my group "${g.name}" on Right Now. Lowest screen time each day wins the point.\n` +
+              `Install Right Now, then open this link:\n${link}`,
           });
         },
 
@@ -310,7 +310,7 @@ export const useGroupsStore = create<GroupsState>()(
         setLinkDraft: (text) => set({ linkDraft: text, error: null }),
         openLinkDraft: () => {
           if (!get().receive(get().linkDraft)) {
-            set({ error: "That isn't a Gauge invite link. Paste the whole message you were sent." });
+            set({ error: "That isn't a Right Now invite link. Paste the whole message you were sent." });
           }
         },
 

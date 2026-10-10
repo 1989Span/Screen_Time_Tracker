@@ -303,7 +303,7 @@ export function useChallengeModel(): ChallengeViewModel | null {
       proposal,
       board,
       rules: [
-        'Paper money: Gauge keeps the tally, nothing is actually paid.',
+        'Paper money: Right Now keeps the tally, nothing is actually paid.',
         'Each day, whoever has the lowest screen time (everyone tied for lowest) gets a point and pays nothing. Everyone else pays the daily fee into the pool.',
         'If someone’s numbers never arrive for a day, they sit it out: no point, no fee.',
         'At the end of the month, the most points wins the pool, split evenly on a tie.',

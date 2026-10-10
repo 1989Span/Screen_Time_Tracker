@@ -53,9 +53,9 @@ export function NewGroupScreen() {
           whole group agrees to leave one out.
         </Text>
         <Text style={g.body}>
-          Creating the group turns on automatic sharing with it: a few times a day, Gauge sends your daily totals so the
-          points stay accurate. Only members see them. You can leave, or delete your group data, at any time in Group
-          settings.
+          Creating the group turns on automatic sharing with it: about once an hour, Right Now sends your daily totals
+          so the points stay accurate. Only members see them. You can leave, or delete your group data, at any time in
+          Group settings.
         </Text>
       </Card>
 

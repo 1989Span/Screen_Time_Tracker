@@ -217,7 +217,7 @@ export function usePenaltyEditorModel(): PenaltyEditorViewModel {
                 'You can’t change the limit or the fee, or turn it off, until ' +
                   until +
                   '. Next month starts with the same settings, and you’ll have the first 4 days to change them.',
-                'This is paper money: Gauge keeps the tally, nothing is actually charged.',
+                'This is paper money: Right Now keeps the tally, nothing is actually charged.',
               ],
               confirmLabel: 'I understand, lock it in',
               confirm: store.confirmReview,

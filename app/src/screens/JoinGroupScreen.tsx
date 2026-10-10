@@ -46,8 +46,8 @@ export function JoinGroupScreen() {
       <Card style={g.card}>
         <Text style={g.cardTitle}>What you&rsquo;re agreeing to</Text>
         <Text style={g.body}>
-          From now on, Gauge will automatically send your name and your total screen time for each day to the group, a
-          few times a day, so the points stay accurate. Everyone in the group can see them.
+          From now on, Right Now will automatically send your name and your total screen time for each day to the group,
+          about once an hour, so the points stay accurate. Everyone in the group can see them.
         </Text>
         <Text style={g.body}>
           It never sends which apps you used, only daily totals. You can leave the group, or delete your group data, at

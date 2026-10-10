@@ -87,7 +87,7 @@ function Empty({ m }: { m: GroupsViewModel }) {
       </Card>
       <Card style={gs.card}>
         <Text style={gs.cardTitle}>Got an invite?</Text>
-        <Text style={gs.meta}>Tapping the invite link usually opens Gauge. If it didn&rsquo;t, paste it here.</Text>
+        <Text style={gs.meta}>Tapping the invite link usually opens Right Now. If it didn&rsquo;t, paste it here.</Text>
         <OpenLink m={m} />
       </Card>
     </>

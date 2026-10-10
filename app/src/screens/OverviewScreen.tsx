@@ -12,7 +12,7 @@ export function OverviewScreen() {
   const model = useOverviewModel();
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>Wasted Time....</Text>
+      <Text style={styles.title}>Right Now</Text>
 
       {PENALTY_LIMIT_ENABLED && <PenaltyCard />}
 

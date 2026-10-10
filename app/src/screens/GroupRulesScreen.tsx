@@ -74,7 +74,7 @@ export function GroupRulesScreen() {
       <Card style={g.card}>
         <Text style={g.cardTitle}>Ask to stop tracking</Text>
         {r.suggestions.length === 0 ? (
-          <Text style={g.meta}>Your most-used apps show up here once Gauge has recorded some usage.</Text>
+          <Text style={g.meta}>Your most-used apps show up here once Right Now has recorded some usage.</Text>
         ) : (
           <>
             <Text style={g.meta}>

@@ -50,7 +50,8 @@ export function PermissionScreen() {
       {m.error !== null && <Text style={styles.error}>{m.error}</Text>}
 
       <Text style={styles.footnote}>
-        Gauge stores everything on this device. There is no account and no server to send it to.
+        Right Now keeps your usage on this phone. There is no account. Only Groups, if you join one, share your daily
+        totals.
       </Text>
     </View>
   );

@@ -19,9 +19,9 @@
   <string name="gauge_widget_configure_title">Show on this widget</string>
 
   <!-- Shown until the widget can report a number. Tapping opens the app, which walks through the fix. -->
-  <string name="gauge_widget_hint_access">Allow usage access in Gauge</string>
-  <string name="gauge_widget_hint_setup">Open Gauge to set up</string>
-  <string name="gauge_widget_hint_apps">Choose apps in Gauge</string>
+  <string name="gauge_widget_hint_access">Allow usage access in Right Now</string>
+  <string name="gauge_widget_hint_setup">Open Right Now to set up</string>
+  <string name="gauge_widget_hint_apps">Choose apps in Right Now</string>
 
   <!-- Before the first update. Never a made-up number. -->
   <string name="gauge_widget_placeholder">—</string>
