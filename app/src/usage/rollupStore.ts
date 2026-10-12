@@ -28,7 +28,20 @@ import * as SQLite from 'expo-sqlite';
 
 import { dayStamp } from '../clock';
 
-const DB_NAME = 'gauge-history.db';
+/**
+ * The history database. It moved from gauge-history.db, which the widget and
+ * nudges used to open with Android's own SQLite while expo-sqlite (a second,
+ * separate SQLite in the same process) had it open too. Two SQLite libraries
+ * in one process each release the other's POSIX locks when they close the
+ * file, and on at least one phone that corrupted it ("database disk image is
+ * malformed"). Native code no longer opens the database at all (it reads a
+ * mirror, see mirror.ts), and opening this one carries over whatever the old
+ * file still holds (salvageV1 below).
+ */
+const DB_NAME = 'gauge-history-2.db';
+const V1_NAME = 'gauge-history.db';
+/** How far back to look for days to rescue from a damaged old file. */
+const SALVAGE_DAYS = 800;
 
 /** Bump and add a migration below when the schema changes. */
 const SCHEMA_VERSION = 3;
@@ -56,6 +69,7 @@ async function open(): Promise<SQLite.SQLiteDatabase> {
     dbPromise = (async () => {
       const db = await SQLite.openDatabaseAsync(DB_NAME);
       await migrate(db);
+      await salvageV1(db);
       return db;
     })();
   }
@@ -105,6 +119,87 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
       String(SCHEMA_VERSION)
     );
   }
+}
+
+/**
+ * Copies the old database into this one, once, then deletes it.
+ *
+ * Written to survive a damaged file: each table is copied in one read, and if
+ * that read fails, usage is copied day by day so one bad page costs only the
+ * days on it. Anything unreadable is skipped. The last ~10 days come back from
+ * Android anyway on the next load.
+ */
+async function salvageV1(db: SQLite.SQLiteDatabase): Promise<void> {
+  const done = await db.getFirstAsync<{ value: string }>('SELECT value FROM meta WHERE key = ?', 'salvagedV1');
+  if (done) return;
+
+  let old: SQLite.SQLiteDatabase | null = null;
+  try {
+    old = await SQLite.openDatabaseAsync(V1_NAME);
+    const src = old;
+    const tryAll = async <T>(sql: string, ...args: string[]): Promise<T[] | null> => {
+      try {
+        return await src.getAllAsync<T>(sql, ...args);
+      } catch {
+        return null;
+      }
+    };
+
+    const observed = (await tryAll<{ day: string }>('SELECT day FROM observed_day')) ?? [];
+    let usage = await tryAll<{ day: string; package: string; minutes: number }>(
+      'SELECT day, package, minutes FROM usage_day'
+    );
+    if (usage === null) {
+      // The table can't be read whole. Rescue it a day at a time.
+      usage = [];
+      const days = new Set(observed.map((r) => r.day));
+      const today = new Date();
+      for (let k = 0; k < SALVAGE_DAYS; k++) {
+        days.add(dayStamp(new Date(today.getFullYear(), today.getMonth(), today.getDate() - k)));
+      }
+      for (const day of days) {
+        const rows = await tryAll<{ day: string; package: string; minutes: number }>(
+          'SELECT day, package, minutes FROM usage_day WHERE day = ?',
+          day
+        );
+        if (rows) usage.push(...rows);
+      }
+    }
+    const unlocks = (await tryAll<{ day: string; count: number }>('SELECT day, count FROM unlock_day')) ?? [];
+
+    await db.withTransactionAsync(async () => {
+      for (const r of observed) await db.runAsync('INSERT OR IGNORE INTO observed_day (day) VALUES (?)', r.day);
+      for (const r of usage ?? []) {
+        if (!Number.isFinite(r.minutes)) continue;
+        await db.runAsync(
+          'INSERT OR IGNORE INTO usage_day (day, package, minutes) VALUES (?, ?, ?)',
+          r.day,
+          r.package,
+          r.minutes
+        );
+        await db.runAsync('INSERT OR IGNORE INTO observed_day (day) VALUES (?)', r.day);
+      }
+      for (const r of unlocks) {
+        if (Number.isInteger(r.count)) {
+          await db.runAsync('INSERT OR IGNORE INTO unlock_day (day, count) VALUES (?, ?)', r.day, r.count);
+        }
+      }
+    });
+  } catch {
+    // Nothing to rescue, or nothing readable. Start from what Android still has.
+  } finally {
+    try {
+      await old?.closeAsync();
+    } catch {
+      // Already unusable.
+    }
+  }
+  try {
+    await SQLite.deleteDatabaseAsync(V1_NAME);
+  } catch {
+    // Left behind if it can't be deleted; it is never opened again.
+  }
+  await db.runAsync('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)', 'salvagedV1', '1');
 }
 
 export interface DayTotals {

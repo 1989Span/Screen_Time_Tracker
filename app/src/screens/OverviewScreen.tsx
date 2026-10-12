@@ -14,6 +14,12 @@ export function OverviewScreen() {
     <View style={styles.wrap}>
       <Text style={styles.title}>Right Now</Text>
 
+      {model.loadError !== null && (
+        <Card style={styles.errorCard}>
+          <Text style={styles.errorText}>{model.loadError}</Text>
+        </Card>
+      )}
+
       {PENALTY_LIMIT_ENABLED && <PenaltyCard />}
 
       {model.cards.map((c) => (
@@ -83,6 +89,8 @@ const styles = StyleSheet.create({
     color: color.text,
   },
   timeCard: { padding: 16, paddingTop: 16, paddingBottom: 14, gap: 12 },
+  errorCard: { padding: 14, borderWidth: 1, borderColor: color.rose },
+  errorText: { fontSize: 13, lineHeight: 18, color: color.roseDark },
   timeCardPressed: { backgroundColor: '#fbfbfc' },
   metaRow: { width: '100%', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   cardLabel: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 19, letterSpacing: -0.2, color: color.text },

@@ -170,6 +170,14 @@ class UsageStatsModule : Module() {
      * user is looking at their total, so a mark passed just now is noted, not
      * announced.
      */
+    /**
+     * Tracked minutes per day (YYYY-MM-DD), mirrored for the widget and nudges.
+     * Called before syncTracked, which redraws them.
+     */
+    Function("syncHistory") { days: Map<String, Double> ->
+      TrackedSelection.setHistory(context, days)
+    }
+
     Function("syncTracked") { tracked: List<String> ->
       TrackedSelection.set(context, tracked)
       GaugeWidgets.updateAll(context)

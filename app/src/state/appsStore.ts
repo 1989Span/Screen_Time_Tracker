@@ -29,6 +29,11 @@ interface AppsState {
   loading: boolean;
   /** Set when the last refresh failed, so the UI can say so. */
   error: string | null;
+  /**
+   * Set when loading usage history failed, so the Overview says so instead of
+   * showing zeros that look like a quiet day. Cleared by the next good load.
+   */
+  loadError: string | null;
   /** Picker search text. Transient, like the group-invite drafts - a stale
    *  search box on next launch would be confusing, not helpful. */
   query: string;
@@ -68,6 +73,7 @@ export const useAppsStore = create<AppsState>()(
       historyDays: 0,
       loading: false,
       error: null,
+      loadError: null,
       query: '',
       dataVersion: 0,
 

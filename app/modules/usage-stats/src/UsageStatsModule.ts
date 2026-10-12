@@ -22,6 +22,8 @@ declare class UsageStatsModule extends NativeModule<Record<string, never>> {
   /** Mirrors the tracked selection to the parts that run without JS, the
    *  home-screen widget and the hourly nudges, and refreshes both. */
   syncTracked(tracked: string[]): void;
+  /** Mirrors tracked minutes per day for the widget and nudges, which never open the database. */
+  syncHistory(days: Record<string, number>): void;
   /** Whether hourly nudges are switched on in Settings. On by default. */
   nudgesEnabled(): boolean;
   /** Switches hourly nudges on or off. */

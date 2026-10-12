@@ -41,6 +41,7 @@ class UsageStatsModule extends NativeModule<Record<string, never>> {
   }
   // No widgets or notifications on the web.
   syncTracked(): void {}
+  syncHistory(): void {}
   nudgesEnabled(): boolean {
     return false;
   }

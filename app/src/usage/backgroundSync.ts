@@ -22,7 +22,9 @@
 import * as BackgroundTask from 'expo-background-task';
 import * as TaskManager from 'expo-task-manager';
 
+import { useAppsStore } from '../state/appsStore';
 import { syncGroupsFromHistory } from '../sync/groupsBackground';
+import { mirrorHistory } from './mirror';
 import { recordOsDays } from './recorder';
 import { prune } from './rollupStore';
 
@@ -54,6 +56,10 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
     // Housekeeping here rather than on launch, where it would compete with the
     // first paint.
     await prune();
+    // Hand the widget and nudges what was just recorded. The selection comes
+    // from saved state, which a headless run has to load first.
+    await useAppsStore.persist.rehydrate();
+    await mirrorHistory(useAppsStore.getState().tracked).catch(() => {});
     // Upload to any groups. Its failure (offline, say) shouldn't mark the
     // recording as failed: the next run or launch retries it.
     await syncGroupsFromHistory().catch(() => {});

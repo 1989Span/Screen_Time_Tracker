@@ -34,6 +34,7 @@ jest.mock('./modules/usage-stats', () => ({
     unlocksSupported: () => true,
     probeRetention: async () => ({}),
     syncTracked: () => {},
+    syncHistory: () => {},
     nudgesEnabled: () => true,
     setNudgesEnabled: () => {},
     notificationsAllowed: () => false,
@@ -121,5 +122,6 @@ jest.mock('expo-sqlite', () => {
   return {
     openDatabaseAsync: async () => db,
     openDatabaseSync: () => db,
+    deleteDatabaseAsync: async () => {},
   };
 });

@@ -3,25 +3,17 @@ package com.span1989.gauge.usagestats
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
-import android.util.Log
 import com.span1989.gauge.usagestats.UsageMath.Range
-import java.io.File
 
 /**
  * Tracked screen time per range, computed without the JS side.
  *
- * Reads the OS event log and the app's SQLite history directly, so the widget
- * and the hourly nudges keep working when the app hasn't been opened for days.
- * It only ever reads. The app and its background task are the only writers of
- * the history database.
+ * Reads the OS event log and the history the app mirrors here after each load
+ * (TrackedSelection.history), so the widget and the hourly nudges keep working
+ * when the app hasn't been opened for days. It never opens the app's history
+ * database: see TrackedSelection.setHistory for why.
  */
 internal object TrackedTotals {
-  private const val TAG = "GaugeTotals"
-
-  /** Where expo-sqlite keeps DB_NAME from src/usage/rollupStore.ts. */
-  private const val HISTORY_DB = "SQLite/gauge-history.db"
-
   sealed class State {
     data class Minutes(val value: Double) : State()
     /** Usage access is off. */
@@ -48,12 +40,9 @@ internal object TrackedTotals {
     val eventDays = UsageMath.eventDays(readEvents(context, windowStart, now), today, now)
 
     val deepest = ranges.maxOf { UsageMath.daysBack(it, today) }
-    val rollup = readRollup(
-      context,
-      UsageMath.dayStamp(UsageMath.addDays(today, -deepest)),
-      UsageMath.dayStamp(today),
-      tracked
-    )
+    val from = UsageMath.dayStamp(UsageMath.addDays(today, -deepest))
+    val to = UsageMath.dayStamp(today)
+    val rollup = TrackedSelection.history(context).filterKeys { it in from..to }
     return ranges.associateWith {
       State.Minutes(UsageMath.rangeMinutes(it, today, eventDays, rollup, tracked))
     }
@@ -72,37 +61,5 @@ internal object TrackedTotals {
       out.add(UsageMath.Event(e.packageName ?: "", e.timeStamp, type == UsageEvents.Event.ACTIVITY_RESUMED))
     }
     return out
-  }
-
-  /**
-   * Tracked minutes per day stamp from the app's history, for [fromStamp, toStamp].
-   *
-   * Opened read-only: a read-only connection never touches the journal mode, so
-   * it can't knock the database out of the WAL mode expo-sqlite relies on while
-   * the app holds it open. A missing or unreadable database means no history
-   * yet, not a failure. The event log still covers the recent days.
-   */
-  private fun readRollup(context: Context, fromStamp: String, toStamp: String, tracked: Set<String>): Map<String, Double> {
-    val file = File(context.filesDir, HISTORY_DB)
-    if (!file.exists()) return emptyMap()
-    return try {
-      SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY).use { db ->
-        db.rawQuery(
-          "SELECT day, package, minutes FROM usage_day WHERE day >= ? AND day <= ?",
-          arrayOf(fromStamp, toStamp)
-        ).use { c ->
-          val out = HashMap<String, Double>()
-          while (c.moveToNext()) {
-            if (c.getString(1) !in tracked) continue
-            val day = c.getString(0)
-            out[day] = (out[day] ?: 0.0) + c.getDouble(2)
-          }
-          out
-        }
-      }
-    } catch (e: Exception) {
-      Log.w(TAG, "history unreadable, using the event log only", e)
-      emptyMap()
-    }
   }
 }

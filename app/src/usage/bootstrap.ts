@@ -14,6 +14,7 @@ import { useAppsStore, isConfigured } from '../state/appsStore';
 import { androidSource } from './androidSource';
 import { registerBackgroundSync } from './backgroundSync';
 import { emptySource } from './emptySource';
+import { mirrorHistory } from './mirror';
 import { setUsageSource } from './source';
 
 /** Longest span any screen asks for (the year card). */
@@ -90,12 +91,8 @@ export async function installRealUsageSource(): Promise<SourceKind> {
   setUsageSource(androidSource);
 
   // Only query when there is both permission and something selected to measure.
-  if (isConfigured(state)) {
-    await androidSource.load(MAX_DAYS_NEEDED);
-    // Tell the view models the cache is warm; they cannot see it otherwise.
-    useAppsStore.getState().markDataLoaded();
-  }
-  syncTracked(state.tracked);
+  if (isConfigured(state)) await loadHistory();
+  await handOverHistory(state.tracked);
   notifyLoaded();
 
   // Keep history accumulating while the app is closed. Registration needs
@@ -107,6 +104,33 @@ export async function installRealUsageSource(): Promise<SourceKind> {
   return 'android';
 }
 
+const messageOf = (e: unknown) =>
+  e instanceof Error
+    ? e.message
+    : typeof e === 'object' && e !== null && typeof (e as { message?: unknown }).message === 'string'
+      ? (e as { message: string }).message
+      : String(e);
+
+/** Loads usage into the source, and says so on the Overview if it fails. */
+async function loadHistory(): Promise<void> {
+  try {
+    await androidSource.load(MAX_DAYS_NEEDED);
+    useAppsStore.setState({ loadError: null });
+    // Tell the view models the cache is warm; they cannot see it otherwise.
+    useAppsStore.getState().markDataLoaded();
+  } catch (e) {
+    useAppsStore.setState({ loadError: messageOf(e) });
+    throw e;
+  }
+}
+
+/** Mirrors the history and selection to the widget and nudges, then redraws them. */
+async function handOverHistory(tracked: string[]): Promise<void> {
+  // Before syncTracked, which redraws the widget from the mirror.
+  await mirrorHistory(tracked).catch(() => {});
+  syncTracked(tracked);
+}
+
 /**
  * Re-reads device data after the user changes their selection or grants access.
  * Cheap enough to call from the picker's save action.
@@ -114,11 +138,8 @@ export async function installRealUsageSource(): Promise<SourceKind> {
 export async function reloadUsage(): Promise<void> {
   const state = useAppsStore.getState();
   androidSource.setTracked(state.tracked, state.installed);
-  if (isConfigured(state)) {
-    await androidSource.load(MAX_DAYS_NEEDED);
-    useAppsStore.getState().markDataLoaded();
-  }
+  if (isConfigured(state)) await loadHistory();
   // After the load, so the widget and nudges read the history this load just recorded.
-  syncTracked(state.tracked);
+  await handOverHistory(state.tracked);
   notifyLoaded();
 }

@@ -90,12 +90,15 @@ export interface OverviewCard {
 
 export interface OverviewViewModel {
   cards: OverviewCard[];
+  /** Why your history couldn't be read, so zeros aren't mistaken for a quiet day. */
+  loadError: string | null;
 }
 
 export function useOverviewModel(): OverviewViewModel {
   // Usage arrives asynchronously; without this the memo keeps its empty values.
   const dataVersion = useAppsStore((s) => s.dataVersion);
   const historyDays = useAppsStore((s) => s.historyDays);
+  const loadError = useAppsStore((s) => s.loadError);
   const openRange = useDetailStore((s) => s.openRange);
 
   return useMemo(() => {
@@ -104,6 +107,8 @@ export function useOverviewModel(): OverviewViewModel {
     const coverage = rangeAvailability(historyDays);
     const withUnlocks = countsUnlocks();
     return {
+      loadError:
+        loadError === null ? null : 'Couldn’t read your usage history, so these numbers may be missing. ' + loadError,
       cards: RANGE_IDS.map((id) => {
         const sl = slice(id, null);
         const unlocks = withUnlocks ? unlockBuckets(id).reduce((a, b) => a + b, 0) : 0;
@@ -128,7 +133,7 @@ export function useOverviewModel(): OverviewViewModel {
         };
       }),
     };
-  }, [openRange, dataVersion, historyDays]);
+  }, [openRange, dataVersion, historyDays, loadError]);
 }
 
 export interface RangeTab {
