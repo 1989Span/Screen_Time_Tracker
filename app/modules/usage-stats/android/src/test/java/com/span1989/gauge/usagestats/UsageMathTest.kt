@@ -114,14 +114,16 @@ class UsageMathTest {
 
   // --- Ranges ------------------------------------------------------------------
 
-  @Test fun `each range reaches back as far as the app's buckets do`() {
-    val t = today(2026, 9, 24)
+  @Test fun `each range starts where its calendar period does`() {
+    val t = today(2026, 9, 24) // a Thursday
     assertEquals(0, UsageMath.daysBack(Range.DAY, t))
-    assertEquals(6, UsageMath.daysBack(Range.WEEK, t))
-    assertEquals(29, UsageMath.daysBack(Range.MONTH, t))
-    // 12 calendar months ending with September 2026 start on 1 October 2025.
-    assertEquals("2025-10-01", UsageMath.dayStamp(UsageMath.firstDay(Range.YEAR, t)))
-    assertEquals(358, UsageMath.daysBack(Range.YEAR, t))
+    // The week starts on Sunday 20 September.
+    assertEquals("2026-09-20", UsageMath.dayStamp(UsageMath.firstDay(Range.WEEK, t)))
+    assertEquals(4, UsageMath.daysBack(Range.WEEK, t))
+    assertEquals("2026-09-01", UsageMath.dayStamp(UsageMath.firstDay(Range.MONTH, t)))
+    assertEquals(23, UsageMath.daysBack(Range.MONTH, t))
+    assertEquals("2026-01-01", UsageMath.dayStamp(UsageMath.firstDay(Range.YEAR, t)))
+    assertEquals(266, UsageMath.daysBack(Range.YEAR, t))
   }
 
   @Test fun `day boundaries survive the end of daylight saving`() {
@@ -131,8 +133,9 @@ class UsageMathTest {
     assertEquals(at(2026, 11, 1), start)
     assertEquals(at(2026, 11, 2), end)
     assertEquals(25 * 3_600_000L, end - start)
-    assertEquals("2026-10-28", UsageMath.dayStamp(UsageMath.firstDay(Range.WEEK, t)))
-    assertEquals(6, UsageMath.daysBack(Range.WEEK, t))
+    // A Tuesday, so the week began on Sunday 1 November, the long day itself.
+    assertEquals("2026-11-01", UsageMath.dayStamp(UsageMath.firstDay(Range.WEEK, t)))
+    assertEquals(2, UsageMath.daysBack(Range.WEEK, t))
   }
 
   @Test fun `day stamps are ASCII whatever the locale`() {

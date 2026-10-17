@@ -6,15 +6,15 @@
 
   <!-- Range names, matching the app's Day / Week / Month / Year tabs. -->
   <string name="gauge_widget_label_day">Today</string>
-  <string name="gauge_widget_label_week">Week</string>
-  <string name="gauge_widget_label_month">Month</string>
-  <string name="gauge_widget_label_year">Year</string>
+  <string name="gauge_widget_label_week">This week</string>
+  <string name="gauge_widget_label_month">This month</string>
+  <string name="gauge_widget_label_year">This year</string>
 
   <!-- What each range covers. Must match buckets() in src/data.ts. -->
   <string name="gauge_widget_detail_day">So far today</string>
-  <string name="gauge_widget_detail_week">The last 7 days</string>
-  <string name="gauge_widget_detail_month">The last 30 days</string>
-  <string name="gauge_widget_detail_year">The last 12 months</string>
+  <string name="gauge_widget_detail_week">Sunday to today</string>
+  <string name="gauge_widget_detail_month">From the 1st to today</string>
+  <string name="gauge_widget_detail_year">From January 1 to today</string>
 
   <string name="gauge_widget_configure_title">Show on this widget</string>
 

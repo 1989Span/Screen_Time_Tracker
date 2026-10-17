@@ -178,6 +178,6 @@ const styles = StyleSheet.create({
     borderColor: alpha(color.text, 12),
     paddingHorizontal: 10,
   },
-  affix: { fontFamily: font.bodySemiBold, fontSize: 12.5, color: alpha(color.text, 50) },
+  affix: { fontFamily: font.bodySemiBold, fontSize: 12.5, color: color.text },
   input: { flex: 1, minWidth: 0, paddingVertical: 8, fontFamily: font.bodySemiBold, fontSize: 13.5, color: color.text },
 });

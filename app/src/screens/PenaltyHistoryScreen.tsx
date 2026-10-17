@@ -42,7 +42,7 @@ export function PenaltyHistoryScreen() {
                 <Text style={styles.day}>{r.label}</Text>
                 <Text style={styles.detail}>{r.detail}</Text>
               </View>
-              <Text style={[styles.amount, !r.over && { color: alpha(color.text, 40) }]}>{r.amount}</Text>
+              <Text style={[styles.amount, !r.over && { color: color.text }]}>{r.amount}</Text>
             </View>
           ))}
         </Card>
@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
   wrap: { gap: 16 },
   title: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 24, letterSpacing: -0.2, color: color.text },
   summaryCard: { padding: 18, gap: 4 },
-  label: { fontSize: 11.5, color: alpha(color.text, 48) },
+  label: { fontSize: 11.5, color: color.text },
   balance: {
     fontFamily: font.headingBold,
     fontWeight: '700',
@@ -86,6 +86,6 @@ const styles = StyleSheet.create({
     borderBottomColor: alpha(color.text, 7),
   },
   day: { fontSize: 14, fontFamily: font.bodySemiBold, color: color.text },
-  detail: { fontSize: 11.5, color: alpha(color.text, 45) },
+  detail: { fontSize: 11.5, color: color.text },
   amount: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 15, color: color.text },
 });

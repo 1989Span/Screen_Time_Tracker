@@ -2,7 +2,6 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { alpha, color, font } from '../theme';
 import { BackChip, Card, CompositionBar, Dot } from '../components/ui';
-import { FactBox } from '../components/FactBox';
 import { ClockIcon, LockIcon } from '../components/Icons';
 import { useDetailModel } from '../models/overview';
 
@@ -25,7 +24,6 @@ export function DetailScreen() {
       </View>
 
       <Card style={styles.summaryCard}>
-        <FactBox text={d.fact} />
         <View style={styles.totalRow}>
           <View style={{ gap: 7 }}>
             <Text style={styles.totalText}>{d.total}</Text>
@@ -44,7 +42,7 @@ export function DetailScreen() {
               <Text
                 style={[
                   styles.deltaText,
-                  { color: d.deltaNeutral ? alpha(color.text, 55) : d.deltaPositive ? color.roseDark : color.tealDark },
+                  { color: d.deltaNeutral ? color.text : d.deltaPositive ? color.roseDark : color.tealDark },
                 ]}
               >
                 {d.delta}
@@ -66,7 +64,7 @@ export function DetailScreen() {
                   styles.unlockDelta,
                   {
                     color: d.unlockDelta.neutral
-                      ? alpha(color.text, 48)
+                      ? color.text
                       : d.unlockDelta.positive
                         ? color.roseDark
                         : color.tealDark,
@@ -98,7 +96,7 @@ export function DetailScreen() {
                   />
                 ))}
               </View>
-              <Text style={[styles.tick, { color: s.active ? color.text : alpha(color.text, 42) }]} numberOfLines={1}>
+              <Text style={[styles.tick, { color: color.text }]} numberOfLines={1}>
                 {s.tick}
               </Text>
             </Pressable>
@@ -144,7 +142,7 @@ export function DetailScreen() {
 const styles = StyleSheet.create({
   wrap: { gap: 14 },
   headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  scopeText: { fontSize: 12.5, color: alpha(color.text, 52) },
+  scopeText: { fontSize: 12.5, color: color.text },
   segWrap: { flexDirection: 'row', gap: 4, backgroundColor: alpha(color.text, 7), borderRadius: 999, padding: 4 },
   segBtn: { flex: 1, paddingVertical: 9, borderRadius: 999, alignItems: 'center' },
   segBtnActive: {
@@ -155,7 +153,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     elevation: 2,
   },
-  segText: { fontFamily: font.bodySemiBold, fontSize: 13, color: alpha(color.text, 55) },
+  segText: { fontFamily: font.bodySemiBold, fontSize: 13, color: color.text },
   segTextActive: { color: color.text },
   summaryCard: { padding: 18, paddingTop: 18, paddingBottom: 16, gap: 14 },
   totalRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 },
@@ -170,9 +168,9 @@ const styles = StyleSheet.create({
   deltaChip: { alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 9, borderRadius: 999 },
   deltaText: { fontSize: 12, fontFamily: font.bodySemiBold },
   avgText: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 19, color: color.text },
-  avgLabel: { fontSize: 11, color: alpha(color.text, 48) },
+  avgLabel: { fontSize: 11, color: color.text },
   unlockRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  unlockText: { fontSize: 13, fontFamily: font.bodySemiBold, color: alpha(color.text, 70) },
+  unlockText: { fontSize: 13, fontFamily: font.bodySemiBold, color: color.text },
   unlockDelta: { fontSize: 12, fontFamily: font.bodySemiBold },
   chartCard: { padding: 16, paddingTop: 16, paddingHorizontal: 14, paddingBottom: 12, gap: 12 },
   chart: { height: 180, flexDirection: 'row', alignItems: 'flex-end' },
@@ -187,16 +185,16 @@ const styles = StyleSheet.create({
     borderTopColor: alpha(color.text, 8),
     paddingTop: 10,
   },
-  chartFooterText: { fontSize: 11.5, color: alpha(color.text, 48) },
+  chartFooterText: { fontSize: 11.5, color: color.text },
   chartFooterSelection: { fontSize: 11.5, fontFamily: font.bodyBold, color: color.text },
   bkHeadRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 4 },
   bkTitle: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 17, color: color.text },
-  bkCount: { fontSize: 12, color: alpha(color.text, 48) },
+  bkCount: { fontSize: 12, color: color.text },
   bkCard: { paddingHorizontal: 16, paddingVertical: 6 },
   bkRow: { width: '100%', gap: 8, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: alpha(color.text, 7) },
   bkTopRow: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 9 },
   bkName: { flex: 1, fontSize: 14.5, fontFamily: font.bodySemiBold, color: color.text },
-  bkShare: { fontSize: 12, color: alpha(color.text, 46) },
+  bkShare: { fontSize: 12, color: color.text },
   bkTime: {
     width: 82,
     textAlign: 'right',

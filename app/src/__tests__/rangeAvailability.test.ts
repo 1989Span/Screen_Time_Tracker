@@ -1,4 +1,7 @@
-import { DAYS_REQUIRED, availableRanges, defaultRange, rangeAvailability } from '../usage/rangeAvailability';
+import { availableRanges, defaultRange, rangeAvailability } from '../usage/rangeAvailability';
+
+// The clock is pinned to Tuesday 25 August 2026 (jest.setup.ts), so the calendar
+// periods so far are: week 3 days (from Sunday 23), month 25, year 237.
 
 describe('every range stays visible', () => {
   it('shows all four regardless of how little history exists', () => {
@@ -27,26 +30,27 @@ describe('completeness is reported, never faked', () => {
     expect(s.week.note).toBeNull();
   });
 
-  it('reports Month and Year as partial at 10 days, with the real numerator', () => {
+  it('reports Month and Year as partial at 10 days, against the days so far', () => {
     const s = rangeAvailability(10);
     expect(s.month.complete).toBe(false);
     expect(s.month.have).toBe(10);
-    expect(s.month.need).toBe(30);
-    expect(s.month.note).toBe('10 of 30 days recorded · month so far');
-    expect(s.year.note).toBe('10 of 365 days recorded · year so far');
+    expect(s.month.need).toBe(25);
+    expect(s.month.note).toBe('10 of 25 days recorded · month so far');
+    expect(s.year.note).toBe('10 of 237 days recorded · year so far');
   });
 
-  it('completes Month at thirty days and Year at a full year', () => {
-    expect(rangeAvailability(30).month.complete).toBe(true);
-    expect(rangeAvailability(364).year.complete).toBe(false);
-    expect(rangeAvailability(365).year.complete).toBe(true);
-    expect(rangeAvailability(365).year.note).toBeNull();
+  it('completes Month once every day of it so far is recorded, and Year likewise', () => {
+    expect(rangeAvailability(24).month.complete).toBe(false);
+    expect(rangeAvailability(25).month.complete).toBe(true);
+    expect(rangeAvailability(236).year.complete).toBe(false);
+    expect(rangeAvailability(237).year.complete).toBe(true);
+    expect(rangeAvailability(237).year.note).toBeNull();
   });
 
-  it('caps `have` at the span, so a range never reads as over-complete', () => {
+  it('caps `have` at the days so far, so a range never reads as over-complete', () => {
     const s = rangeAvailability(500);
-    expect(s.week.have).toBe(7);
-    expect(s.year.have).toBe(DAYS_REQUIRED.year);
+    expect(s.week.have).toBe(3);
+    expect(s.year.have).toBe(237);
   });
 
   it('counts recorded days, not elapsed calendar days', () => {

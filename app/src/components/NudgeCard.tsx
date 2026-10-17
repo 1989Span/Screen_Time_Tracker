@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
   card: { paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   title: { fontSize: 15, fontFamily: font.bodySemiBold, color: color.text },
-  detail: { fontSize: 12.5, lineHeight: 18, color: alpha(color.text, 55) },
+  detail: { fontSize: 12.5, lineHeight: 18, color: color.text },
   blocked: { fontSize: 12.5, lineHeight: 18, color: color.roseDark },
   link: { fontFamily: font.bodySemiBold, color: color.accent700 },
   switchTrack: { width: 34, height: 20, borderRadius: 999, flexShrink: 0 },

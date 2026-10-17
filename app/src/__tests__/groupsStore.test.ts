@@ -253,13 +253,45 @@ describe('votes, leaving and deleting', () => {
     useGroupsStore.setState({ groups: [family()], groupId: 'g1', selfId: 'me', selfName: 'Stewart' });
   });
 
-  it('a vote changes and saves only your own row', () => {
+  it('a vote shows at once, and saves only your own row', async () => {
     const api = stubServer();
-    store().proposeExclude('com.maps', 'Maps');
+    const saving = store().proposeExclude('com.maps', 'Maps');
     const g = currentGroup(store()) as Group;
     expect(g.members.find((m) => m.id === 'me')?.excludes).toEqual({ 'com.maps': 'Maps' });
     expect(g.members.find((m) => m.id === 'alex')?.excludes).toEqual({});
+    await saving;
     expect(api.updateMe).toHaveBeenCalledWith('g1', 'me', { excludes: { 'com.maps': 'Maps' }, declines: [] });
+  });
+
+  it('a vote is saved on top of the server’s latest votes, not a stale copy', async () => {
+    const api = stubServer();
+    // Since this phone last synced, the admin decided Spotify for everyone.
+    api.fetchGroups.mockResolvedValue([family([me({ excludes: { 'com.spotify': 'Spotify' } }), alex()])]);
+    await store().proposeExclude('com.maps', 'Maps');
+    expect(api.updateMe).toHaveBeenCalledWith('g1', 'me', {
+      excludes: { 'com.spotify': 'Spotify', 'com.maps': 'Maps' },
+      declines: [],
+    });
+  });
+
+  it('only the group’s creator can decide for everyone', async () => {
+    const api = stubServer();
+    const decide = jest.spyOn(groupsApi, 'adminStopTracking').mockResolvedValue();
+    useGroupsStore.setState({ groups: [{ ...family(), createdBy: 'alex' }] });
+    await store().overruleStop('com.maps');
+    expect(decide).not.toHaveBeenCalled();
+    useGroupsStore.setState({ groups: [{ ...family(), createdBy: 'me' }] });
+    await store().overruleStop('com.maps');
+    expect(decide).toHaveBeenCalledWith('g1', 'com.maps');
+    expect(api.fetchGroups).toHaveBeenCalled();
+  });
+
+  it('explains when someone said keep tracking', async () => {
+    stubServer();
+    jest.spyOn(groupsApi, 'adminStopTracking').mockRejectedValue(new Error('someone-said-keep'));
+    useGroupsStore.setState({ groups: [{ ...family(), createdBy: 'me' }] });
+    await store().overruleStop('com.maps');
+    expect(store().notice).toBe('Someone said keep tracking, so it can’t be decided for everyone.');
   });
 
   it('leaving removes you on the server, then here, and clears the notice', async () => {

@@ -149,18 +149,15 @@ internal object UsageMath {
   }
 
   /**
-   * The first day a range covers, from `buckets` in src/data.ts:
-   * Day is today; Week the last 7 days and Month the last 30, both counting
-   * today; Year the 12 calendar months ending with the current one.
+   * The first day a range covers, from `rangeSpan` in src/data.ts. Ranges are
+   * calendar periods: Day is today, Week starts on Sunday, Month on the 1st and
+   * Year on 1 January.
    */
   fun firstDay(range: Range, today: Calendar): Calendar = when (range) {
     Range.DAY -> today.clone() as Calendar
-    Range.WEEK -> addDays(today, -6)
-    Range.MONTH -> addDays(today, -29)
-    Range.YEAR -> (today.clone() as Calendar).apply {
-      set(Calendar.DAY_OF_MONTH, 1)
-      add(Calendar.MONTH, -11)
-    }
+    Range.WEEK -> addDays(today, -(today.get(Calendar.DAY_OF_WEEK) - Calendar.SUNDAY))
+    Range.MONTH -> (today.clone() as Calendar).apply { set(Calendar.DAY_OF_MONTH, 1) }
+    Range.YEAR -> (today.clone() as Calendar).apply { set(Calendar.DAY_OF_YEAR, 1) }
   }
 
   /** How many days back the widget needs, counting today as 0. */

@@ -15,6 +15,11 @@ function Rows({ rows }: { rows: RuleRow[] }) {
               {r.label}
             </Text>
             <Text style={g.meta}>{r.detail}</Text>
+            {r.decide && (
+              <Pressable onPress={r.decide.onPress} accessibilityRole="button" hitSlop={6}>
+                <Text style={g.smallBtnText}>{r.decide.label}</Text>
+              </Pressable>
+            )}
           </View>
           {r.secondary && (
             <Pressable onPress={r.secondary.onPress} accessibilityRole="button" hitSlop={6} style={g.smallQuiet}>
@@ -46,8 +51,18 @@ export function GroupRulesScreen() {
       <Text style={g.subtitle}>
         Every app counts for everyone, unless the whole group agrees to stop tracking one, like music playing in the
         background or maps while driving. Everyone is notified when someone asks, and whoever asked hears how each
-        person votes. Anyone can bring an app back.
+        person votes. Whoever created the group can decide for anyone who hasn&rsquo;t answered, but not for anyone who
+        said keep tracking. Anyone can bring an app back.
       </Text>
+
+      {r.isAdmin && (
+        <Card style={g.card}>
+          <Text style={g.body}>
+            You created this group, so you&rsquo;re its admin. If a request is stuck waiting on someone, tap Decide for
+            everyone to count them as agreeing.
+          </Text>
+        </Card>
+      )}
 
       {r.alone && (
         <Card style={g.card}>

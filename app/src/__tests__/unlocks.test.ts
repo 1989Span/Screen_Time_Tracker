@@ -80,27 +80,31 @@ describe('recording unlocks', () => {
 });
 
 describe('unlock counts per range', () => {
-  it('has one count per chart bar, in the same order', () => {
+  it('has one count per chart bar, in the same order, with days to come empty', () => {
     setUsageSource(new UnlockSource());
     expect(unlockBuckets('day')).toHaveLength(24);
-    expect(unlockBuckets('week')).toEqual(new Array(7).fill(10));
-    expect(unlockBuckets('month').reduce((a, b) => a + b, 0)).toBe(300);
+    // Tuesday 22 September: Sunday to Tuesday so far, Wednesday to Saturday to come.
+    expect(unlockBuckets('week')).toEqual([10, 10, 10, 0, 0, 0, 0]);
+    expect(unlockBuckets('month')).toHaveLength(30);
+    expect(unlockBuckets('month').reduce((a, b) => a + b, 0)).toBe(220);
   });
 
-  it('counts the year by month, up to today', () => {
+  it('counts the calendar year by month, up to today', () => {
     setUsageSource(new UnlockSource());
     const year = unlockBuckets('year');
     expect(year).toHaveLength(12);
-    // September so far: the 1st to the 22nd.
-    expect(year[11]).toBe(22 * 10);
+    expect(year[0]).toBe(31 * 10); // January
+    expect(year[8]).toBe(22 * 10); // September so far
+    expect(year[9]).toBe(0); // October is still to come
   });
 
-  it('compares with the same span before it', () => {
+  it('compares with the same days of the period before', () => {
     setUsageSource(new UnlockSource());
     // Yesterday up to this hour (7pm): 0:00 to 19:59 is 20 hours.
     expect(prevUnlocks('day')).toBe(20);
-    expect(prevUnlocks('week')).toBe(70);
-    expect(prevUnlocks('month')).toBe(300);
+    // Last week's Sunday to Tuesday, and 1 to 22 August.
+    expect(prevUnlocks('week')).toBe(30);
+    expect(prevUnlocks('month')).toBe(220);
   });
 
   it('shows none, rather than zeros, where unlocks can’t be counted', () => {

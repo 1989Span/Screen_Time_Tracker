@@ -24,7 +24,7 @@
       android:maxLines="1"
       android:text="@string/gauge_widget_name"
       android:textAllCaps="true"
-      android:textColor="#7B7D7E"
+      android:textColor="#1D1F20"
       android:textSize="11sp" />
 
   <TextView

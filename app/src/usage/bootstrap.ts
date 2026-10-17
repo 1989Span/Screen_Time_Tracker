@@ -17,8 +17,8 @@ import { emptySource } from './emptySource';
 import { mirrorHistory } from './mirror';
 import { setUsageSource } from './source';
 
-/** Longest span any screen asks for (the year card). */
-export const MAX_DAYS_NEEDED = 366;
+/** A calendar year so far, plus the same days last year for the comparison, within the 400 days kept. */
+export const MAX_DAYS_NEEDED = 400;
 
 const loadedListeners = new Set<() => void>();
 

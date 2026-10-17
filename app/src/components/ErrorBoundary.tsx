@@ -60,8 +60,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 22, letterSpacing: -0.2, color: color.text },
-  body: { fontSize: 13.5, lineHeight: 20, color: alpha(color.text, 60) },
-  detail: { fontSize: 11.5, lineHeight: 16, color: alpha(color.text, 45) },
+  body: { fontSize: 13.5, lineHeight: 20, color: color.text },
+  detail: { fontSize: 11.5, lineHeight: 16, color: color.text },
   button: { marginTop: 4, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: color.accent },
   buttonText: { fontFamily: font.bodySemiBold, fontSize: 14, color: '#ffffff' },
 });

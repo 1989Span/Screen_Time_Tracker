@@ -2,7 +2,6 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { alpha, color, font } from '../theme';
 import { Card, CompositionBar, Dot } from '../components/ui';
-import { FactBox } from '../components/FactBox';
 import { PenaltyCard } from '../components/PenaltyCard';
 import { PENALTY_LIMIT_ENABLED } from '../features';
 import { ChevronRightIcon, LockIcon } from '../components/Icons';
@@ -26,8 +25,6 @@ export function OverviewScreen() {
         <Pressable key={c.id} onPress={c.onPress}>
           {({ pressed }) => (
             <Card style={[styles.timeCard, pressed && styles.timeCardPressed]}>
-              <FactBox text={c.fact} />
-
               <View style={styles.metaRow}>
                 <View style={{ gap: 4 }}>
                   <Text style={styles.cardLabel}>{c.label}</Text>
@@ -102,10 +99,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     color: color.text,
   },
-  metaText: { fontSize: 11.5, color: alpha(color.text, 48) },
+  metaText: { fontSize: 11.5, color: color.text },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   topName: { flex: 1, fontFamily: font.bodySemiBold, fontSize: 13.5, color: color.text },
-  topShare: { fontSize: 11.5, color: alpha(color.text, 46) },
+  topShare: { fontSize: 11.5, color: color.text },
   topTime: {
     width: 74,
     textAlign: 'right',
@@ -125,9 +122,9 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   moreText: { fontSize: 12, fontFamily: font.bodySemiBold, color: color.accent700 },
-  coverageNote: { fontSize: 11, color: alpha(color.text, 45) },
+  coverageNote: { fontSize: 11, color: color.text },
   unlockRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -4 },
-  unlockText: { fontSize: 12.5, fontFamily: font.bodySemiBold, color: alpha(color.text, 62) },
+  unlockText: { fontSize: 12.5, fontFamily: font.bodySemiBold, color: color.text },
   fullRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   fullText: { fontSize: 12, fontFamily: font.bodySemiBold, color: color.accent700 },
 });

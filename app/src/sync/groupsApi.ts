@@ -17,6 +17,7 @@ interface GroupRow {
   name: string;
   created_day: string;
   invite_code: string;
+  created_by?: string | null;
 }
 interface MemberRow {
   group_id: string;
@@ -95,6 +96,7 @@ export function buildGroups(
     name: safeName(g.name),
     created: g.created_day,
     inviteCode: g.invite_code,
+    createdBy: g.created_by ?? null,
     challenges: challenges
       .filter((c) => c.group_id === g.id)
       .sort((a, b) => (a.month < b.month ? 1 : a.month > b.month ? -1 : 0))
@@ -135,7 +137,7 @@ export const groupsApi = {
   /** Every group you're in, with its roster and daily totals. */
   async fetchGroups(): Promise<Group[]> {
     const [groups, members, days, requests, challenges, votes] = await Promise.all([
-      selectAll<GroupRow>('groups', 'id, name, created_day, invite_code'),
+      selectAll<GroupRow>('groups', 'id, name, created_day, invite_code, created_by'),
       selectAll<MemberRow>('members', 'group_id, user_id, name, joined_day, excludes, declines'),
       selectAll<DayRow>('days', 'group_id, user_id, day, minutes, updated_at'),
       // Optional: a server without migration 0002 has no requests table, and
@@ -215,6 +217,20 @@ export const groupsApi = {
       p_today: today,
     });
     if (error) throw error;
+  },
+
+  /**
+   * As the group's admin, settles a request to stop tracking an app: members who
+   * haven't answered count as agreeing. Throws 'someone-said-keep' if a member
+   * said keep tracking, or 'not-admin'.
+   */
+  async adminStopTracking(groupId: string, app: string): Promise<void> {
+    const { error } = await supabase().rpc('admin_stop_tracking', { p_group: groupId, p_app: app });
+    if (error) {
+      if (error.code === 'P0006') throw new Error('someone-said-keep');
+      if (error.code === 'P0007') throw new Error('not-admin');
+      throw error;
+    }
   },
 
   /** Takes back your own proposal before it starts. */

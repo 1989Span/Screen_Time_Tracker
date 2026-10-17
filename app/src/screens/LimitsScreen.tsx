@@ -44,12 +44,12 @@ export function LimitsScreen() {
 const styles = StyleSheet.create({
   wrap: { gap: 16 },
   title: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 24, letterSpacing: -0.2, color: color.text },
-  subtitle: { fontSize: 13, lineHeight: 19, color: alpha(color.text, 55) },
+  subtitle: { fontSize: 13, lineHeight: 19, color: color.text },
   card: { paddingHorizontal: 16, paddingVertical: 4 },
   row: { width: '100%', gap: 8, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: alpha(color.text, 7) },
   topRow: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 10 },
   name: { fontSize: 15, fontFamily: font.bodySemiBold, color: color.text },
-  used: { fontSize: 11.5, color: alpha(color.text, 45) },
+  used: { fontSize: 11.5, color: color.text },
   stateChip: { paddingVertical: 4, paddingHorizontal: 9, borderRadius: 999 },
   stateText: { fontSize: 11.5, fontFamily: font.bodySemiBold },
   limStr: {

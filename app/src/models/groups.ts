@@ -5,6 +5,7 @@
 // number is, so an old sync is never mistaken for a live number.
 
 import { useMemo } from 'react';
+import { Alert } from 'react-native';
 
 import { dayStamp } from '../clock';
 import { fmtShort } from '../data';
@@ -339,7 +340,11 @@ export function useGroupSettingsModel(): GroupSettingsViewModel | null {
       initial: m.name[0]?.toUpperCase() ?? '?',
       color: memberColor(m, s.selfId),
       detail:
-        'joined ' + shortDate(m.joined) + ' · ' + (m.id === s.selfId ? 'syncs from this phone' : lastSynced(m, now)),
+        'joined ' +
+        shortDate(m.joined) +
+        (m.id === g.createdBy ? ' · admin' : '') +
+        ' · ' +
+        (m.id === s.selfId ? 'syncs from this phone' : lastSynced(m, now)),
     })),
     invite: () => void s.invite(),
     rulesNote: [
@@ -365,6 +370,8 @@ export interface RuleRow {
   detail: string;
   primary?: { label: string; onPress: () => void };
   secondary?: { label: string; onPress: () => void };
+  /** For the group's admin: settle the request for members who haven't answered. */
+  decide?: { label: string; onPress: () => void };
 }
 
 export interface GroupRulesViewModel {
@@ -372,6 +379,8 @@ export interface GroupRulesViewModel {
   proposals: RuleRow[];
   suggestions: RuleRow[];
   alone: boolean;
+  /** You created the group, so you can decide for members who haven't answered. */
+  isAdmin: boolean;
   back: () => void;
 }
 
@@ -409,8 +418,10 @@ export function useGroupRulesModel(): GroupRulesViewModel | null {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 12);
 
+    const isAdmin = !!me && g.createdBy === me;
     return {
       alone: g.members.length < MIN_GROUP_SIZE,
+      isAdmin,
       back: s.backToSettings,
       excluded: excludedList.map((app) => ({
         app,
@@ -442,6 +453,24 @@ export function useGroupRulesModel(): GroupRulesViewModel | null {
             : youAsked
               ? { label: 'Withdraw', onPress: () => s.withdrawVote(p.app) }
               : { label: 'Keep tracking', onPress: () => s.declineProposal(p.app) },
+          // Only for members who haven't answered: a "keep tracking" stands.
+          decide:
+            isAdmin && waiting.length > 0 && p.declined.length === 0
+              ? {
+                  label: 'Decide for everyone',
+                  onPress: () =>
+                    Alert.alert(
+                      'Stop tracking ' + p.label + ' for everyone?',
+                      capitalise(listNames(waiting.map((m) => nameOf(m.id)))) +
+                        (waiting.length === 1 ? ' hasn’t' : ' haven’t') +
+                        ' answered. As the group’s admin you can count them as agreeing. Everyone is notified, and anyone can bring it back.',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Stop tracking', style: 'destructive', onPress: () => void s.overruleStop(p.app) },
+                      ]
+                    ),
+                }
+              : undefined,
         };
       }),
       suggestions: suggestions.map(([app, min]) => ({

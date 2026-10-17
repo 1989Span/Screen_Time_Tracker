@@ -27,24 +27,25 @@ describe('the name shown for a tapped bar', () => {
     expect(day[23]).toBe('11pm–12am');
   });
 
-  it('is the full date in the week chart', () => {
+  it('is the full date in the week chart, Sunday to Saturday', () => {
     const week = names('week');
     expect(week).toHaveLength(7);
-    expect(week[0]).toBe('Wednesday, September 23, 2026');
-    expect(week[6]).toBe('Tuesday, September 29, 2026');
+    expect(week[0]).toBe('Sunday, September 27, 2026');
+    // The rest of the week is still to come, across the month boundary.
+    expect(week[6]).toBe('Saturday, October 3, 2026');
   });
 
-  it('is the full date in the month chart, across the month boundary', () => {
+  it('is the full date in the month chart, the 1st to the last day', () => {
     const month = names('month');
     expect(month).toHaveLength(30);
-    expect(month[0]).toBe('Monday, August 31, 2026');
-    expect(month[29]).toBe('Tuesday, September 29, 2026');
+    expect(month[0]).toBe('Tuesday, September 1, 2026');
+    expect(month[29]).toBe('Wednesday, September 30, 2026');
   });
 
-  it('is the month and year in the year chart', () => {
+  it('is the month and year in the year chart, January to December', () => {
     const year = names('year');
     expect(year).toHaveLength(12);
-    expect(year[0]).toBe('October 2025');
-    expect(year[11]).toBe('September 2026');
+    expect(year[0]).toBe('January 2026');
+    expect(year[11]).toBe('December 2026');
   });
 });

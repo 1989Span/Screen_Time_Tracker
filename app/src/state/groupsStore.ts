@@ -92,9 +92,11 @@ interface GroupsState {
   joinIncoming: () => Promise<void>;
   dismissIncoming: () => void;
 
-  proposeExclude: (app: string, label: string) => void;
-  withdrawVote: (app: string) => void;
-  declineProposal: (app: string) => void;
+  proposeExclude: (app: string, label: string) => Promise<void>;
+  withdrawVote: (app: string) => Promise<void>;
+  declineProposal: (app: string) => Promise<void>;
+  /** As the group's admin: stop tracking an app, counting members who haven't answered as agreeing. */
+  overruleStop: (app: string) => Promise<void>;
 
   openChallenge: () => void;
   /** Opens a group's challenge, from a tapped notification. */
@@ -150,20 +152,28 @@ const JOIN_ERRORS: Record<string, string> = {
 export const useGroupsStore = create<GroupsState>()(
   persist(
     (set, get) => {
-      /** Runs `change` on the current group's copy of you, then saves your votes. */
-      const vote = (change: (g: Group, selfId: string) => Group) => {
+      /**
+       * Runs `change` on your votes and saves them. Shown straight away, but
+       * saved on top of the server's latest copy of you, not this phone's: your
+       * row holds all your votes, and saving a stale copy would undo whatever
+       * changed since, such as an admin's decision or a request that ended.
+       */
+      const vote = async (change: (g: Group, selfId: string) => Group): Promise<void> => {
         const s = get();
         const g = currentGroup(s);
         if (!g || !s.selfId) return;
-        const updated = change(g, s.selfId);
-        set({ groups: s.groups.map((x) => (x.id === g.id ? updated : x)) });
-        const me = updated.members.find((m) => m.id === s.selfId);
-        if (!me) return;
-        groupsApi
-          .updateMe(g.id, s.selfId, { excludes: me.excludes, declines: me.declines })
-          // The next sync restores the server's view if this didn't land.
-          .then(() => get().sync())
-          .catch(() => set({ notice: "Your vote couldn't be saved. It'll be retried when you're back online." }));
+        const selfId = s.selfId;
+        set({ groups: s.groups.map((x) => (x.id === g.id ? change(x, selfId) : x)) });
+        try {
+          const fresh = (await groupsApi.fetchGroups()).find((x) => x.id === g.id) ?? g;
+          const me = change(fresh, selfId).members.find((m) => m.id === selfId);
+          if (!me) return;
+          await groupsApi.updateMe(g.id, selfId, { excludes: me.excludes, declines: me.declines });
+          await get().sync();
+        } catch {
+          // The next sync restores the server's view.
+          set({ notice: "Your vote couldn't be saved. It'll be retried when you're back online." });
+        }
       };
 
       let queue = Promise.resolve();
@@ -343,6 +353,26 @@ export const useGroupsStore = create<GroupsState>()(
         proposeExclude: (app, label) => vote((g, me) => agreeToExclude(g, me, app, label)),
         withdrawVote: (app) => vote((g, me) => withdrawExclude(g, me, app)),
         declineProposal: (app) => vote((g, me) => declineExclude(g, me, app)),
+
+        overruleStop: async (app) => {
+          const s = get();
+          const g = currentGroup(s);
+          if (!g || !s.selfId || g.createdBy !== s.selfId) return;
+          try {
+            await groupsApi.adminStopTracking(g.id, app);
+            await get().sync();
+          } catch (e) {
+            const m = describe(e).message;
+            set({
+              notice:
+                m === 'someone-said-keep'
+                  ? 'Someone said keep tracking, so it can’t be decided for everyone.'
+                  : m === 'not-admin'
+                    ? 'Only the person who created the group can decide for everyone.'
+                    : "Couldn't decide for everyone: " + m,
+            });
+          }
+        },
 
         openChallenge: () => {
           set({ error: null });

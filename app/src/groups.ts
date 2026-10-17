@@ -62,6 +62,8 @@ export interface Group {
   members: Member[];
   /** The secret that lets someone join. Only members can read it. */
   inviteCode?: string;
+  /** Who created the group: its admin, who can settle a request for members who haven't answered. */
+  createdBy?: string | null;
   /** Who asked to stop tracking each app: package -> member id. Missing in groups cached before requests existed. */
   requestedBy?: Record<string, string>;
   /** Time challenges, newest month first (challenge.ts). Missing in groups cached before challenges existed. */

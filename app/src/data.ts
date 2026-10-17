@@ -40,7 +40,6 @@ const MONTH_NAME = [
   'December',
 ];
 export const RANGE_LABEL: Record<RangeId, string> = { day: 'Day', week: 'Week', month: 'Month', year: 'Year' };
-export const N_DAYS: Record<RangeId, number> = { day: 1, week: 7, month: 30, year: 365 };
 
 /** The series currently being measured, in the order every per-series array is
  *  indexed. Dynamic: eight demo categories, or however many apps are tracked. */
@@ -102,27 +101,6 @@ export function limLabel(v: number): string {
   return v < 60 ? v + 'm' : v % 60 ? Math.floor(v / 60) + 'h ' + (v % 60) + 'm' : v / 60 + 'h';
 }
 
-export function factFor(range: RangeId, mins: number): string {
-  const r = (v: number) => (v >= 10 ? String(Math.round(v)) : String(Math.round(v * 10) / 10));
-  const t = fmtShort(mins);
-  if (mins < 5) return 'Nothing to report yet — the phone stayed in your pocket.';
-  if (range === 'day')
-    return 'Did you watch ' + r(mins / 112) + ' films back to back, or spend ' + t + ' on cats freaking out?';
-  if (range === 'week')
-    return t + ' is ' + r(mins / 450) + ' flights to New York. You could have landed, had dinner and flown home.';
-  if (range === 'month')
-    return (
-      'The same ' +
-      t +
-      ' covers ' +
-      r(mins / 480) +
-      ' novels — or ' +
-      r(mins / 24) +
-      ' episodes you will not remember tomorrow.'
-    );
-  return t + ' of your year went thumb-first. Enough to learn the guitar. Badly. Twice.';
-}
-
 function dstr(idx: number): string {
   const d = dateAt(idx);
   return DOW[d.getDay()] + ' ' + d.getDate() + ' ' + MON[d.getMonth()];
@@ -134,26 +112,88 @@ export function longDate(d: Date): string {
   return DAY_NAME[d.getDay()] + ', ' + MONTH_NAME[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
 }
 
-function dshort(idx: number): string {
-  const d = dateAt(idx);
-  return d.getDate() + ' ' + MON[d.getMonth()];
-}
-
 function hourLabel(h: number): string {
   const f = (t: number) => (t % 12 === 0 ? 12 : t % 12) + (t < 12 ? 'am' : 'pm');
   return f(h) + '–' + f((h + 1) % 24);
 }
 
+// --- Calendar ranges -----------------------------------------------------------
+// Every range is a calendar period: Day is today, Week runs Sunday to Saturday,
+// Month is the calendar month and Year the calendar year. Totals cover the
+// period so far; charts show the whole period, with days still to come empty.
+// Each is compared with the same days of the period before.
+
+/** How far back history reaches (rollupStore prunes older days), so a comparison
+ *  reaching further would be measured against days that no longer exist. */
+const HISTORY_DAYS = 400;
+
+const day0 = () => startOfToday();
+const at = (y: number, m: number, d: number) => new Date(y, m, d);
+const daysIn = (y: number, m: number) => new Date(y, m + 1, 0).getDate();
+
+/** First and last day of the period a range covers now. The last may be ahead of today. */
+export function rangeSpan(range: RangeId): { first: Date; last: Date } {
+  const t = day0();
+  const y = t.getFullYear();
+  const m = t.getMonth();
+  if (range === 'week') {
+    const first = at(y, m, t.getDate() - t.getDay());
+    return { first, last: at(first.getFullYear(), first.getMonth(), first.getDate() + 6) };
+  }
+  if (range === 'month') return { first: at(y, m, 1), last: at(y, m, daysIn(y, m)) };
+  if (range === 'year') return { first: at(y, 0, 1), last: at(y, 11, 31) };
+  return { first: t, last: t };
+}
+
+/** Days of the period up to and including today: what a daily average divides by. */
+export function daysSoFar(range: RangeId): number {
+  return daysBetween(rangeSpan(range).first, day0()) + 1;
+}
+
+/** The same days of the period before, or null when history can't reach them. */
+function previousSpan(range: RangeId): { first: Date; last: Date } | null {
+  const t = day0();
+  const y = t.getFullYear();
+  const m = t.getMonth();
+  const d = t.getDate();
+  let span: { first: Date; last: Date };
+  if (range === 'week') {
+    const first = rangeSpan('week').first;
+    span = { first: at(first.getFullYear(), first.getMonth(), first.getDate() - 7), last: at(y, m, d - 7) };
+  } else if (range === 'month') {
+    const pm = m === 0 ? 11 : m - 1;
+    const py = m === 0 ? y - 1 : y;
+    span = { first: at(py, pm, 1), last: at(py, pm, Math.min(d, daysIn(py, pm))) };
+  } else {
+    span = { first: at(y - 1, 0, 1), last: at(y - 1, m, Math.min(d, daysIn(y - 1, m))) };
+  }
+  return daysBetween(span.first, t) <= HISTORY_DAYS ? span : null;
+}
+
+/** Day indexes (days before today) from `first` to `last`, skipping any after today. */
+function idxsBetween(first: Date, last: Date): number[] {
+  const t = day0();
+  const out: number[] = [];
+  for (let k = daysBetween(first, t); k >= daysBetween(last, t); k--) if (k >= 0) out.push(k);
+  return out;
+}
+
+const dayLabelOf = (d: Date) => DOW[d.getDay()] + ' ' + d.getDate() + ' ' + MON[d.getMonth()];
+
 /** Human range labels for the current day. A function, not a const: freezing
  *  these at module-import time is what pinned the old build to one date. */
 export function dates(): Record<RangeId, string> {
-  const t = startOfToday();
+  const t = day0();
+  const { first, last } = rangeSpan('week');
+  const week =
+    first.getMonth() === last.getMonth()
+      ? first.getDate() + ' – ' + last.getDate() + ' ' + MON[last.getMonth()]
+      : first.getDate() + ' ' + MON[first.getMonth()] + ' – ' + last.getDate() + ' ' + MON[last.getMonth()];
   return {
     day: dstr(0),
-    week: dshort(6) + ' – ' + dshort(0),
-    month: dshort(29) + ' – ' + dshort(0),
-    year:
-      MON[(t.getMonth() + 1) % 12] + ' ' + (t.getFullYear() - 1) + ' – ' + MON[t.getMonth()] + ' ' + t.getFullYear(),
+    week,
+    month: MONTH_NAME[t.getMonth()] + ' ' + t.getFullYear(),
+    year: String(t.getFullYear()),
   };
 }
 
@@ -165,27 +205,29 @@ export interface Bucket {
   name: string;
 }
 
-/** The Year view's twelve months, oldest first, each with the day indexes (days
- *  before today) it covers so far. */
-function yearMonths(): { d: Date; idxs: number[] }[] {
-  const t = startOfToday();
-  const out: { d: Date; idxs: number[] }[] = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(t.getFullYear(), t.getMonth() - i, 1);
-    const n = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    const idxs: number[] = [];
-    for (let k = 1; k <= n; k++) {
-      const idx = daysBetween(new Date(d.getFullYear(), d.getMonth(), k), t);
-      if (idx >= 0) idxs.push(idx);
-    }
-    out.push({ d, idxs });
+/** The days of the current week or month as chart bars, oldest first. */
+function periodDays(range: 'week' | 'month'): Date[] {
+  const { first, last } = rangeSpan(range);
+  const out: Date[] = [];
+  for (let k = 0; k <= daysBetween(first, last); k++) {
+    out.push(at(first.getFullYear(), first.getMonth(), first.getDate() + k));
   }
   return out;
+}
+
+/** The calendar year's twelve months, each with the day indexes it covers so far. */
+function yearMonths(): { d: Date; idxs: number[] }[] {
+  const y = day0().getFullYear();
+  return Array.from({ length: 12 }, (_, m) => ({
+    d: at(y, m, 1),
+    idxs: idxsBetween(at(y, m, 1), at(y, m, daysIn(y, m))),
+  }));
 }
 
 export function buckets(range: RangeId): Bucket[] {
   checkDayRollover();
   const out: Bucket[] = [];
+  const t = day0();
   if (range === 'day') {
     for (let h = 0; h < 24; h++) {
       out.push({
@@ -196,13 +238,13 @@ export function buckets(range: RangeId): Bucket[] {
       });
     }
   } else if (range === 'week' || range === 'month') {
-    const n = range === 'week' ? 7 : 30;
-    for (let i = n - 1; i >= 0; i--) {
-      const d = dateAt(i);
+    for (const d of periodDays(range)) {
+      const idx = daysBetween(d, t);
       out.push({
-        per: dayByCat(i),
+        // Days still to come have nothing yet.
+        per: idx >= 0 ? dayByCat(idx) : zeros(),
         tick: range === 'week' ? DOWI[d.getDay()] : String(d.getDate()),
-        label: dstr(i),
+        label: dayLabelOf(d),
         name: longDate(d),
       });
     }
@@ -221,6 +263,8 @@ export function buckets(range: RangeId): Bucket[] {
   return out;
 }
 
+/** The same span of the period before: yesterday up to this hour, or the same
+ *  days of last week, month or year. Zero when history doesn't reach that far. */
 export function prevTotal(range: RangeId): number {
   checkDayRollover();
   const sum = (per: number[]) => per.reduce((s, v) => s + v, 0);
@@ -228,13 +272,11 @@ export function prevTotal(range: RangeId): number {
   if (range === 'day') {
     const cur = currentHour();
     for (let h = 0; h <= cur; h++) t += sum(hourByCat(1, h));
-  } else if (range === 'week') {
-    for (let i = 7; i < 14; i++) t += sum(dayByCat(i));
-  } else if (range === 'month') {
-    for (let i = 30; i < 60; i++) t += sum(dayByCat(i));
-  } else {
-    for (let i = 365; i < 730; i++) t += sum(dayByCat(i));
+    return t;
   }
+  const span = previousSpan(range);
+  if (!span) return 0;
+  for (const idx of idxsBetween(span.first, span.last)) t += sum(dayByCat(idx));
   return t;
 }
 
@@ -307,23 +349,27 @@ export function unlockBuckets(range: RangeId): number[] {
   checkDayRollover();
   if (range === 'day') return Array.from({ length: 24 }, (_, h) => unlocksHour(0, h));
   if (range === 'week' || range === 'month') {
-    const n = range === 'week' ? 7 : 30;
-    return Array.from({ length: n }, (_, k) => unlocksDay(n - 1 - k));
+    const t = day0();
+    return periodDays(range).map((d) => {
+      const idx = daysBetween(d, t);
+      return idx >= 0 ? unlocksDay(idx) : 0;
+    });
   }
   return yearMonths().map(({ idxs }) => idxs.reduce((s, idx) => s + unlocksDay(idx), 0));
 }
 
-/** Unlocks over the span before `range`, matching prevTotal(). */
+/** Unlocks over the same span of the period before, matching prevTotal(). */
 export function prevUnlocks(range: RangeId): number {
   checkDayRollover();
   let t = 0;
   if (range === 'day') {
     const cur = currentHour();
     for (let h = 0; h <= cur; h++) t += unlocksHour(1, h);
-  } else {
-    const [from, to] = range === 'week' ? [7, 14] : range === 'month' ? [30, 60] : [365, 730];
-    for (let i = from; i < to; i++) t += unlocksDay(i);
+    return t;
   }
+  const span = previousSpan(range);
+  if (!span) return 0;
+  for (const idx of idxsBetween(span.first, span.last)) t += unlocksDay(idx);
   return t;
 }
 

@@ -45,9 +45,10 @@ describe('the usage source seam', () => {
     setUsageSource(new FlatSource(60));
     invalidate();
 
-    // 8 categories x 60 min x 7 days
-    expect(slice('week', null).total).toBeCloseTo(8 * 60 * 7, 6);
-    expect(slice('month', null).total).toBeCloseTo(8 * 60 * 30, 6);
+    // Tuesday 25 August: the week so far is Sunday to Tuesday (3 days), the
+    // month so far 25 days. 8 categories x 60 min x days.
+    expect(slice('week', null).total).toBeCloseTo(8 * 60 * 3, 6);
+    expect(slice('month', null).total).toBeCloseTo(8 * 60 * 25, 6);
     expect(dayUsage()).toEqual(CATS.map(() => 60));
     expect(trackedToday()).toBeCloseTo(8 * 60, 6);
   });
@@ -59,13 +60,15 @@ describe('the usage source seam', () => {
     setUsageSource(new FlatSource(60));
     invalidate();
     expect(slice('week', null).rows).toHaveLength(CATS.length);
-    expect(slice('week', null).total).toBeCloseTo(CATS.length * 60 * 7, 6);
+    expect(slice('week', null).total).toBeCloseTo(CATS.length * 60 * 3, 6);
   });
 
-  it('compares against the previous period using the same source', () => {
+  it('compares against the same days of the previous period, using the same source', () => {
     setUsageSource(new FlatSource(30));
     invalidate();
-    expect(prevTotal('week')).toBeCloseTo(8 * 30 * 7, 6);
+    // Last week's Sunday to Tuesday, and August 1-25's counterpart in July.
+    expect(prevTotal('week')).toBeCloseTo(8 * 30 * 3, 6);
+    expect(prevTotal('month')).toBeCloseTo(8 * 30 * 25, 6);
   });
 
   it('swapping sources changes the numbers, proving nothing is hardcoded', () => {
@@ -162,8 +165,8 @@ describe('the series count is not hardwired to eight', () => {
     expect(seriesCount()).toBe(count);
     expect(series()).toHaveLength(count);
     expect(dayUsage()).toHaveLength(count);
-    // count series x 12 min x 7 days
-    expect(slice('week', null).total).toBeCloseTo(count * 12 * 7, 6);
+    // count series x 12 min x 3 days (Sunday to Tuesday)
+    expect(slice('week', null).total).toBeCloseTo(count * 12 * 3, 6);
     expect(slice('week', null).rows).toHaveLength(count);
   });
 
@@ -180,11 +183,8 @@ describe('the series count is not hardwired to eight', () => {
     invalidate();
     const single = slice('year', null);
 
-    // The year range is 12 *calendar months* ending with a partial current
-    // month, not a flat 365 days, so assert proportionality rather than an
-    // absolute figure. (Note N_DAYS.year is 365 and is used for the daily
-    // average, which is therefore a slight under-estimate - pre-existing.)
-    expect(single.total).toBeGreaterThan(0);
+    // The calendar year so far: 1 January to 25 August is 237 days.
+    expect(single.total).toBeCloseTo(109 * 5 * 237, 6);
     expect(single.bk).toHaveLength(12);
     expect(single.rows).toHaveLength(109);
 

@@ -60,7 +60,7 @@ export function PermissionScreen() {
 const styles = StyleSheet.create({
   wrap: { gap: 16 },
   title: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 24, letterSpacing: -0.2, color: color.text },
-  subtitle: { fontSize: 13.5, lineHeight: 20, color: alpha(color.text, 60) },
+  subtitle: { fontSize: 13.5, lineHeight: 20, color: color.text },
   card: { paddingHorizontal: 16, paddingVertical: 4 },
   step: {
     flexDirection: 'row',
@@ -90,5 +90,5 @@ const styles = StyleSheet.create({
   secondary: { alignItems: 'center', paddingVertical: 4 },
   secondaryText: { fontFamily: font.bodySemiBold, fontSize: 13, color: color.accent700 },
   error: { fontSize: 12.5, color: color.roseDark },
-  footnote: { fontSize: 11.5, lineHeight: 17, color: alpha(color.text, 42) },
+  footnote: { fontSize: 11.5, lineHeight: 17, color: color.text },
 });

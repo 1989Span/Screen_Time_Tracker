@@ -10,15 +10,10 @@
 // as if it were a complete month. So the numbers shown are always real, and the
 // shortfall is stated rather than hidden or padded with zeros.
 
-import { RangeId } from '../data';
+import { RangeId, daysSoFar } from '../data';
 
-/** Days of history each range covers when complete. */
-export const DAYS_REQUIRED: Record<RangeId, number> = {
-  day: 1,
-  week: 7,
-  month: 30,
-  year: 365,
-};
+/** Days of history a week needs before the breakdown opens on it. */
+export const DAYS_REQUIRED = { week: 7 } as const;
 
 export interface RangeStatus {
   id: RangeId;
@@ -42,7 +37,8 @@ export interface RangeStatus {
  */
 export function rangeAvailability(daysRecorded: number): Record<RangeId, RangeStatus> {
   const judge = (id: RangeId): RangeStatus => {
-    const need = DAYS_REQUIRED[id];
+    // Ranges are calendar periods, so complete means every day of this one so far.
+    const need = daysSoFar(id);
     const have = Math.min(daysRecorded, need);
     const complete = daysRecorded >= need;
     return { id, visible: true, complete, have, need, note: complete ? null : partialNote(id, have, need) };

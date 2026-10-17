@@ -71,6 +71,11 @@ describe('rows from the server, as groups', () => {
     expect(groups[1].requestedBy).toEqual({ 'com.maps': 'sam' });
   });
 
+  it('knows who created each group', () => {
+    expect(buildGroups([{ ...group, created_by: 'alex' }], [member('alex', 'Alex')], [])[0].createdBy).toBe('alex');
+    expect(buildGroups([group], [member('alex', 'Alex')], [])[0].createdBy).toBeNull();
+  });
+
   it('has no requests from a server without them', () => {
     expect(buildGroups([group], [member('alex', 'Alex')], [])[0].requestedBy).toEqual({});
   });

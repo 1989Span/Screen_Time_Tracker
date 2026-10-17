@@ -69,10 +69,7 @@ export function AppPickerScreen() {
             >
               <Dot size={11} color={row.tracked ? row.color : alpha(color.text, 18)} />
               <View style={{ flex: 1, gap: 1 }}>
-                <Text
-                  numberOfLines={1}
-                  style={[styles.name, { color: row.tracked ? color.text : alpha(color.text, 42) }]}
-                >
+                <Text numberOfLines={1} style={[styles.name, { color: color.text }]}>
                   {row.label}
                 </Text>
                 <Text numberOfLines={1} style={styles.pkg}>
@@ -106,9 +103,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 2,
   },
-  subtitle: { fontSize: 13, lineHeight: 19, color: alpha(color.text, 55) },
+  subtitle: { fontSize: 13, lineHeight: 19, color: color.text },
   metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  count: { fontSize: 11.5, fontFamily: font.bodySemiBold, color: alpha(color.text, 45) },
+  count: { fontSize: 11.5, fontFamily: font.bodySemiBold, color: color.text },
   bulk: { fontSize: 12.5, fontFamily: font.bodySemiBold, color: color.accent700, paddingVertical: 4 },
   input: {
     backgroundColor: '#ffffff',
@@ -120,7 +117,7 @@ const styles = StyleSheet.create({
   },
   card: { paddingHorizontal: 16, paddingVertical: 4 },
   emptyCard: { padding: 18 },
-  emptyText: { fontSize: 13.5, lineHeight: 20, color: alpha(color.text, 55) },
+  emptyText: { fontSize: 13.5, lineHeight: 20, color: color.text },
   row: {
     width: '100%',
     flexDirection: 'row',
@@ -131,7 +128,7 @@ const styles = StyleSheet.create({
     borderBottomColor: alpha(color.text, 7),
   },
   name: { fontSize: 15, fontFamily: font.bodySemiBold },
-  pkg: { fontSize: 11, color: alpha(color.text, 40) },
+  pkg: { fontSize: 11, color: color.text },
   switchTrack: { width: 34, height: 20, borderRadius: 999, flexShrink: 0 },
   switchKnob: {
     position: 'absolute',

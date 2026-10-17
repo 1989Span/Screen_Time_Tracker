@@ -4,12 +4,11 @@ import { useMemo } from 'react';
 import {
   CATS,
   dates,
-  N_DAYS,
+  daysSoFar,
   RANGE_LABEL,
   RangeId,
   countsUnlocks,
   dayUsage,
-  factFor,
   fmt,
   fmtShort,
   fmtUnlocks,
@@ -75,7 +74,6 @@ export interface OverviewCard {
   label: string;
   dates: string;
   total: string;
-  fact: string;
   avg: string;
   more: string;
   /** Null when the range is fully covered; otherwise how partial it is, so a
@@ -117,13 +115,12 @@ export function useOverviewModel(): OverviewViewModel {
           label: RANGE_LABEL[id],
           dates: label[id],
           total: fmt(sl.total),
-          fact: factFor(id, sl.total),
-          avg: id === 'day' ? 'so far today' : fmtShort(sl.total / N_DAYS[id]) + '/day',
+          avg: id === 'day' ? 'so far today' : fmtShort(sl.total / daysSoFar(id)) + '/day',
           more: sl.rows.length > 3 ? '+' + (sl.rows.length - 3) + ' more' : '',
           coverageNote: coverage[id].note,
           unlocks: !withUnlocks
             ? null
-            : fmtUnlocks(unlocks) + (id === 'day' ? '' : ' · ' + Math.round(unlocks / N_DAYS[id]) + '/day'),
+            : fmtUnlocks(unlocks) + (id === 'day' ? '' : ' · ' + Math.round(unlocks / daysSoFar(id)) + '/day'),
           top: sl.rows.slice(0, 3),
           comp: sl.order.map((ci) => ({
             w: (sl.scoped[ci] / Math.max(1, sl.total)) * 100,
@@ -161,7 +158,6 @@ export interface DetailRow extends CategoryRow {
 export interface DetailViewModel {
   range: RangeId;
   ranges: RangeTab[];
-  fact: string;
   scope: string;
   total: string;
   avg: string;
@@ -211,10 +207,9 @@ export function useDetailModel(): DetailViewModel {
         active: range === id,
         onPress: () => setRange(id),
       })),
-      fact: factFor(range, m.total),
       scope: m.sel != null ? m.bk[m.sel].label : label[range],
       total: fmt(m.total),
-      avg: fmtShort(m.total / (m.sel != null ? 1 : N_DAYS[range])),
+      avg: fmtShort(m.total / (m.sel != null ? 1 : daysSoFar(range))),
       avgLabel: m.sel != null ? 'in this slice' : 'daily average',
       delta: m.sel != null ? 'Tap the bar again to clear' : change.text,
       deltaPositive: change.positive,
