@@ -26,12 +26,7 @@ export function AppPickerScreen() {
       {m.canContinue && <NudgeCard />}
 
       <View style={{ gap: 4 }}>
-        <View style={styles.headRow}>
-          <Text style={styles.title}>Choose apps</Text>
-          <Pressable onPress={m.toggleShowSystem} hitSlop={8}>
-            <Text style={styles.toggleAll}>{m.showSystem ? 'Hide system' : 'Show system'}</Text>
-          </Pressable>
-        </View>
+        <Text style={styles.title}>Choose apps</Text>
         <Text style={styles.subtitle}>Only the apps you pick are measured. You can change this any time.</Text>
         <View style={styles.metaRow}>
           <Text style={styles.count}>{m.countLabel}</Text>
@@ -68,15 +63,9 @@ export function AppPickerScreen() {
               style={[styles.row, i === m.rows.length - 1 && { borderBottomWidth: 0 }]}
             >
               <Dot size={11} color={row.tracked ? row.color : alpha(color.text, 18)} />
-              <View style={{ flex: 1, gap: 1 }}>
-                <Text numberOfLines={1} style={[styles.name, { color: color.text }]}>
-                  {row.label}
-                </Text>
-                <Text numberOfLines={1} style={styles.pkg}>
-                  {row.isSystem ? 'System · ' : ''}
-                  {row.packageName}
-                </Text>
-              </View>
+              <Text numberOfLines={1} style={[styles.name, { flex: 1, color: color.text }]}>
+                {row.label}
+              </Text>
               <View style={[styles.switchTrack, { backgroundColor: row.tracked ? row.color : alpha(color.text, 16) }]}>
                 <View style={[styles.switchKnob, { left: row.tracked ? 16 : 2 }]} />
               </View>
@@ -94,15 +83,7 @@ export function AppPickerScreen() {
 
 const styles = StyleSheet.create({
   wrap: { gap: 14 },
-  headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   title: { fontFamily: font.headingBold, fontWeight: '700', fontSize: 24, letterSpacing: -0.2, color: color.text },
-  toggleAll: {
-    fontSize: 13,
-    fontFamily: font.bodySemiBold,
-    color: color.accent700,
-    paddingVertical: 6,
-    paddingHorizontal: 2,
-  },
   subtitle: { fontSize: 13, lineHeight: 19, color: color.text },
   metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   count: { fontSize: 11.5, fontFamily: font.bodySemiBold, color: color.text },
@@ -128,7 +109,6 @@ const styles = StyleSheet.create({
     borderBottomColor: alpha(color.text, 7),
   },
   name: { fontSize: 15, fontFamily: font.bodySemiBold },
-  pkg: { fontSize: 11, color: color.text },
   switchTrack: { width: 34, height: 20, borderRadius: 999, flexShrink: 0 },
   switchKnob: {
     position: 'absolute',

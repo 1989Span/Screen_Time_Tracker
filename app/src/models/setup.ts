@@ -59,7 +59,6 @@ export interface AppRow {
   label: string;
   color: string;
   tracked: boolean;
-  isSystem: boolean;
   onPress: () => void;
 }
 
@@ -67,8 +66,6 @@ export interface AppPickerViewModel {
   rows: AppRow[];
   query: string;
   setQuery: (value: string) => void;
-  showSystem: boolean;
-  toggleShowSystem: () => void;
   /** e.g. "3 of 87 apps" — the denominator is what the filter currently offers. */
   countLabel: string;
   selectedCount: number;
@@ -85,18 +82,16 @@ export interface AppPickerViewModel {
 
 export function useAppPickerModel(): AppPickerViewModel {
   const installed = useAppsStore((s) => s.installed);
-  const showSystem = useAppsStore((s) => s.showSystem);
   const tracked = useAppsStore((s) => s.tracked);
   const query = useAppsStore((s) => s.query);
   const loading = useAppsStore((s) => s.loading);
   const toggle = useAppsStore((s) => s.toggle);
   const setQuery = useAppsStore((s) => s.setQuery);
-  const setShowSystem = useAppsStore((s) => s.setShowSystem);
   const selectAll = useAppsStore((s) => s.selectAll);
   const clearAll = useAppsStore((s) => s.clearAll);
 
   return useMemo(() => {
-    const offerable = pickableApps({ installed, showSystem });
+    const offerable = pickableApps({ installed });
     const needle = query.trim().toLowerCase();
     const matching = needle
       ? offerable.filter((a) => a.label.toLowerCase().includes(needle) || a.packageName.toLowerCase().includes(needle))
@@ -109,15 +104,12 @@ export function useAppPickerModel(): AppPickerViewModel {
       // Same colour the charts will use, so the picker previews the breakdown.
       color: colorForId(a.packageName),
       tracked: trackedSet.has(a.packageName),
-      isSystem: a.isSystem,
       onPress: () => toggle(a.packageName),
     }));
 
     const emptyNote =
       offerable.length === 0
-        ? showSystem
-          ? 'No apps found on this device.'
-          : 'No apps found. Try showing system apps.'
+        ? 'No apps found on this device.'
         : matching.length === 0
           ? `Nothing matches “${query.trim()}”.`
           : null;
@@ -126,8 +118,6 @@ export function useAppPickerModel(): AppPickerViewModel {
       rows,
       query,
       setQuery,
-      showSystem,
-      toggleShowSystem: () => setShowSystem(!showSystem),
       countLabel: `${tracked.length} of ${offerable.length} ${offerable.length === 1 ? 'app' : 'apps'} tracked`,
       // Flips to Clear once everything offered is already tracked.
       bulkLabel: offerable.length > 0 && tracked.length >= offerable.length ? 'Clear all' : 'Select all apps',
@@ -139,5 +129,5 @@ export function useAppPickerModel(): AppPickerViewModel {
       commit: reloadUsage,
       loading,
     };
-  }, [installed, showSystem, tracked, query, loading, toggle, setQuery, setShowSystem, selectAll, clearAll]);
+  }, [installed, tracked, query, loading, toggle, setQuery, selectAll, clearAll]);
 }

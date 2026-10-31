@@ -13,7 +13,6 @@ beforeEach(() => {
   useAppsStore.setState({
     installed: [],
     tracked: [],
-    showSystem: false,
     permission: 'unknown',
     historyDays: 0,
     loading: false,
@@ -62,16 +61,25 @@ describe('appsStore', () => {
     expect(useAppsStore.getState().tracked).toEqual(['com.a']);
   });
 
-  it('filters the picker by the show-system preference', () => {
+  it('always offers system apps, alongside the rest', () => {
     useAppsStore.setState({
       installed: [
         app({ packageName: 'com.a', label: 'Alpha' }),
         app({ packageName: 'com.s', label: 'Sys', isSystem: true }),
       ],
     });
-    expect(pickableApps(useAppsStore.getState()).map((a) => a.packageName)).toEqual(['com.a']);
-    useAppsStore.getState().setShowSystem(true);
     expect(pickableApps(useAppsStore.getState()).map((a) => a.packageName)).toEqual(['com.a', 'com.s']);
+  });
+
+  it('selects system apps too with Select all', () => {
+    useAppsStore.setState({
+      installed: [
+        app({ packageName: 'com.a', label: 'Alpha' }),
+        app({ packageName: 'com.s', label: 'Sys', isSystem: true }),
+      ],
+    });
+    useAppsStore.getState().selectAll();
+    expect(useAppsStore.getState().tracked).toEqual(['com.a', 'com.s']);
   });
 });
 

@@ -22,7 +22,6 @@ export type PermissionState = 'unknown' | 'granted' | 'denied';
 interface AppsState {
   installed: InstalledApp[];
   tracked: string[];
-  showSystem: boolean;
   permission: PermissionState;
   /** Distinct days of real history recorded, which gates Month and Year. */
   historyDays: number;
@@ -54,7 +53,6 @@ interface AppsState {
   openSettings: () => void;
   toggle: (packageName: string) => void;
   setTracked: (packages: string[]) => void;
-  setShowSystem: (value: boolean) => void;
   setQuery: (value: string) => void;
   /** Announce that freshly loaded usage is available to read. */
   markDataLoaded: () => void;
@@ -68,7 +66,6 @@ export const useAppsStore = create<AppsState>()(
     (set, get) => ({
       installed: [],
       tracked: [],
-      showSystem: false,
       permission: 'unknown',
       historyDays: 0,
       loading: false,
@@ -118,19 +115,13 @@ export const useAppsStore = create<AppsState>()(
 
       setTracked: (packages) => set({ tracked: packages.filter(isCountable) }),
 
-      setShowSystem: (value) => set({ showSystem: value }),
-
       setQuery: (value) => set({ query: value }),
 
       markDataLoaded: () => set((s) => ({ dataVersion: s.dataVersion + 1 })),
 
-      // Bulk actions operate on what the *filter* offers, not the raw installed
-      // list, so "select all" cannot secretly enable the screensaver, a launcher
-      // or (when system apps are hidden) dozens of packages the user never saw.
-      selectAll: () =>
-        set((s) => ({
-          tracked: offerableApps(s.installed, { showSystem: s.showSystem }).map((a) => a.packageName),
-        })),
+      // Bulk actions operate on what the picker offers, not the raw installed
+      // list, so "select all" cannot secretly enable the screensaver or a launcher.
+      selectAll: () => set((s) => ({ tracked: pickableApps(s).map((a) => a.packageName) })),
 
       clearAll: () => set({ tracked: [] }),
     }),
@@ -138,25 +129,27 @@ export const useAppsStore = create<AppsState>()(
       name: storageKey('apps'),
       version: STORAGE_VERSION,
       storage: deviceStorage,
-      partialize: (s) => ({ tracked: s.tracked, showSystem: s.showSystem }),
+      partialize: (s) => ({ tracked: s.tracked }),
       merge: (persisted, current) => {
-        const p = persisted as { tracked?: unknown; showSystem?: unknown } | undefined;
+        // An older saved "show system apps" choice is ignored: they're always offered now.
+        const p = persisted as { tracked?: unknown } | undefined;
         const tracked = Array.isArray(p?.tracked)
           ? p!.tracked.filter((v): v is string => typeof v === 'string' && isCountable(v))
           : current.tracked;
         return {
           ...current,
           tracked,
-          showSystem: typeof p?.showSystem === 'boolean' ? p.showSystem : current.showSystem,
         };
       },
     }
   )
 );
 
-/** The apps to show in the picker, filtered and sorted. */
-export const pickableApps = (s: Pick<AppsState, 'installed' | 'showSystem'>) =>
-  offerableApps(s.installed, { showSystem: s.showSystem });
+/**
+ * The apps to show in the picker, filtered and sorted. System apps (Phone,
+ * Messages, Chrome, Camera...) are always listed, each switchable like any other.
+ */
+export const pickableApps = (s: Pick<AppsState, 'installed'>) => offerableApps(s.installed, { showSystem: true });
 
 /** Whether the user has finished the one-time setup: allowed, and picked something. */
 export const isConfigured = (s: Pick<AppsState, 'permission' | 'tracked'>) =>
