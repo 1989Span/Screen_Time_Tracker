@@ -13,7 +13,7 @@
 // selection. Not persisted: sync status, an invite waiting for Join, notices
 // and drafts.
 
-import { Share } from 'react-native';
+import { AppState, Share } from 'react-native';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -41,6 +41,14 @@ const fromLoadedSource: DayReader = (stamp) =>
 interface GroupsState {
   /** Your anonymous id on the group server. Empty until you first create or join. */
   selfId: string;
+  /**
+   * The recovery key for selfId (migration 0007), and the id it belongs to.
+   * Kept here, in the app's own storage, apart from the Supabase session: if
+   * the session is ever lost, this proves the old identity is ours so it can
+   * be moved onto the new sign-in instead of the phone dropping out of its groups.
+   */
+  recoveryKey: string;
+  recoveryKeyFor: string;
   selfName: string;
   groups: Group[];
   groupId: string;
@@ -194,6 +202,52 @@ export const useGroupsStore = create<GroupsState>()(
         }
       };
 
+      /** Makes sure this identity has a recovery key on file. Best effort. */
+      const ensureRecoveryKey = async (id: string): Promise<void> => {
+        if (get().recoveryKeyFor === id && get().recoveryKey) return;
+        try {
+          const key = await groupsApi.createRecoveryKey();
+          set({ recoveryKey: key, recoveryKeyFor: id });
+        } catch {
+          // A server without migration 0007. Tried again on the next sync.
+        }
+      };
+
+      /**
+       * The identity to use: the signed-in one if there is a session. Without
+       * one, a phone that never had an identity signs in for the first time,
+       * and one that did signs in afresh and takes its old identity back with
+       * its recovery key, so its groups, history and votes come with it.
+       *
+       * Returns null rather than replacing an identity in the background (an
+       * hourly sync with the app closed): that waits until the app is open.
+       */
+      const identity = async (canSignIn: boolean): Promise<string | null> => {
+        const current = await groupsApi.currentUser();
+        if (current) {
+          await ensureRecoveryKey(current);
+          return current;
+        }
+        const s = get();
+        if (s.selfId && !canSignIn) return null;
+        const id = await groupsApi.signInFresh();
+        if (s.selfId && s.selfId !== id) {
+          const reclaimed =
+            s.recoveryKeyFor === s.selfId && s.recoveryKey
+              ? await groupsApi.reclaimIdentity(s.selfId, s.recoveryKey).catch(() => false)
+              : false;
+          if (!reclaimed) {
+            set({
+              notice:
+                'This phone lost its group sign-in and couldn’t restore it, so you may need a new invite to rejoin your groups.',
+            });
+          }
+        }
+        set({ selfId: id });
+        await ensureRecoveryKey(id);
+        return id;
+      };
+
       const runSync = async (readDay: DayReader): Promise<void> => {
         if (!groupsServerConfigured()) {
           set({ syncStatus: 'unconfigured' });
@@ -204,7 +258,11 @@ export const useGroupsStore = create<GroupsState>()(
         if (!s.selfId && s.groups.length === 0) return;
         set({ syncStatus: 'syncing' });
         try {
-          const selfId = await groupsApi.signIn();
+          const selfId = await identity(AppState.currentState === 'active');
+          if (selfId === null) {
+            set({ syncStatus: 'idle' });
+            return;
+          }
           // Download first, so the upload follows the group's latest rules (an
           // app everyone has just agreed to leave out, say) and reaches a group
           // you've only just joined. Your own row is computed live on this
@@ -229,6 +287,8 @@ export const useGroupsStore = create<GroupsState>()(
 
       return {
         selfId: '',
+        recoveryKey: '',
+        recoveryKeyFor: '',
         selfName: '',
         groups: [],
         groupId: '',
@@ -274,7 +334,7 @@ export const useGroupsStore = create<GroupsState>()(
           if (!name || !selfName || s.busy) return;
           set({ busy: true, error: null });
           try {
-            const selfId = await groupsApi.signIn();
+            const selfId = (await identity(true)) as string;
             const { id } = await groupsApi.createGroup(name, selfName, dayStamp());
             set({ selfId, groupId: id });
             await get().sync();
@@ -331,7 +391,7 @@ export const useGroupsStore = create<GroupsState>()(
           if (!invite || !selfName || s.busy) return;
           set({ busy: true, error: null });
           try {
-            const selfId = await groupsApi.signIn();
+            const selfId = (await identity(true)) as string;
             const { id, name } = await groupsApi.joinGroup(invite.code, selfName, dayStamp());
             set({ selfId, groupId: id, incoming: null });
             await get().sync();
@@ -467,6 +527,8 @@ export const useGroupsStore = create<GroupsState>()(
           }
           set({
             selfId: '',
+            recoveryKey: '',
+            recoveryKeyFor: '',
             groups: [],
             groupId: '',
             lastSynced: 0,
@@ -483,6 +545,8 @@ export const useGroupsStore = create<GroupsState>()(
       storage: deviceStorage,
       partialize: (s) => ({
         selfId: s.selfId,
+        recoveryKey: s.recoveryKey,
+        recoveryKeyFor: s.recoveryKeyFor,
         selfName: s.selfName,
         groups: s.groups,
         groupId: s.groupId,
@@ -499,6 +563,8 @@ export const useGroupsStore = create<GroupsState>()(
         return {
           ...current,
           selfId: typeof p.selfId === 'string' ? p.selfId : '',
+          recoveryKey: typeof p.recoveryKey === 'string' ? p.recoveryKey : '',
+          recoveryKeyFor: typeof p.recoveryKeyFor === 'string' ? p.recoveryKeyFor : '',
           selfName: typeof p.selfName === 'string' ? p.selfName.slice(0, NAME_MAX) : '',
           groups,
           groupId: typeof p.groupId === 'string' && ids.has(p.groupId) ? p.groupId : (groups[0]?.id ?? ''),

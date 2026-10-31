@@ -1,4 +1,4 @@
-import { Share } from 'react-native';
+import { AppState, Share } from 'react-native';
 
 import { dayStamp } from '../clock';
 import { inviteLink, readInvite } from '../groupLink';
@@ -17,6 +17,7 @@ const initial = useGroupsStore.getState();
 
 const today = dayStamp();
 const CODE = '0123456789abcdef0123456789abcdef';
+const KEY = 'ab'.repeat(32);
 
 const me = (over: Partial<Member> = {}): Member => ({ ...newMember('me', 'Stewart', today), ...over });
 const alex = (over: Partial<Member> = {}): Member => ({
@@ -57,7 +58,10 @@ class SameEveryDay implements UsageSource {
 /** Stubs every server call; tests override the ones they care about. */
 function stubServer() {
   return {
-    signIn: jest.spyOn(groupsApi, 'signIn').mockResolvedValue('me'),
+    currentUser: jest.spyOn(groupsApi, 'currentUser').mockResolvedValue('me'),
+    signInFresh: jest.spyOn(groupsApi, 'signInFresh').mockResolvedValue('me'),
+    createRecoveryKey: jest.spyOn(groupsApi, 'createRecoveryKey').mockResolvedValue(KEY),
+    reclaimIdentity: jest.spyOn(groupsApi, 'reclaimIdentity').mockResolvedValue(true),
     fetchGroups: jest.spyOn(groupsApi, 'fetchGroups').mockResolvedValue([family()]),
     createGroup: jest.spyOn(groupsApi, 'createGroup').mockResolvedValue({ id: 'g1', inviteCode: CODE }),
     joinGroup: jest.spyOn(groupsApi, 'joinGroup').mockResolvedValue({ id: 'g1', name: 'Family' }),
@@ -85,7 +89,7 @@ describe('receiving an invite', () => {
     expect(store().receive(inviteLink(CODE, 'Family', 'Alex'))).toBe(true);
     expect(store().incoming).toEqual({ code: CODE, groupName: 'Family', inviter: 'Alex' });
     expect(view()).toBe('groupJoin');
-    expect(api.signIn).not.toHaveBeenCalled();
+    expect(api.currentUser).not.toHaveBeenCalled();
   });
 
   it('needs your name, then joins on the server and syncs', async () => {
@@ -201,7 +205,7 @@ describe('automatic sync', () => {
   it('never signs in someone who has never used groups', async () => {
     const api = stubServer();
     await store().sync();
-    expect(api.signIn).not.toHaveBeenCalled();
+    expect(api.currentUser).not.toHaveBeenCalled();
   });
 
   it('keeps the cached groups when offline, and says so', async () => {
@@ -417,6 +421,65 @@ describe('a tapped request notification', () => {
       expect(openFromNotification(data)).toBe(false);
     }
     expect(view()).toBe('ov');
+  });
+});
+
+describe('keeping the same identity', () => {
+  const setAppState = (state: string) =>
+    Object.defineProperty(AppState, 'currentState', { value: state, configurable: true });
+  beforeEach(() => {
+    setAppState('active');
+    useGroupsStore.setState({
+      groups: [family()],
+      groupId: 'g1',
+      selfId: 'me',
+      selfName: 'Stewart',
+      recoveryKey: KEY,
+      recoveryKeyFor: 'me',
+    });
+  });
+  afterEach(() => setAppState('active'));
+
+  it('takes the old identity back with its key when the sign-in is lost', async () => {
+    const api = stubServer();
+    api.currentUser.mockResolvedValue(null);
+    api.signInFresh.mockResolvedValue('me2');
+    await store().sync();
+    expect(api.reclaimIdentity).toHaveBeenCalledWith('me', KEY);
+    expect(store().selfId).toBe('me2');
+    expect(store().notice).toBeNull();
+    // The new identity gets a key of its own.
+    expect(api.createRecoveryKey).toHaveBeenCalled();
+    expect(store().recoveryKeyFor).toBe('me2');
+  });
+
+  it('never replaces the identity in the background', async () => {
+    const api = stubServer();
+    api.currentUser.mockResolvedValue(null);
+    setAppState('background');
+    await store().sync();
+    expect(api.signInFresh).not.toHaveBeenCalled();
+    expect(api.fetchGroups).not.toHaveBeenCalled();
+    expect(store().selfId).toBe('me');
+    expect(store().groups).toHaveLength(1);
+  });
+
+  it('says so when the old identity can’t be restored', async () => {
+    const api = stubServer();
+    api.currentUser.mockResolvedValue(null);
+    api.signInFresh.mockResolvedValue('me2');
+    api.reclaimIdentity.mockResolvedValue(false);
+    await store().sync();
+    expect(store().notice).toMatch(/lost its group sign-in/);
+  });
+
+  it('issues a recovery key once per identity', async () => {
+    const api = stubServer();
+    useGroupsStore.setState({ recoveryKey: '', recoveryKeyFor: '' });
+    await store().sync();
+    await store().sync();
+    expect(api.createRecoveryKey).toHaveBeenCalledTimes(1);
+    expect(store().recoveryKey).toBe(KEY);
   });
 });
 

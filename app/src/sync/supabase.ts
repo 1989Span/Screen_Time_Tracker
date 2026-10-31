@@ -53,16 +53,22 @@ export function supabase(): SupabaseClient {
 }
 
 /**
- * Your anonymous user id, signing in the first time. No email, no password.
- * The id lives in this phone's storage, so reinstalling makes a new one.
+ * The anonymous user this phone is signed in as, or null if it has no session.
+ *
+ * Never signs in by itself: a missing session doesn't mean a new person, and
+ * signing in quietly as someone new is how a phone used to fall out of its
+ * groups. groupsStore decides what to do (identity() there).
  */
-export async function ensureSession(): Promise<string> {
-  const sb = supabase();
-  const { data } = await sb.auth.getSession();
-  if (data.session) return data.session.user.id;
-  const { data: signed, error } = await sb.auth.signInAnonymously();
-  if (error || !signed.user) throw error ?? new Error('Anonymous sign-in failed');
-  return signed.user.id;
+export async function currentUserId(): Promise<string | null> {
+  const { data } = await supabase().auth.getSession();
+  return data.session?.user.id ?? null;
+}
+
+/** Signs in as a new anonymous user. No email, no password. Returns its id. */
+export async function signInFresh(): Promise<string> {
+  const { data, error } = await supabase().auth.signInAnonymously();
+  if (error || !data.user) throw error ?? new Error('Anonymous sign-in failed');
+  return data.user.id;
 }
 
 /** Forget the session on this phone, after its user was deleted on the server. */

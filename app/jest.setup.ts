@@ -51,7 +51,8 @@ jest.mock('./src/sync/supabase', () => ({
   supabase: () => {
     throw new Error('No group server in tests: stub groupsApi instead.');
   },
-  ensureSession: async () => 'test-user',
+  currentUserId: async () => 'test-user',
+  signInFresh: async () => 'test-user',
   signOutLocally: async () => {},
 }));
 

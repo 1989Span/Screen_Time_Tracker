@@ -7,7 +7,7 @@
 import { cleanText } from '../groupLink';
 import { Challenge, ChallengeStatus } from '../challenge';
 import { Group, Member, NAME_MAX } from '../groups';
-import { ensureSession, signOutLocally, supabase } from './supabase';
+import { currentUserId, signInFresh, signOutLocally, supabase } from './supabase';
 
 /** The free tier returns at most 1000 rows per request, so reads are paged. */
 const PAGE = 1000;
@@ -131,8 +131,28 @@ export function buildGroups(
 }
 
 export const groupsApi = {
-  /** Signs in anonymously if needed. Returns your user id. */
-  signIn: ensureSession,
+  /** The user this phone is signed in as, or null. Never signs in by itself. */
+  currentUser: currentUserId,
+
+  /** Signs in as a new anonymous user. */
+  signInFresh,
+
+  /** Issues this phone a recovery key for its identity (migration 0007). Keep it apart from the session. */
+  async createRecoveryKey(): Promise<string> {
+    const { data, error } = await supabase().rpc('create_recovery_key');
+    if (error) throw error;
+    return data as string;
+  },
+
+  /**
+   * Moves a lost identity onto the one this phone is now signed in as, proving
+   * it with that identity's recovery key. False if the key doesn't match.
+   */
+  async reclaimIdentity(oldUserId: string, key: string): Promise<boolean> {
+    const { data, error } = await supabase().rpc('reclaim_identity', { p_old: oldUserId, p_key: key });
+    if (error) throw error;
+    return data === true;
+  },
 
   /** Every group you're in, with its roster and daily totals. */
   async fetchGroups(): Promise<Group[]> {
